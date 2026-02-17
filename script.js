@@ -189,14 +189,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
                             if (insertError) throw new Error("Database Save Failed: " + insertError.message);
 
-                            // 3️⃣ Generate Reg No
-                            const serial = insertedData[0].reg_serial || insertedData[0].id;
-                            const registrationNo = `OSATPL01S${(serial + 2000).toString().padStart(4, "0")}`;
+                            // 3️⃣ Generate Reg No (Robust Numeric Logic)
+                            const playerRow = insertedData[0];
+                            const serial = playerRow.reg_serial || playerRow.id;
+                            const serialNum = parseInt(serial);
+                            const registrationNo = `OSATPL01S${(serialNum + 2000).toString().padStart(4, "0")}`;
+
+                            console.log("Generated Reg No:", registrationNo, "from Serial:", serial);
 
                             const { error: updateError } = await supabaseClient
                                 .from("player_registrations")
                                 .update({ registration_no: registrationNo })
-                                .eq("id", insertedData[0].id);
+                                .eq("id", playerRow.id);
 
                             if (updateError) throw new Error("Reg No Generation Failed: " + updateError.message);
 
@@ -235,8 +239,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (checkStatusBtn) {
         checkStatusBtn.addEventListener("click", async () => {
-            const mobile = document.getElementById("statusMobile").value;
-            const aadhar = document.getElementById("statusAadhar").value;
+            const mobile = document.getElementById("statusMobile").value.trim();
+            const aadhar = document.getElementById("statusAadhar").value.trim();
 
             if (!mobile || !aadhar) {
                 alert("Please enter both Mobile and Aadhar numbers.");
@@ -244,42 +248,54 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             checkStatusBtn.disabled = true;
-            checkStatusBtn.innerText = "⏳ Searching...";
+            checkStatusBtn.innerText = "⏳ Searching Database...";
             statusResult.style.display = "none";
 
+            console.log(`Checking status for Mobile: ${mobile}, Aadhar: ${aadhar}`);
+
             try {
+                // We use .select() instead of .maybeSingle() first to see if there are duplicates
                 const { data, error } = await supabaseClient
                     .from("player_registrations")
                     .select("player_name, registration_no, payment_status")
                     .eq("mobile_number", mobile)
-                    .eq("aadhar_number", aadhar)
-                    .maybeSingle();
+                    .eq("aadhar_number", aadhar);
 
-                if (error) throw error;
+                if (error) {
+                    console.error("Supabase Error:", error);
+                    throw new Error(error.message);
+                }
 
                 statusResult.style.display = "block";
-                if (data) {
+
+                if (data && data.length > 0) {
+                    // Use the first match
+                    const player = data[0];
+                    console.log("Player found:", player);
+
                     statusResult.innerHTML = `
                         <div style="text-align: center;">
-                            <p style="color: var(--secondary); font-weight: bold; margin-bottom: 10px;">✅ Registration Found!</p>
-                            <h4 style="margin-bottom: 15px; color: #fff; font-size: 1.1rem;">${data.player_name}</h4>
+                            <p style="color: #00ffa3; font-weight: bold; margin-bottom: 10px;">✅ Registration Found!</p>
+                            <h4 style="margin-bottom: 15px; color: #fff; font-size: 1.1rem;">${player.player_name}</h4>
                             <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px;">
-                                <p style="font-size: 0.8rem; color: var(--text-dim); margin-bottom: 5px;">Registration Number</p>
-                                <p style="font-size: 1.2rem; color: var(--primary); font-family: monospace; font-weight: bold;">${data.registration_no || "Pending Payment"}</p>
+                                <p style="font-size: 0.8rem; color: #aaa; margin-bottom: 5px;">Registration Number</p>
+                                <p style="font-size: 1.2rem; color: #ff0000; font-family: monospace; font-weight: bold;">${player.registration_no || "PROCESING PAYMENT..."}</p>
                             </div>
-                            <p style="margin-top: 15px; font-size: 0.8rem;">Status: <span style="color: ${data.payment_status === 'paid' ? '#00ffa3' : '#ff4d8d'}">${data.payment_status.toUpperCase()}</span></p>
+                            <p style="margin-top: 15px; font-size: 0.9rem;">Payment Status: <strong style="color: ${player.payment_status === 'paid' ? '#00ffa3' : '#ff4d8d'}">${player.payment_status.toUpperCase()}</strong></p>
                         </div>
                     `;
                 } else {
+                    console.warn("No player found with these credentials.");
                     statusResult.innerHTML = `
-                        <div style="text-align: center; color: #ff4d8d;">
-                            <p>❌ No registration found for these details.</p>
-                            <p style="font-size: 0.8rem; margin-top: 10px; color: var(--text-dim);">Please check the numbers and try again.</p>
+                        <div style="text-align: center; color: #ff4d8d; padding: 10px;">
+                            <p>❌ No registration found.</p>
+                            <p style="font-size: 0.8rem; margin-top: 10px; color: #aaa;">Please double-check your Mobile and Aadhar numbers.</p>
                         </div>
                     `;
                 }
             } catch (err) {
-                alert("Error searching registration: " + err.message);
+                console.error("Lookup Failed:", err);
+                alert("Lookup Error: " + err.message + "\n(Check if your live site domain is allowed in Supabase)");
             } finally {
                 checkStatusBtn.disabled = false;
                 checkStatusBtn.innerText = "Fetch My Registration Details 🔍";
