@@ -273,8 +273,12 @@ async function updatePaymentStatus(id, status) {
 
         // If newly paid and has no registration_no, generate it
         if (status === 'paid' && updated && updated[0] && !updated[0].registration_no) {
-            const serial = updated[0].reg_serial || updated[0].id;
-            const registrationNo = `OSATPL01S${(serial + 2000).toString().padStart(4, "0")}`;
+            const playerRow = updated[0];
+            const serial = playerRow.reg_serial || playerRow.id;
+            const serialNum = parseInt(serial);
+            const registrationNo = `OSATPL01S${(serialNum + 2000).toString().padStart(4, "0")}`;
+
+            console.log("Confirmed Reg No:", registrationNo, "from Serial:", serial);
 
             const { error: regError } = await supabaseClient
                 .from("player_registrations")
@@ -468,14 +472,18 @@ async function saveNewPlayer(e) {
 
         if (insertError) throw new Error("Database Save Failed: " + insertError.message);
 
-        // 4. Generate Reg No (Matching script.js logic)
-        const serial = inserted[0].reg_serial || inserted[0].id;
-        const registrationNo = `OSATPL01S${(serial + 2000).toString().padStart(4, "0")}`;
+        // 4. Generate Reg No (Robust Numeric Logic)
+        const playerRow = inserted[0];
+        const serial = playerRow.reg_serial || playerRow.id;
+        const serialNum = parseInt(serial);
+        const registrationNo = `OSATPL01S${(serialNum + 2000).toString().padStart(4, "0")}`;
+
+        console.log("Manual Reg No Generated:", registrationNo, "from Serial:", serial);
 
         const { error: updateError } = await supabaseClient
             .from("player_registrations")
             .update({ registration_no: registrationNo })
-            .eq("id", inserted[0].id);
+            .eq("id", playerRow.id);
 
         if (updateError) throw new Error("Reg No Generation Failed: " + updateError.message);
 
