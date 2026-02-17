@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Player Registration | SATPL 2026</title>
+
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="registration-form.css">
+</head>
+
+<body>
+
+    <nav class="navbar animate-fade">
+        <div class="container">
+            <a href="index.html" style="text-decoration: none;">
+                <h1 class="gradient-text">SATPL 2026</h1>
+            </a>
+            <div class="nav-links" id="dynamic-navbar">
+                <!-- Dynamic Navbar -->
+            </div>
+        </div>
+    </nav>
+
+    <div class="form-wrapper">
+        <div class="form-container glass animate-fade">
+            <h2 class="gradient-text">Player Registration</h2>
+            <p>Complete your registration to join SATPL 2026. <br><strong>Registration Fee: ₹105</strong></p>
+
+            <form id="registrationForm">
+                <div class="form-grid">
+                    <!-- Personal Info -->
+                    <div class="form-section-title">Personal Details</div>
+                    <div class="form-group">
+                        <label>Player Full Name</label>
+                        <input type="text" name="playerName" placeholder="Enter your name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Father's Name</label>
+                        <input type="text" name="fatherName" placeholder="Enter father's name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Date of Birth</label>
+                        <input type="date" name="dob" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Aadhar Number (12 Digit)</label>
+                        <input type="text" id="aadharInput" name="aadhar" placeholder="0000 0000 0000"
+                            pattern="[0-9]{12}" maxlength="12" title="Please enter a 12-digit Aadhar number" required>
+                        <div id="aadharError" class="input-error-msg"
+                            style="color: #ff4d8d; font-size: 0.8rem; margin-top: 5px; display: none;"></div>
+                    </div>
+
+                    <!-- Contact Info -->
+                    <div class="form-section-title">Contact Information</div>
+                    <div class="form-group">
+                        <label>Mobile Number</label>
+                        <input type="text" id="mobileInput" name="mobile" placeholder="10 Digit Number"
+                            pattern="[0-9]{10}" maxlength="10" title="Please enter a 10-digit mobile number" required>
+                        <div id="mobileError" class="input-error-msg"
+                            style="color: #ff4d8d; font-size: 0.8rem; margin-top: 5px; display: none;"></div>
+                    </div>
+                    <div class="form-group">
+                        <label>WhatsApp Number</label>
+                        <input type="text" name="whatsapp" placeholder="10 Digit Number" pattern="[0-9]{10}"
+                            maxlength="10" title="Please enter a 10-digit WhatsApp number" required>
+                    </div>
+
+                    <!-- Player Stats -->
+                    <div class="form-section-title">Cricket Profile</div>
+                    <div class="form-group">
+                        <label>Batting Style</label>
+                        <select name="batting" required>
+                            <option value="">Select Style</option>
+                            <option value="right">Right Hand Batting</option>
+                            <option value="left">Left Hand Batting</option>
+                            <option value="no">Not Applicable</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Bowling Style</label>
+                        <select name="bowling" required>
+                            <option value="">Select Style</option>
+                            <option value="right">Right Hand Bowling</option>
+                            <option value="left">Left Hand Bowling</option>
+                            <option value="no">Not Applicable</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Wicket Keeper?</label>
+                        <select name="wicketKeeper" required>
+                            <option value="">Select Option</option>
+                            <option value="yes">Yes, I am a keeper</option>
+                            <option value="no">No</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Player Photo (JPG or PDF only)</label>
+                        <div class="file-upload-wrapper">
+                            <input type="file" id="photoInput" name="playerPhoto" accept=".jpg,.jpeg,.pdf" required>
+                        </div>
+                        <div id="photoError" class="input-error-msg"
+                            style="color: #ff4d8d; font-size: 0.8rem; margin-top: 5px; display: none;"></div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" id="submitBtn" class="btn btn-red-blink">Proceed to Payment (₹105)</button>
+                </div>
+
+                <div id="formMessage"></div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="nav-loader.js"></script>
+    <script src="script.js"></script>
+
+</body>
+
+</html>

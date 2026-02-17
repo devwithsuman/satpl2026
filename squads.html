@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Official Squads | SATPL 2026</title>
+    <meta name="description"
+        content="View the official playing squads for Sonaijuri Anchal Tennis Premier League 2026.">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+    <nav class="navbar animate-fade">
+        <div class="container">
+            <h1 class="gradient-text"><a href="index.html" style="text-decoration: none; color: inherit;">SATPL 2026</a>
+            </h1>
+            <div class="nav-links" id="dynamic-navbar">
+                <!-- Navigated dynamically by JS -->
+            </div>
+        </div>
+    </nav>
+
+    <main style="padding-top: 150px;">
+        <section class="container">
+            <!-- Team Roster Component -->
+            <div id="team-roster" class="glass animate-fade" style="padding: 40px; min-height: 600px;">
+                <header style="text-align: center; margin-bottom: 40px;">
+                    <h2 class="gradient-text" style="font-size: 3rem; margin-bottom: 20px;">Playing Squads</h2>
+                    <p style="color: var(--text-dim); margin-bottom: 30px;">Select a team to view their official
+                        13-player roster</p>
+                    <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;"
+                        id="roster-team-filters">
+                        <div class="loading-spinner"></div> Loading Teams...
+                    </div>
+                </header>
+
+                <div id="home-roster-list">
+                    <div style="text-align: center; color: var(--text-dim); padding: 50px;">
+                        Select a team from above to see the players list.
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="animate-fade">
+        <div class="container">
+            <p>© 2026 SATPL Premium Experience. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="nav-loader.js"></script>
+    <script src="squads-script.js"></script>
+</body>
+
+</html>

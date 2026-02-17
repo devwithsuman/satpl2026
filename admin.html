@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | SATPL 2026</title>
+    <link rel="stylesheet" href="admin-styles.css">
+</head>
+
+<body>
+
+    <div class="admin-container">
+
+        <aside class="sidebar animate-fade">
+            <h2 class="gradient-text">SATPL Admin</h2>
+            <nav class="sidebar-nav">
+                <button onclick="showSection('registrations')" class="active">Registrations</button>
+                <button onclick="showSection('hero')">Hero Settings</button>
+                <button onclick="showSection('points')">Points Table</button>
+                <button onclick="showSection('rosters')">Playing Players</button>
+                <button onclick="showSection('menu')">Menu Settings</button>
+                <button onclick="showSection('settings')">Site Settings</button>
+            </nav>
+            <button onclick="logout()" class="btn-secondary" style="margin-top: auto;">Logout</button>
+        </aside>
+
+        <main class="main-content">
+
+            <div id="registrations-section" class="admin-section active animate-fade">
+                <header class="section-header">
+                    <div>
+                        <h2 class="gradient-text">Player Registrations</h2>
+                        <p style="color: var(--text-dim); font-size: 0.9rem;">Manage and add tournament players</p>
+                    </div>
+                    <button class="btn" onclick="openAddModal()">+ Add New Player</button>
+                </header>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Name</th>
+                                <th>Mobile</th>
+                                <th>Reg No</th>
+                                <th>Status</th>
+                                <th>Photo</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="registrations-list"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="hero-section" class="admin-section animate-fade">
+                <header class="section-header">
+                    <div>
+                        <h2 class="gradient-text">Match Control Center</h2>
+                        <p style="color: var(--text-dim); font-size: 0.9rem;">Broadcast live updates to the homepage</p>
+                    </div>
+                    <div style="display: flex; gap: 15px; align-items: center;">
+                        <span style="color: var(--text-dim); font-size: 0.9rem;">Editing Mode:</span>
+                        <select id="match-type-selector" class="table-input"
+                            style="width: 180px; font-weight: 700; border-color: var(--secondary);"
+                            onchange="loadHero(this.value)">
+                            <option value="live-match">🔴 LIVE MATCH</option>
+                            <option value="upcoming-match">⏳ UPCOMING</option>
+                            <option value="recent-match">✅ RECENT RESULT</option>
+                            <option value="main-hero">🏠 MAIN HEADLINE</option>
+                        </select>
+                        <button class="btn btn-red-blink" onclick="saveHero()" style="padding: 15px 30px;">Update Live
+                            Feed 🚀</button>
+                    </div>
+                </header>
+
+                <div class="dashboard-grid">
+                    <!-- Announcements Card -->
+                    <div class="glass dashboard-card" style="grid-column: span 1;">
+                        <h3 class="card-title">Homepage Announcement</h3>
+                        <div class="form-group">
+                            <label>Hero Heading</label>
+                            <input type="text" id="hero-title" placeholder="e.g. SONAIJURI PREMIER LEAGUE">
+                        </div>
+                        <div class="form-group">
+                            <label>Supporting Text</label>
+                            <textarea id="hero-subtitle" rows="2" class="table-input" style="height: auto;"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Match Status Card -->
+                    <div class="glass dashboard-card" style="grid-column: span 1;">
+                        <h3 class="card-title">Match Status</h3>
+                        <div class="form-group">
+                            <label>Live Status Badge (e.g. LIVE, FINISHED)</label>
+                            <input type="text" id="hero-badge" class="table-input badge-input" placeholder="LIVE NOW">
+                        </div>
+                        <div class="form-group">
+                            <label>Timing / venue Description</label>
+                            <input type="text" id="hero-time" class="table-input" placeholder="Finals: Tomorrow 10AM">
+                        </div>
+                    </div>
+
+                    <!-- Live Score Card -->
+                    <div class="glass dashboard-card" style="grid-column: span 2;">
+                        <h3 class="card-title">Live Broadcast Scoreboard</h3>
+                        <div class="score-admin-flex">
+                            <div class="team-panel">
+                                <label style="display: block; margin-bottom: 10px; color: var(--secondary);">HOME
+                                    TEAM</label>
+                                <input type="text" id="hero-team1-name" class="table-input"
+                                    style="text-align: center; font-size: 1.2rem; font-weight: 700;"
+                                    placeholder="Team Name">
+                                <input type="number" id="hero-team1-score" class="score-input" placeholder="0">
+                            </div>
+
+                            <div class="vs-divider">VS</div>
+
+                            <div class="team-panel">
+                                <label style="display: block; margin-bottom: 10px; color: var(--secondary);">AWAY
+                                    TEAM</label>
+                                <input type="text" id="hero-team2-name" class="table-input"
+                                    style="text-align: center; font-size: 1.2rem; font-weight: 700;"
+                                    placeholder="Team Name">
+                                <input type="number" id="hero-team2-score" class="score-input" placeholder="0">
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Professional Scoring Dashboard (visible for live match) -->
+                    <div id="pro-scoring-panel" class="glass dashboard-card"
+                        style="grid-column: span 2; display: none; background: rgba(59, 130, 246, 0.05); border-color: rgba(59, 130, 246, 0.2);">
+                        <h3 class="card-title" style="color: #3b82f6;">🏏 Professional Scoring Dashboard</h3>
+
+                        <div class="grid" style="grid-template-columns: 1.5fr 1fr 1fr; gap: 20px;">
+                            <!-- Runs & Wickets -->
+                            <div class="form-group">
+                                <label>Detailed Score (Wickets / Overs)</label>
+                                <div style="display: flex; gap: 10px; align-items: center;">
+                                    <input type="number" id="hero-wickets" class="table-input" placeholder="Wkts"
+                                        style="width: 80px; text-align: center;">
+                                    <span style="font-size: 1.5rem; color: var(--text-dim);">/</span>
+                                    <input type="number" id="hero-overs" class="table-input" placeholder="Overs"
+                                        style="width: 80px; text-align: center;">
+                                    <span style="color: var(--text-dim);">.</span>
+                                    <input type="number" id="hero-balls" class="table-input" placeholder="Ball"
+                                        style="width: 80px; text-align: center;" max="5">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Batsman 1 (On Strike)</label>
+                                <input type="text" id="hero-batsman1" class="table-input" placeholder="Enter Name">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Target (if chasing)</label>
+                                <input type="number" id="hero-target" class="table-input" placeholder="e.g. 150">
+                            </div>
+                        </div>
+
+                        <!-- Quick Scoring Buttons -->
+                        <div
+                            style="margin-top: 25px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
+                            <button type="button" class="btn-scoring" onclick="quickScore(0)">Dot Ball</button>
+                            <button type="button" class="btn-scoring" onclick="quickScore(1)">+1 Run</button>
+                            <button type="button" class="btn-scoring" onclick="quickScore(2)">+2 Runs</button>
+                            <button type="button" class="btn-scoring" onclick="quickScore(4)"
+                                style="background: var(--secondary); color: var(--bg-dark);">4️⃣ FOUR</button>
+                            <button type="button" class="btn-scoring" onclick="quickScore(6)"
+                                style="background: var(--primary);">6️⃣ SIX</button>
+                            <button type="button" class="btn-scoring" onclick="quickWicket()"
+                                style="background: #ef4444;">☝️ WICKET</button>
+                            <button type="button" class="btn-scoring" onclick="quickBall()">Next Ball</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="menu-section" class="admin-section animate-fade">
+                <header class="section-header">
+                    <div>
+                        <h2 class="gradient-text">Navigation Menu Manager</h2>
+                        <p style="color: var(--text-dim); font-size: 0.9rem;">Manage top website links (Add/Remove)</p>
+                    </div>
+                    <button class="btn" onclick="addMenuRow()">+ Add New Link</button>
+                </header>
+
+                <div class="table-wrapper">
+                    <table class="premium-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 80px;">Order</th>
+                                <th>Display Label</th>
+                                <th>Link URL (e.g. index.html)</th>
+                                <th style="width: 150px;">Status</th>
+                                <th style="width: 100px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-menu-list">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+                <div style="margin-top: 30px; text-align: right;">
+                    <button class="btn btn-red-blink" onclick="saveMenu()" style="padding: 15px 40px;">Publish Menu
+                        Updates 🚀</button>
+                </div>
+            </div>
+            <div id="points-section" class="admin-section animate-fade">
+                <header class="section-header">
+                    <div>
+                        <h2 class="gradient-text">Points Table Management</h2>
+                        <p style="color: var(--text-dim); font-size: 0.9rem;">Update match stats for all 8 teams</p>
+                    </div>
+                    <button class="btn" onclick="savePointsTable()">Save All Changes</button>
+                </header>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Team Name</th>
+                                <th>Played</th>
+                                <th>Won</th>
+                                <th>Lost</th>
+                                <th>Points</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-points-list">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="rosters-section" class="admin-section animate-fade">
+                <header class="section-header">
+                    <div>
+                        <h2 class="gradient-text">Playing Players (Squad)</h2>
+                        <p style="color: var(--text-dim); font-size: 0.9rem;">Manage 13 players for each team</p>
+                    </div>
+                    <div style="display: flex; gap: 15px; align-items: center;">
+                        <select id="roster-team-select" class="table-input" style="width: 200px;"
+                            onchange="fetchAdminRoster()">
+                            <option value="">Select Team</option>
+                            <!-- Populated from points_table -->
+                        </select>
+                        <button class="btn" onclick="saveRoster()">Save Squad</button>
+                    </div>
+                </header>
+
+                <div class="table-wrapper">
+                    <table class="premium-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 50px;">#</th>
+                                <th>Player Name</th>
+                                <th>Playing Format</th>
+                                <th style="width: 100px;">WK 🧤</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-roster-list">
+                            <!-- 13 rows will be generated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="settings-section" class="admin-section animate-fade">
+                <header class="section-header">
+                    <div>
+                        <h2 class="gradient-text">Site Settings & Contact</h2>
+                        <p style="color: var(--text-dim); font-size: 0.9rem;">Manage contact info and payment QR code
+                        </p>
+                    </div>
+                    <button class="btn" onclick="saveSettings()">Save All Settings</button>
+                </header>
+
+                <div class="glass" style="padding: 30px;">
+                    <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 30px;">
+                        <div>
+                            <h3 style="margin-bottom: 20px; font-size: 1.1rem; color: var(--secondary);">Contact
+                                Information</h3>
+                            <div class="form-group">
+                                <label>Mobile Number 1</label>
+                                <input type="text" id="set-mobile1" class="table-input" placeholder="e.g. 8597315652">
+                            </div>
+                            <div class="form-group">
+                                <label>Mobile Number 2</label>
+                                <input type="text" id="set-mobile2" class="table-input" placeholder="e.g. 9635853835">
+                            </div>
+                            <div class="form-group">
+                                <label>WhatsApp Number 1</label>
+                                <input type="text" id="set-whatsapp1" class="table-input" placeholder="e.g. 8597315652">
+                            </div>
+                            <div class="form-group">
+                                <label>WhatsApp Number 2</label>
+                                <input type="text" id="set-whatsapp2" class="table-input" placeholder="e.g. 9635853835">
+                            </div>
+                            <div class="form-group">
+                                <label>Support Email</label>
+                                <input type="email" id="set-email" class="table-input"
+                                    placeholder="support@sonaijuriatpl.in">
+                            </div>
+                            <div class="form-group">
+                                <label>Facebook Page URL</label>
+                                <input type="text" id="set-facebook" class="table-input"
+                                    placeholder="https://facebook.com/...">
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 style="margin-bottom: 20px; font-size: 1.1rem; color: var(--secondary);">Facebook Page
+                            </h3>
+                            <div class="form-group"
+                                style="text-align: center; border: 1px dashed var(--glass-border); padding: 20px; border-radius: 15px;">
+                                <div id="qr-preview" style="margin-bottom: 15px;">
+                                    <span style="color: var(--text-dim);">No QR Code Uploaded</span>
+                                </div>
+                                <input type="file" id="qr-upload" accept="image/*" style="display: none;"
+                                    onchange="handleQRUpload(this)">
+                                <button class="btn-secondary"
+                                    onclick="document.getElementById('qr-upload').click()">Upload New
+                                    QR Code</button>
+                                <p style="font-size: 0.75rem; color: var(--text-dim); margin-top: 10px;">Recommended
+                                    size: 500x500px</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+    </div>
+
+    <div id="edit-modal" class="modal-backdrop" style="display: none;">
+        <div class="glass modal-content animate-fade"
+            style="max-width: 600px; width: 90%; margin: 50px auto; padding: 40px; position: relative;">
+            <button onclick="closeEditModal()"
+                style="position: absolute; top: 20px; right: 20px; background: none; border: none; font-size: 1.5rem; color: var(--text-dim); cursor: pointer;">✕</button>
+            <h2 class="gradient-text" style="margin-bottom: 30px;">Edit Registration</h2>
+
+            <form id="editRegistrationForm" onsubmit="saveRegistrationEdit(event)">
+                <input type="hidden" id="edit-player-id">
+                <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="form-group">
+                        <label>Player Name</label>
+                        <input type="text" id="edit-name" class="table-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Father's Name</label>
+                        <input type="text" id="edit-father" class="table-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Date of Birth</label>
+                        <input type="date" id="edit-dob" class="table-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Aadhar Number</label>
+                        <input type="text" id="edit-aadhar" class="table-input" pattern="[0-9]{12}" maxlength="12"
+                            required>
+                    </div>
+                    <div class="form-group">
+                        <label>Mobile Number</label>
+                        <input type="text" id="edit-mobile" class="table-input" pattern="[0-9]{10}" maxlength="10"
+                            required>
+                    </div>
+                    <div class="form-group">
+                        <label>WhatsApp Number</label>
+                        <input type="text" id="edit-whatsapp" class="table-input" pattern="[0-9]{10}" maxlength="10"
+                            required>
+                    </div>
+                    <div class="form-group">
+                        <label>Batting Style</label>
+                        <select id="edit-batting" class="table-input" required>
+                            <option value="right">Right Hand</option>
+                            <option value="left">Left Hand</option>
+                            <option value="no">N/A</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Bowling Style</label>
+                        <select id="edit-bowling" class="table-input" required>
+                            <option value="right">Right Hand</option>
+                            <option value="left">Left Hand</option>
+                            <option value="no">N/A</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label>Wicket Keeper?</label>
+                        <select id="edit-wk" class="table-input" required>
+                            <option value="yes">Yes</option>
+                            <option value="no">No</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="margin-top: 30px; display: flex; gap: 15px;">
+                    <button type="submit" class="btn" style="flex: 1;">Update Registration</button>
+                    <button type="button" onclick="closeEditModal()" class="btn-secondary"
+                        style="flex: 1;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="add-player-modal" class="modal-backdrop" style="display: none;">
+        <div class="glass modal-content animate-fade"
+            style="max-width: 650px; width: 95%; margin: 30px auto; padding: 35px; position: relative; max-height: 90vh; overflow-y: auto;">
+            <button onclick="closeAddModal()"
+                style="position: absolute; top: 20px; right: 20px; background: none; border: none; font-size: 1.5rem; color: var(--text-dim); cursor: pointer;">✕</button>
+            <h2 class="gradient-text" style="margin-bottom: 25px;">Manual Player Registration</h2>
+
+            <form id="addPlayerForm" onsubmit="saveNewPlayer(event)">
+                <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="form-group" style="grid-column: span 2; text-align: center;">
+                        <div id="add-photo-preview"
+                            style="width: 120px; height: 120px; border-radius: 50%; border: 2px dashed var(--glass-border); margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: var(--glass-bg);">
+                            <span style="color: var(--text-dim); font-size: 0.8rem;">Photo Preview</span>
+                        </div>
+                        <input type="file" id="add-player-photo" accept=".jpg,.jpeg,.pdf" style="display: none;"
+                            onchange="handlePlayerPhotoUpload(this)" required>
+                        <button type="button" class="btn-secondary" style="padding: 8px 20px; font-size: 0.8rem;"
+                            onclick="document.getElementById('add-player-photo').click()">Upload JPG/PDF</button>
+                        <div id="add-photo-error"
+                            style="color: #ff4d8d; font-size: 0.75rem; margin-top: 5px; display: none;"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Player Name</label>
+                        <input type="text" id="add-name" class="table-input" placeholder="Enter Full Name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Father's Name</label>
+                        <input type="text" id="add-father" class="table-input" placeholder="Father's Name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Date of Birth</label>
+                        <input type="date" id="add-dob" class="table-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Aadhar Number</label>
+                        <input type="text" id="add-aadhar" class="table-input" pattern="[0-9]{12}" maxlength="12"
+                            placeholder="12 Digit No" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Mobile Number</label>
+                        <input type="text" id="add-mobile" class="table-input" pattern="[0-9]{10}" maxlength="10"
+                            placeholder="10 Digit No" required>
+                    </div>
+                    <div class="form-group">
+                        <label>WhatsApp Number</label>
+                        <input type="text" id="add-whatsapp" class="table-input" pattern="[0-9]{10}" maxlength="10"
+                            placeholder="10 Digit No" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Batting Style</label>
+                        <select id="add-batting" class="table-input" required>
+                            <option value="right">Right Hand</option>
+                            <option value="left">Left Hand</option>
+                            <option value="no">N/A</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Bowling Style</label>
+                        <select id="add-bowling" class="table-input" required>
+                            <option value="right">Right Hand</option>
+                            <option value="left">Left Hand</option>
+                            <option value="no">N/A</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label>Wicket Keeper?</label>
+                        <select id="add-wk" class="table-input" required>
+                            <option value="no">No</option>
+                            <option value="yes">Yes</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="margin-top: 30px; display: flex; gap: 15px;">
+                    <button type="submit" id="addPlayerSubmitBtn" class="btn" style="flex: 2;">Register Player
+                        🚀</button>
+                    <button type="button" onclick="closeAddModal()" class="btn-secondary"
+                        style="flex: 1;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="nav-loader.js"></script>
+    <script src="admin-script.js"></script>
+
+</body>
+
+</html>

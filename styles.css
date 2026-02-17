@@ -1,0 +1,307 @@
+@import url('home.css');
+
+/* Custom Components */
+.btn {
+    display: inline-block;
+    padding: 12px 28px;
+    background: linear-gradient(135deg, var(--primary), #ff4d8d);
+    color: white;
+    text-decoration: none;
+    font-weight: 600;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 15px var(--primary-glow);
+}
+
+.btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px var(--primary-glow);
+}
+
+.btn-secondary {
+    display: inline-block;
+    padding: 12px 28px;
+    background: var(--glass-bg);
+    color: var(--text-main);
+    text-decoration: none;
+    font-weight: 600;
+    border-radius: 12px;
+    border: 1px solid var(--glass-border);
+    transition: all 0.3s ease;
+    backdrop-filter: blur(5px);
+}
+
+.btn-secondary:hover {
+    background: var(--glass-border);
+    border-color: var(--secondary);
+    color: var(--secondary);
+}
+
+.active-nav {
+    background: var(--secondary) !important;
+    color: var(--bg-dark) !important;
+    border-color: var(--secondary) !important;
+}
+
+/* Navbar */
+.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    padding: 20px 0;
+    background: var(--bg-nav);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.navbar .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.nav-links {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.navbar h1 {
+    font-size: 1.5rem;
+    margin: 0;
+}
+
+/* Hero Section */
+.hero {
+    padding: 180px 0 100px;
+    text-align: center;
+    position: relative;
+}
+
+.hero-title {
+    font-size: clamp(2.5rem, 8vw, 4.5rem);
+    line-height: 1.1;
+    margin-bottom: 20px;
+}
+
+.hero-subtitle {
+    font-size: 1.25rem;
+    color: var(--text-dim);
+    max-width: 600px;
+    margin: 0 auto 40px;
+}
+
+/* Sections */
+section {
+    padding: 100px 0;
+}
+
+.section-title {
+    text-align: center;
+    font-size: 2.5rem;
+    margin-bottom: 50px;
+}
+
+/* Footer */
+footer {
+    padding: 60px 0;
+    text-align: center;
+    border-top: 1px solid var(--glass-border);
+    color: var(--text-dim);
+}
+
+/* Grid Layout */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 30px;
+}
+
+.feature-card {
+    padding: 40px;
+    text-align: left;
+    transition: transform 0.3s ease;
+}
+
+.feature-card:hover {
+    transform: translateY(-10px);
+    border-color: var(--primary);
+}
+
+.feature-card h3 {
+    margin-bottom: 15px;
+    font-size: 1.5rem;
+}
+
+/* Premium Points Table Styles */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.premium-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 1rem;
+}
+
+.premium-table th {
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-dim);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.premium-table td {
+    padding: 18px 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    text-align: center;
+}
+
+.premium-table tr {
+    transition: background 0.3s ease;
+}
+
+.premium-table tr:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+/* Roster / Squad Styles */
+.roster-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.player-card {
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    border-radius: 15px;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.player-info h4 {
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+.player-format-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+}
+
+.player-format-badge.batting {
+    background: #ff4d8d20;
+    color: #ff4d8d;
+    border: 1px solid #ff4d8d40;
+}
+
+.player-format-badge.bowling {
+    background: #00f2ff20;
+    color: #00f2ff;
+    border: 1px solid #00f2ff40;
+}
+
+.player-format-badge.allrounder {
+    background: #ff9f0020;
+    color: #ff9f00;
+    border: 1px solid #ff9f0040;
+}
+
+.active-filter {
+    background: var(--secondary) !important;
+    color: var(--bg-dark) !important;
+    border-color: var(--secondary) !important;
+}
+
+.premium-table tr:last-child td {
+    border-bottom: none;
+}
+
+.loading-spinner {
+    width: 25px;
+    height: 25px;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-top: 3px solid var(--secondary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    display: inline-block;
+    margin-right: 10px;
+    vertical-align: middle;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+
+/* Notice Bar & Blinking Button */
+.notice-bar {
+    background: linear-gradient(90deg, transparent, rgba(0, 242, 255, 0.1), transparent);
+    border-top: 1px solid var(--glass-border);
+    border-bottom: 1px solid var(--glass-border);
+    padding: 12px 0;
+    text-align: center;
+    font-size: 0.95rem;
+    color: var(--secondary);
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-bottom: 35px;
+    overflow: hidden;
+    white-space: nowrap;
+    position: relative;
+}
+
+.notice-content {
+    display: inline-block;
+    padding-left: 100%;
+    animation: marquee 20s linear infinite;
+}
+
+@keyframes marquee {
+    0% {
+        transform: translateX(0);
+    }
+
+    100% {
+        transform: translateX(-100%);
+    }
+}
+
+.btn-blink {
+    padding: 18px 45px !important;
+    font-size: 1.2rem !important;
+    animation: blink 2s infinite ease-in-out;
+    background: linear-gradient(135deg, var(--secondary), var(--primary)) !important;
+}
+
+.btn-red-blink {
+    background: #ff0000 !important;
+    color: white !important;
+    animation: blink 1.5s infinite ease-in-out !important;
+    box-shadow: 0 0 20px rgba(255, 0, 0, 0.6) !important;
+    font-weight: 800 !important;
+}

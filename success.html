@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registration Success | SATPL 2026</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .success-wrapper {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .success-card {
+            max-width: 500px;
+            padding: 60px 40px;
+        }
+
+        .success-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .reg-number-box {
+            margin: 30px 0;
+            padding: 20px;
+            background: var(--glass-bg);
+            border-radius: 12px;
+            border: 1px dashed var(--secondary);
+        }
+
+        #regNo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            color: var(--secondary);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="success-wrapper">
+        <div class="success-card glass animate-fade">
+            <span class="success-icon">🎉</span>
+            <h2 class="gradient-text" style="font-size: 2.5rem; margin-bottom: 10px;">Thank You for Registering!</h2>
+            <p style="color: var(--text-dim);">Welcome to the SATPL 2026 family. Your registration has been confirmed.
+            </p>
+
+            <div class="reg-number-box">
+                <p style="font-size: 0.9rem; margin-bottom: 5px; color: var(--text-dim);">Your Registration Number</p>
+                <div id="regNo">Loading...</div>
+            </div>
+
+            <div style="margin-top: 40px; display: flex; flex-direction: column; gap: 15px;">
+                <a href="index.html" class="btn">Back to Home</a>
+                <p style="font-size: 0.8rem; color: var(--text-dim);">A copy of this registration has been sent to our
+                    admin team.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const regNo = params.get("reg_no") || "N/A";
+        document.getElementById("regNo").innerText = regNo;
+    </script>
+
+</body>
+
+</html>
