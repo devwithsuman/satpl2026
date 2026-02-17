@@ -228,4 +228,62 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     }
+
+    // --- REGISTRATION STATUS LOOKUP ---
+    const checkStatusBtn = document.getElementById("checkStatusBtn");
+    const statusResult = document.getElementById("statusResult");
+
+    if (checkStatusBtn) {
+        checkStatusBtn.addEventListener("click", async () => {
+            const mobile = document.getElementById("statusMobile").value;
+            const aadhar = document.getElementById("statusAadhar").value;
+
+            if (!mobile || !aadhar) {
+                alert("Please enter both Mobile and Aadhar numbers.");
+                return;
+            }
+
+            checkStatusBtn.disabled = true;
+            checkStatusBtn.innerText = "⏳ Searching...";
+            statusResult.style.display = "none";
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from("player_registrations")
+                    .select("player_name, registration_no, payment_status")
+                    .eq("mobile_number", mobile)
+                    .eq("aadhar_number", aadhar)
+                    .maybeSingle();
+
+                if (error) throw error;
+
+                statusResult.style.display = "block";
+                if (data) {
+                    statusResult.innerHTML = `
+                        <div style="text-align: center;">
+                            <p style="color: var(--secondary); font-weight: bold; margin-bottom: 10px;">✅ Registration Found!</p>
+                            <h4 style="margin-bottom: 15px; color: #fff; font-size: 1.1rem;">${data.player_name}</h4>
+                            <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px;">
+                                <p style="font-size: 0.8rem; color: var(--text-dim); margin-bottom: 5px;">Registration Number</p>
+                                <p style="font-size: 1.2rem; color: var(--primary); font-family: monospace; font-weight: bold;">${data.registration_no || "Pending Payment"}</p>
+                            </div>
+                            <p style="margin-top: 15px; font-size: 0.8rem;">Status: <span style="color: ${data.payment_status === 'paid' ? '#00ffa3' : '#ff4d8d'}">${data.payment_status.toUpperCase()}</span></p>
+                        </div>
+                    `;
+                } else {
+                    statusResult.innerHTML = `
+                        <div style="text-align: center; color: #ff4d8d;">
+                            <p>❌ No registration found for these details.</p>
+                            <p style="font-size: 0.8rem; margin-top: 10px; color: var(--text-dim);">Please check the numbers and try again.</p>
+                        </div>
+                    `;
+                }
+            } catch (err) {
+                alert("Error searching registration: " + err.message);
+            } finally {
+                checkStatusBtn.disabled = false;
+                checkStatusBtn.innerText = "Fetch My Registration Details 🔍";
+            }
+        });
+    }
 });
