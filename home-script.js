@@ -1,14 +1,37 @@
 async function loadHomepageContent() {
     console.log("🚀 Initializing SATPL Homepage...");
 
-    // 1. Load Hero & Scores
-    loadHeroAndScores().catch(err => console.error("Hero Load Error:", err));
+    // 1. Initial Load
+    await Promise.all([
+        loadHeroAndScores(),
+        loadPointsTable(),
+        loadSiteSettings()
+    ]).catch(err => console.error("Initial Load Error:", err));
 
-    // Load Points Table
-    await loadPointsTable();
+    // 2. Setup Real-time Sync (The "Bulletproof" Flow)
+    setupRealtimeSync();
+}
 
-    // Load Site Settings
-    await loadSiteSettings();
+function setupRealtimeSync() {
+    console.log("📡 Enabling Real-time Sync...");
+
+    // Sync Points Table
+    supabaseClient
+        .channel('public:points_table')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'points_table' }, () => {
+            console.log("🔄 Points Table Updated! Syncing...");
+            loadPointsTable();
+        })
+        .subscribe();
+
+    // Sync Match Center (Hero Content)
+    supabaseClient
+        .channel('public:hero_content')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'hero_content' }, () => {
+            console.log("🔄 Match Center Updated! Syncing...");
+            loadHeroAndScores();
+        })
+        .subscribe();
 }
 
 
