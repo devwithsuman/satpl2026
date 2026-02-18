@@ -66,6 +66,15 @@ async function loadHero(matchKey = currentMatchIdKey) {
         document.getElementById("hero-team2-name").value = "";
         document.getElementById("hero-team2-score").value = "0";
         document.getElementById("hero-time").value = "";
+
+        // Reset Scoring fields too
+        if (document.getElementById("hero-wickets")) {
+            document.getElementById("hero-wickets").value = 0;
+            document.getElementById("hero-overs").value = 0;
+            document.getElementById("hero-balls").value = 0;
+            document.getElementById("hero-target").value = 0;
+            document.getElementById("hero-batsman1").value = "";
+        }
         return;
     }
 
@@ -106,15 +115,15 @@ async function saveHero() {
         subtitle: document.getElementById("hero-subtitle").value,
         badge: document.getElementById("hero-badge").value,
         team1_name: document.getElementById("hero-team1-name").value,
-        team1_score: parseInt(document.getElementById("hero-team1-score").value) || 0,
+        team1_score: Number(document.getElementById("hero-team1-score").value) || 0,
         team2_name: document.getElementById("hero-team2-name").value,
-        team2_score: parseInt(document.getElementById("hero-team2-score").value) || 0,
+        team2_score: Number(document.getElementById("hero-team2-score").value) || 0,
         match_status: document.getElementById("hero-time").value,
-        // Detailed Scoring
-        wickets: parseInt(document.getElementById("hero-wickets").value) || 0,
-        overs: parseInt(document.getElementById("hero-overs").value) || 0,
-        balls: parseInt(document.getElementById("hero-balls").value) || 0,
-        target: parseInt(document.getElementById("hero-target").value) || 0,
+        // Detailed Scoring (Forced Numeric)
+        wickets: Number(document.getElementById("hero-wickets").value) || 0,
+        overs: Number(document.getElementById("hero-overs").value) || 0,
+        balls: Number(document.getElementById("hero-balls").value) || 0,
+        target: Number(document.getElementById("hero-target").value) || 0,
         batsman1: document.getElementById("hero-batsman1").value
     };
 
