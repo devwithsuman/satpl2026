@@ -189,13 +189,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
                             if (insertError) throw new Error("Database Save Failed: " + insertError.message);
 
-                            // 3️⃣ Generate Reg No (Robust Numeric Logic)
+                            // 3️⃣ Generate Reg No (Robust Numeric Logic using reg_serial)
                             const playerRow = insertedData[0];
-                            const serial = playerRow.reg_serial || playerRow.id;
-                            const serialNum = parseInt(serial);
-                            const registrationNo = `OSATPL01S${(serialNum + 2000).toString().padStart(4, "0")}`;
+                            const serialNum = parseInt(playerRow.reg_serial);
 
-                            console.log("Generated Reg No:", registrationNo, "from Serial:", serial);
+                            if (isNaN(serialNum)) {
+                                throw new Error("ID Generation Error: Serial number is invalid.");
+                            }
+
+                            const registrationNo = `OSATPL01S${(serialNum + 2000).toString().padStart(4, "0")}`;
+                            console.log("Generated Reg No:", registrationNo, "from Serial:", serialNum);
 
                             const { error: updateError } = await supabaseClient
                                 .from("player_registrations")
