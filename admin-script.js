@@ -481,13 +481,16 @@ async function saveNewPlayer(e) {
 
         if (insertError) throw new Error("Database Save Failed: " + insertError.message);
 
-        // 4. Generate Reg No (Robust Numeric Logic)
+        // 4. Generate Reg No (Robust Numeric Logic using reg_serial)
         const playerRow = inserted[0];
-        const serial = playerRow.reg_serial || playerRow.id;
-        const serialNum = parseInt(serial);
-        const registrationNo = `OSATPL01S${(serialNum + 2000).toString().padStart(4, "0")}`;
+        const serialNum = parseInt(playerRow.reg_serial);
 
-        console.log("Manual Reg No Generated:", registrationNo, "from Serial:", serial);
+        if (isNaN(serialNum)) {
+            throw new Error("ID Generation Error: Serial number is invalid.");
+        }
+
+        const registrationNo = `OSATPL01S${(serialNum + 2000).toString().padStart(4, "0")}`;
+        console.log("Manual Reg No Generated:", registrationNo, "from Serial:", serialNum);
 
         const { error: updateError } = await supabaseClient
             .from("player_registrations")
