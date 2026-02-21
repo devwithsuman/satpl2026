@@ -748,6 +748,18 @@ async function saveSettings() {
 
 // ================= INIT =================
 async function init() {
+    // Safety Check: Ensure supabaseClient is defined
+    if (typeof window.supabaseClient === 'undefined') {
+        console.error("🚨 Supabase Client is not defined! Ensure supabase-config.js is correctly included in HTML.");
+        alert("Critical Error: Database connection (supabaseClient) not found. Please refresh the page.");
+        return;
+    }
+
+    // Alias global to local if needed
+    if (typeof supabaseClient === 'undefined') {
+        window.supabaseClient = window.supabaseClient;
+    }
+
     try {
         await checkAuth();
         console.log("✅ Admin Authenticated");
