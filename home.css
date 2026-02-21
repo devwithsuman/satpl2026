@@ -112,12 +112,13 @@ h3 {
 
 @media (max-width: 480px) {
     #countdown-wrap {
-        padding: 15px !important;
-        min-width: 250px !important;
+        padding: 20px 10px !important;
+        min-width: 90% !important;
+        margin-top: 25px !important;
     }
 
     .countdown-grid {
-        gap: 10px !important;
+        gap: 12px !important;
     }
 
     .countdown-item {
@@ -130,5 +131,19 @@ h3 {
 
     .countdown-item span:last-child {
         font-size: 0.6rem !important;
+    }
+
+    .hero-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        padding: 0 20px;
+        margin-top: 30px;
+    }
+
+    .hero-actions .btn,
+    .hero-actions .btn-secondary {
+        width: 100%;
+        text-align: center;
     }
 }
