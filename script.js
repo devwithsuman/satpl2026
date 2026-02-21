@@ -95,7 +95,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const photo = formData.get("playerPhoto");
 
             try {
-                // 0️⃣ Final check for duplicates before payment
+                // 0️⃣ Final check for duplicates before anything
                 const { data: existingPlayer } = await supabaseClient
                     .from("player_registrations")
                     .select("id")
@@ -118,6 +118,59 @@ document.addEventListener("DOMContentLoaded", () => {
                     return;
                 }
 
+                // Photo Size Check (5MB)
+                if (photo && photo.size > 5 * 1024 * 1024) {
+                    alert("Photo size must be less than 5MB");
+                    submitBtn.disabled = false;
+                    submitBtn.innerText = "Proceed to Payment (₹105)";
+                    return;
+                }
+
+                submitBtn.innerText = "⏳ Saving Details...";
+
+                // 1️⃣ Upload Photo
+                const timestamp = Date.now();
+                const ext = photo.name ? photo.name.split('.').pop() : 'jpg';
+                const fileName = `player_${timestamp}_${Math.floor(Math.random() * 1000)}.${ext}`;
+
+                const { error: uploadError } = await supabaseClient.storage
+                    .from("player-photos")
+                    .upload(fileName, photo);
+
+                if (uploadError) throw new Error("Photo Upload Failed: " + uploadError.message);
+
+                const { data: photoData } = supabaseClient.storage
+                    .from("player-photos")
+                    .getPublicUrl(fileName);
+
+                const photoUrl = photoData.publicUrl;
+
+                // 2️⃣ Save as PENDING record first
+                const { data: insertedData, error: insertError } = await supabaseClient
+                    .from("player_registrations")
+                    .insert([{
+                        player_name: playerName,
+                        father_name: formData.get("fatherName"),
+                        date_of_birth: formData.get("dob"),
+                        aadhar_number: aadhar,
+                        mobile_number: mobile,
+                        whatsapp_number: formData.get("whatsapp"),
+                        batting: formData.get("batting"),
+                        bowling: formData.get("bowling"),
+                        wicket_keeper: formData.get("wicketKeeper"),
+                        photo_url: photoUrl,
+                        payment_status: "pending",
+                        payment_id: "PENDING_CHECKOUT"
+                    }])
+                    .select();
+
+                if (insertError) throw new Error("Database Save Failed: " + insertError.message);
+
+                const playerRow = insertedData[0];
+                const playerId = playerRow.id;
+                const serialNum = parseInt(playerRow.reg_serial);
+
+                // 3️⃣ Open Razorpay
                 const options = {
                     key: RAZORPAY_KEY_ID,
                     amount: 105 * 100, // ₹105
@@ -131,7 +184,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         email: "player@satpl.com" // Placeholder to trigger standard flow
                     },
                     notes: {
-                        aadhar: aadhar
+                        aadhar: aadhar,
+                        db_row_id: playerId
                     },
                     theme: {
                         color: "#ff0000"
@@ -151,75 +205,38 @@ document.addEventListener("DOMContentLoaded", () => {
                     handler: async function (response) {
                         try {
                             submitBtn.innerText = "⏳ Finalizing Registration...";
-                            // 1️⃣ Upload Photo
-                            const timestamp = Date.now();
-                            const ext = photo.name ? photo.name.split('.').pop() : 'jpg';
-                            const fileName = `player_${timestamp}_${Math.floor(Math.random() * 1000)}.${ext}`;
 
-                            const { error: uploadError } = await supabaseClient.storage
-                                .from("player-photos")
-                                .upload(fileName, photo);
-
-                            if (uploadError) throw new Error("Photo Upload Failed: " + uploadError.message);
-
-                            const { data } = supabaseClient.storage
-                                .from("player-photos")
-                                .getPublicUrl(fileName);
-
-                            const photoUrl = data.publicUrl;
-
-                            // 2️⃣ Save Data
-                            const { data: insertedData, error: insertError } = await supabaseClient
-                                .from("player_registrations")
-                                .insert([{
-                                    player_name: playerName,
-                                    father_name: formData.get("fatherName"),
-                                    date_of_birth: formData.get("dob"),
-                                    aadhar_number: aadhar,
-                                    mobile_number: mobile,
-                                    whatsapp_number: formData.get("whatsapp"),
-                                    batting: formData.get("batting"),
-                                    bowling: formData.get("bowling"),
-                                    wicket_keeper: formData.get("wicketKeeper"),
-                                    photo_url: photoUrl,
-                                    payment_status: "paid",
-                                    payment_id: response.razorpay_payment_id
-                                }])
-                                .select();
-
-                            if (insertError) throw new Error("Database Save Failed: " + insertError.message);
-
-                            // 3️⃣ Generate Reg No (Robust Numeric Logic using reg_serial)
-                            const playerRow = insertedData[0];
-                            const serialNum = parseInt(playerRow.reg_serial);
-
+                            // Generate Reg No (using existing reg_serial)
                             if (isNaN(serialNum)) {
                                 throw new Error("ID Generation Error: Serial number is invalid.");
                             }
-
                             const registrationNo = `OSATPL01S${(serialNum + 2000).toString().padStart(4, "0")}`;
-                            console.log("Generated Reg No:", registrationNo, "from Serial:", serialNum);
 
+                            // Update to PAID
                             const { error: updateError } = await supabaseClient
                                 .from("player_registrations")
-                                .update({ registration_no: registrationNo })
-                                .eq("id", playerRow.id);
+                                .update({
+                                    payment_status: "paid",
+                                    payment_id: response.razorpay_payment_id,
+                                    registration_no: registrationNo
+                                })
+                                .eq("id", playerId);
 
                             if (updateError) throw new Error("Reg No Generation Failed: " + updateError.message);
 
                             window.location.href = `success.html?reg_no=${registrationNo}`;
 
                         } catch (error) {
-                            console.error("Save Error:", error);
-                            alert("Registration Error: " + error.message);
-                            submitBtn.disabled = false;
-                            submitBtn.innerText = "Proceed to Payment (₹105)";
+                            console.error("Payment Handler Error:", error);
+                            alert("Payment Successful, but Registration Update Failed. Please contact admin. Error: " + error.message);
                         }
                     },
                     modal: {
                         ondismiss: function () {
                             submitBtn.disabled = false;
                             submitBtn.innerText = "Proceed to Payment (₹105)";
+                            formMessage.style.color = "#eab308";
+                            formMessage.innerText = "Payment cancelled. Your details are saved as 'Pending'.";
                         }
                     }
                 };
