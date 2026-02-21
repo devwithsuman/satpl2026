@@ -33,7 +33,16 @@
                         <h2 class="gradient-text">Player Registrations</h2>
                         <p style="color: var(--text-dim); font-size: 0.9rem;">Manage and add tournament players</p>
                     </div>
-                    <button class="btn" onclick="openAddModal()">+ Add New Player</button>
+                    <div style="display: flex; gap: 15px; align-items: center;">
+                        <select id="status-filter" class="table-input"
+                            style="width: 150px; border-color: var(--secondary);"
+                            onchange="fetchRegistrations(this.value)">
+                            <option value="all">📁 All Registrations</option>
+                            <option value="paid">✅ Paid Only</option>
+                            <option value="pending">⏳ Pending Only</option>
+                        </select>
+                        <button class="btn" onclick="openAddModal()">+ Add New Player</button>
+                    </div>
                 </header>
 
                 <div class="table-wrapper">
