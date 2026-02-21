@@ -229,23 +229,33 @@ async function saveMenu() {
 }
 
 // ================= REGISTRATIONS =================
-async function fetchRegistrations() {
+async function fetchRegistrations(statusFilter = 'all') {
     const list = document.getElementById("registrations-list");
 
-    const { data } = await supabaseClient
+    let query = supabaseClient
         .from("player_registrations")
         .select("*")
         .order("created_at", { ascending: false });
+
+    if (statusFilter !== 'all') {
+        query = query.eq("payment_status", statusFilter);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+        console.error("Fetch error:", error);
+        return;
+    }
 
     list.innerHTML = data.map(player => `
         <tr>
             <td>${new Date(player.created_at).toLocaleDateString()}</td>
             <td>${player.player_name}</td>
             <td>${player.mobile_number}</td>
-            <td>${player.registration_no}</td>
+            <td>${player.registration_no || '<span style="color:var(--text-dim);">TBD</span>'}</td>
             <td>
-                <span class="status-badge ${player.payment_status}">
-                    ${player.payment_status}
+                <span class="status-badge ${player.status || player.payment_status}">
+                    ${player.status || player.payment_status}
                 </span>
             </td>
             <td>
