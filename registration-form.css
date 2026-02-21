@@ -87,12 +87,36 @@
 
 /* Mobile Responsive */
 @media (max-width: 600px) {
+    .form-wrapper {
+        padding: 100px 15px 40px;
+    }
+
+    .form-container {
+        padding: 25px 20px;
+    }
+
+    .form-container h2 {
+        font-size: 1.5rem;
+    }
+
+    .form-container p {
+        font-size: 0.95rem;
+        margin-bottom: 25px;
+    }
+
     .form-grid {
         grid-template-columns: 1fr;
+        gap: 15px;
     }
 
     .form-section-title,
     .form-actions {
         grid-column: span 1;
+    }
+
+    .form-container input,
+    .form-container select {
+        padding: 12px 15px;
+        font-size: 0.95rem;
     }
 }
