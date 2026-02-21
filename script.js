@@ -118,14 +118,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     return;
                 }
 
-                // Photo Size Check (5MB)
-                if (photo && photo.size > 5 * 1024 * 1024) {
-                    alert("Photo size must be less than 5MB");
-                    submitBtn.disabled = false;
-                    submitBtn.innerText = "Proceed to Payment (₹105)";
-                    return;
-                }
-
                 submitBtn.innerText = "⏳ Saving Details...";
 
                 // 1️⃣ Upload Photo
@@ -322,4 +314,42 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     }
+
+    // --- REGISTRATION COUNTDOWN ---
+    function startRegistrationCountdown() {
+        const targetDate = new Date("February 27, 2026 18:00:00").getTime();
+        const marqueeEl = document.getElementById("registrationCountdownMarquee");
+
+        if (!marqueeEl) return;
+
+        const timer = setInterval(() => {
+            const now = new Date().getTime();
+            const distance = targetDate - now;
+
+            if (distance < 0) {
+                clearInterval(timer);
+                marqueeEl.innerHTML = "🚫 REGISTRATION CLOSED - SONAIJURI ANCHAL TENNIS PREMIER LEAGUE 2026";
+                marqueeEl.style.color = "#ff4d8d";
+
+                // Disable form
+                if (registrationForm) {
+                    const inputs = registrationForm.querySelectorAll('input, select, button');
+                    inputs.forEach(input => input.disabled = true);
+                    submitBtn.innerText = "Registration Closed";
+                    submitBtn.style.opacity = "0.5";
+                    submitBtn.classList.remove('btn-red-blink');
+                }
+                return;
+            }
+
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+            marqueeEl.innerHTML = `🚀 Registration is closing soon! Time Remaining: ${days}d ${hours}h ${minutes}m ${seconds}s - SONAIJURI ANCHAL TENNIS PREMIER LEAGUE 2026`;
+        }, 1000);
+    }
+
+    startRegistrationCountdown();
 });
