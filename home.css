@@ -104,3 +104,31 @@ h3 {
 .animate-fade {
     animation: fadeIn 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
+
+.countdown-item {
+    text-align: center;
+    min-width: 60px;
+}
+
+@media (max-width: 480px) {
+    #countdown-wrap {
+        padding: 15px !important;
+        min-width: 250px !important;
+    }
+
+    .countdown-grid {
+        gap: 10px !important;
+    }
+
+    .countdown-item {
+        min-width: 45px;
+    }
+
+    .countdown-item span:first-child {
+        font-size: 1.5rem !important;
+    }
+
+    .countdown-item span:last-child {
+        font-size: 0.6rem !important;
+    }
+}
