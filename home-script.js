@@ -5,7 +5,8 @@ async function loadHomepageContent() {
     await Promise.all([
         loadHeroAndScores(),
         loadPointsTable(),
-        loadSiteSettings()
+        loadSiteSettings(),
+        startCountdown()
     ]).catch(err => console.error("Initial Load Error:", err));
 
     // 2. Setup Real-time Sync (The "Bulletproof" Flow)
@@ -197,6 +198,51 @@ async function loadPointsTable() {
             <td style="color: var(--secondary); font-weight: 800;">${team.points}</td>
         </tr>
     `).join('');
+}
+
+
+function startCountdown() {
+    const targetDate = new Date("February 27, 2026 18:00:00").getTime();
+    const countdownWrap = document.getElementById('countdown-wrap');
+
+    if (!countdownWrap) return;
+
+    const daysEl = document.getElementById("days");
+    const hoursEl = document.getElementById("hours");
+    const minutesEl = document.getElementById("minutes");
+    const secondsEl = document.getElementById("seconds");
+
+    const timer = setInterval(() => {
+        const now = new Date().getTime();
+        const distance = targetDate - now;
+
+        if (distance < 0) {
+            clearInterval(timer);
+            countdownWrap.innerHTML = `
+                <p style="color: var(--primary); font-size: 1.1rem; font-weight: 800; text-transform: uppercase; letter-spacing: 2px;">
+                    🚫 REGISTRATION CLOSED
+                </p>
+            `;
+            const regBtn = document.querySelector('.btn-red-blink');
+            if (regBtn) {
+                regBtn.innerText = "Registration Closed";
+                regBtn.style.pointerEvents = "none";
+                regBtn.style.opacity = "0.5";
+                regBtn.classList.remove('btn-red-blink');
+            }
+            return;
+        }
+
+        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+        if (daysEl) daysEl.innerText = days.toString().padStart(2, '0');
+        if (hoursEl) hoursEl.innerText = hours.toString().padStart(2, '0');
+        if (minutesEl) minutesEl.innerText = minutes.toString().padStart(2, '0');
+        if (secondsEl) secondsEl.innerText = seconds.toString().padStart(2, '0');
+    }, 1000);
 }
 
 document.addEventListener('DOMContentLoaded', loadHomepageContent);
