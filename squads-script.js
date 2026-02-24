@@ -31,7 +31,20 @@ async function loadTeamRoster(teamId, btn) {
     document.querySelectorAll('.roster-filter-btn').forEach(b => b.classList.remove('active-filter'));
     if (btn) btn.classList.add('active-filter');
 
-    list.innerHTML = '<div style="text-align: center; padding: 50px;"><div class="loading-spinner"></div> Loading Squad List...</div>';
+    // Skeleton Loader UI
+    list.innerHTML = `
+        <div style="margin-top: 20px;">
+            ${Array(5).fill(0).map(() => `
+                <div style="display: flex; gap: 15px; margin-bottom: 15px; align-items: center; padding: 15px; background: rgba(255,255,255,0.03); border-radius: 12px;">
+                    <div class="skeleton" style="width: 40px; height: 40px; border-radius: 50%;"></div>
+                    <div style="flex: 1;">
+                        <div class="skeleton" style="width: 60%; height: 15px; margin-bottom: 10px;"></div>
+                        <div class="skeleton" style="width: 40%; height: 10px;"></div>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
 
     const { data, error } = await supabaseClient
         .from('team_players')
@@ -46,12 +59,12 @@ async function loadTeamRoster(teamId, btn) {
     }
 
     if (!data || data.length === 0) {
-        list.innerHTML = '<div style="text-align: center; color: var(--text-dim); padding: 50px;">No squad information available for this team yet.</div>';
+        list.innerHTML = '<div style="text-align: center; color: var(--text-dim); padding: 50px;" class="animate-slide-up">No squad information available for this team yet.</div>';
         return;
     }
 
     let tableHtml = `
-        <div class="table-responsive" style="margin-top: 20px;">
+        <div class="table-responsive animate-slide-up" style="margin-top: 20px;">
             <table class="premium-table">
                 <thead>
                     <tr>
