@@ -9,10 +9,43 @@
         content="Experience the thrill of Sonaijuri Anchal Tennis Premier League 2026. Register now to join the elite cricket league.">
 
     <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --font-main: 'Outfit', sans-serif;
+        }
+
+        body {
+            font-family: var(--font-main);
+        }
+    </style>
 </head>
 
 <body>
+    <div id="particles-bg"></div>
 
+    <!-- Announcement Popup Modal -->
+    <div id="notice-popup" class="modal-backdrop" style="display: none; z-index: 9999;">
+        <div class="glass modal-content premium-popup animate-fade">
+            <button onclick="closeNoticePopup()" class="close-popup-btn">&times;</button>
+
+            <div class="popup-header">
+                <div class="blink-badge">📢 NEW UPDATE</div>
+            </div>
+
+            <div class="popup-body">
+                <h2 id="popup-title" class="gradient-text popup-title">--</h2>
+                <div class="popup-divider"></div>
+                <div id="popup-content" class="popup-text">
+                    <!-- Content populated by JS -->
+                </div>
+            </div>
+
+            <div class="popup-footer">
+                <button class="btn btn-premium" onclick="closeNoticePopup()">Close Advertisement</button>
+            </div>
+        </div>
+    </div>
     <nav class="navbar animate-fade">
         <div class="container">
             <h1 class="gradient-text">SATPL 2026</h1>
@@ -185,7 +218,64 @@
                         </div>
 
                     </div>
+
+                    <div style="text-align: center; margin-top: 50px;">
+                        <a href="fixtures.html" class="btn-fixtures animate-fade">
+                            <span class="icon-circle">📅</span>
+                            <span>Full Match Fixtures</span>
+                        </a>
+                    </div>
                 </div>
+
+                <!-- Announcements Section -->
+                <section id="announcements" style="margin-top: 60px;">
+                    <div class="section-title animate-fade">
+                        <span class="badge">Updates</span>
+                        <h2 class="gradient-text">News & Official Notices</h2>
+                    </div>
+
+                    <div class="news-ticker-container glass animate-fade"
+                        style="margin-top: 30px; overflow: hidden; position: relative; height: 100px; display: flex; align-items: center;">
+                        <div class="ticker-label">LATEST</div>
+                        <div id="notice-list" class="ticker-track">
+                            <!-- Populated by JS -->
+                            <div style="padding-left: 50px; color: var(--text-dim);">Loading announcements...</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Top Performers Section -->
+                <section id="leaderboard" style="margin-top: 60px;">
+                    <div class="section-title animate-fade">
+                        <span class="badge">Performance</span>
+                        <h2 class="gradient-text">Top Performers</h2>
+                        <p>Leading scorers and wicket takers of SATPL 2026</p>
+                    </div>
+
+                    <div class="leaderboard-grid">
+                        <!-- Orange Cap -->
+                        <div class="stat-card orange-glow animate-fade">
+                            <div class="stat-header">
+                                <span class="stat-icon">🏏</span>
+                                <h3>Orange Cap</h3>
+                            </div>
+                            <div id="orange-cap-list">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+
+                        <!-- Purple Cap -->
+                        <div class="stat-card purple-glow animate-fade">
+                            <div class="stat-header">
+                                <span class="stat-icon">⚽</span>
+                                <h3>Purple Cap</h3>
+                            </div>
+                            <div id="purple-cap-list">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
 
                 <!-- Points Table Component -->
                 <div id="points-table" class="glass animate-fade" style="margin-top: 40px; padding: 30px;">
@@ -236,83 +326,82 @@
         </section>
 
         <!-- Contact Section -->
-        <section id="contact" class="container animate-fade" style="margin-top: 100px; padding-bottom: 100px;">
-            <div class="glass" style="padding: 50px; text-align: center;">
-                <h2 class="gradient-text" style="font-size: 2.5rem; margin-bottom: 40px;">Contact & Support</h2>
+        <section id="contact" class="container" style="margin-top: 100px; padding-bottom: 50px;">
+            <div class="section-title animate-fade">
+                <span class="badge">Support</span>
+                <h2 class="gradient-text">Connect with Us</h2>
+                <p>Have questions? Our team is here to help you 24/7</p>
+            </div>
 
-                <div style="display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 60px;">
-
-                    <!-- Contact Details -->
-                    <div style="display: flex; flex-direction: column; gap: 30px; align-items: center;">
-                        <h3
-                            style="color: var(--text-dim); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px;">
-                            Reach Us Directly</h3>
-                        <div style="display: flex; gap: 15px; flex-wrap: wrap; justify-content: center;">
-                            <!-- Call Icons -->
-                            <a id="home-call1" href="#" class="btn-secondary"
-                                style="border-radius: 30px; padding: 10px 20px; display: flex; align-items: center; gap: 10px; font-size: 1rem;"
-                                title="Call Us">
-                                <span>📞</span> Call 1
-                            </a>
-                            <a id="home-call2" href="#" class="btn-secondary"
-                                style="border-radius: 30px; padding: 10px 20px; display: flex; align-items: center; gap: 10px; font-size: 1rem;"
-                                title="Call Us">
-                                <span>☎️</span> Call 2
-                            </a>
-
-                            <!-- WhatsApp Icons -->
-                            <a id="home-wa1" href="#" class="btn-secondary"
-                                style="border-radius: 30px; padding: 10px 20px; display: flex; align-items: center; gap: 10px; font-size: 1rem; background: #25D366; color: white; border: none;"
-                                title="WhatsApp">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
-                                    fill="currentColor">
-                                    <path
-                                        d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.438 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884 0 2.225.569 3.846 1.765 5.513l-.947 3.445 3.671-.957zm11.221-5.321c-.266-.134-1.571-.774-1.815-.863-.243-.088-.42-.133-.596.133-.177.266-.684.863-.839 1.041-.155.178-.31.199-.576.066-.265-.133-1.124-.415-2.14-1.323-.79-.705-1.323-1.576-1.478-1.841-.155-.265-.017-.409.117-.542.121-.12.266-.31.398-.465.133-.155.177-.265.266-.443.089-.177.044-.333-.022-.465-.067-.133-.596-1.439-.816-1.972-.214-.516-.431-.444-.596-.452-.154-.007-.332-.007-.51-.007-.177 0-.465.067-.708.333-.243.266-.931.91-.931 2.217s.953 2.573 1.085 2.75c.133.177 1.876 2.864 4.545 4.015.635.273 1.13.436 1.516.559.638.203 1.22.174 1.679.105.511-.077 1.571-.643 1.792-1.264.221-.621.221-1.153.155-1.264-.066-.111-.243-.177-.51-.311z" />
-                                </svg>
-                                WhatsApp 1
-                            </a>
-                            <a id="home-wa2" href="#" class="btn-secondary"
-                                style="border-radius: 30px; padding: 10px 20px; display: flex; align-items: center; gap: 10px; font-size: 1rem; background: #25D366; color: white; border: none;"
-                                title="WhatsApp">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
-                                    fill="currentColor">
-                                    <path
-                                        d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.438 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884 0 2.225.569 3.846 1.765 5.513l-.947 3.445 3.671-.957zm11.221-5.321c-.266-.134-1.571-.774-1.815-.863-.243-.088-.42-.133-.596.133-.177.266-.684.863-.839 1.041-.155.178-.31.199-.576.066-.265-.133-1.124-.415-2.14-1.323-.79-.705-1.323-1.576-1.478-1.841-.155-.265-.017-.409.117-.542.121-.12.266-.31.398-.465.133-.155.177-.265.266-.443.089-.177.044-.333-.022-.465-.067-.133-.596-1.439-.816-1.972-.214-.516-.431-.444-.596-.452-.154-.007-.332-.007-.51-.007-.177 0-.465.067-.708.333-.243.266-.931.91-.931 2.217s.953 2.573 1.085 2.75c.133.177 1.876 2.864 4.545 4.015.635.273 1.13.436 1.516.559.638.203 1.22.174 1.679.105.511-.077 1.571-.643 1.792-1.264.221-.621.221-1.153.155-1.264-.066-.111-.243-.177-.51-.311z" />
-                                </svg>
-                                WhatsApp 2
-                            </a>
-
-                            <!-- Facebook Icon -->
-                            <a id="home-facebook" href="#" target="_blank" class="btn-secondary"
-                                style="border-radius: 30px; padding: 10px 20px; display: flex; align-items: center; gap: 10px; font-size: 1rem; background: #1877F2; color: white; border: none;"
-                                title="Facebook Page">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
-                                    fill="currentColor">
-                                    <path
-                                        d="M22.675 0h-21.35C.597 0 0 .597 0 1.325v21.351C0 23.403.597 24 1.325 24H12.82v-9.294H9.692v-3.622h3.128V8.413c0-3.1 1.893-4.788 4.659-4.788 1.325 0 2.463.099 2.795.143v3.24 l-1.918.001c-1.504 0-1.795.715-1.795 1.763v2.313h3.587l-.467 3.622h-3.12V24h6.116c.73 0 1.325-.597 1.325-1.324V1.325C24 .597 23.403 0 22.675 0z" />
-                                </svg>
-                                Facebook
-                            </a>
-
-                            <!-- Email Icon -->
-                            <a id="home-email" href="#" class="btn-secondary"
-                                style="border-radius: 30px; padding: 10px 20px; display: flex; align-items: center; gap: 10px; font-size: 1rem; background: var(--secondary); color: var(--bg-dark); border: none;"
-                                title="Email Support">
-                                <span>✉️</span> Email
-                            </a>
-                        </div>
+            <div class="contact-grid">
+                <!-- WhatsApp Support -->
+                <div class="contact-card animate-fade">
+                    <div class="contact-icon">💬</div>
+                    <h3 class="contact-title">WhatsApp Support</h3>
+                    <p class="contact-info">Get instant help on WhatsApp for registration and payments.</p>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <a id="home-wa1" href="#" class="btn btn-premium"
+                            style="background: #25D366; box-shadow: 0 5px 15px rgba(37, 211, 102, 0.3);">Chat with
+                            Support 1</a>
+                        <a id="home-wa2" href="#" class="btn-secondary">Chat with Support 2</a>
                     </div>
+                </div>
 
-                    <!-- QR Code Display -->
-                    <div style="text-align: center;">
-                        <h3
-                            style="color: var(--text-dim); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px;">
-                            Payment QR</h3>
-                        <div id="display-qr-container">
-                            <div class="loading-spinner"></div>
-                        </div>
+                <!-- Call Support -->
+                <div class="contact-card animate-fade" style="animation-delay: 0.2s;">
+                    <div class="contact-icon">📞</div>
+                    <h3 class="contact-title">Direct Call</h3>
+                    <p class="contact-info">Speak directly with our tournament coordinators.</p>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <a id="home-call1" href="#" class="btn btn-premium">Call Coordinator 1</a>
+                        <a id="home-call2" href="#" class="btn-secondary">Call Coordinator 2</a>
                     </div>
+                </div>
 
+                <!-- Official Venue -->
+                <div class="contact-card animate-fade" style="animation-delay: 0.4s;">
+                    <div class="contact-icon">🏟️</div>
+                    <h3 class="contact-title">Match Venue</h3>
+                    <p class="contact-info">Sonaijuri Anchal Sports Ground. Visit us for live action!</p>
+                    <a href="https://maps.google.com" target="_blank" class="btn btn-premium">View on Map</a>
+                </div>
+
+                <!-- Facebook QR Hub -->
+                <div class="contact-card animate-fade" style="animation-delay: 0.6s;">
+                    <div class="contact-icon" style="background: #1877F2; color: white;">f</div>
+                    <h3 class="contact-title">Official Facebook</h3>
+                    <p class="contact-info">Scan the QR code to follow our official Page for live videos & photos.</p>
+                    <div id="display-qr-container"
+                        style="background: white; padding: 10px; border-radius: 15px; width: 150px; margin: 0 auto 20px;">
+                        <div class="loading-spinner" style="border-color: #000 #0000;"></div>
+                    </div>
+                    <span class="badge" style="background: #1877F2; color: white;">Follow Us</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Diamond Sponsors Section -->
+        <section class="sponsors-section animate-fade">
+            <div class="container">
+                <div style="text-align: center; margin-bottom: 40px;">
+                    <span
+                        style="color: var(--secondary); font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 3px;">Our
+                        Elite Partners</span>
+                </div>
+                <div class="sponsor-container">
+                    <div class="sponsor-track">
+                        <div class="sponsor-item"><span class="sponsor-name">DIAMOND SPONSOR</span></div>
+                        <div class="sponsor-item"><span class="sponsor-name">PLATINUM PARTNER</span></div>
+                        <div class="sponsor-item"><span class="sponsor-name">GOLD MEDIA</span></div>
+                        <div class="sponsor-item"><span class="sponsor-name">SPORTS GEAR CO.</span></div>
+                        <div class="sponsor-item"><span class="sponsor-name">TECH SOLUTIONS</span></div>
+                        <!-- Duplicate for loop -->
+                        <div class="sponsor-item"><span class="sponsor-name">DIAMOND SPONSOR</span></div>
+                        <div class="sponsor-item"><span class="sponsor-name">PLATINUM PARTNER</span></div>
+                        <div class="sponsor-item"><span class="sponsor-name">GOLD MEDIA</span></div>
+                        <div class="sponsor-item"><span class="sponsor-name">SPORTS GEAR CO.</span></div>
+                        <div class="sponsor-item"><span class="sponsor-name">TECH SOLUTIONS</span></div>
+                    </div>
                 </div>
             </div>
         </section>
