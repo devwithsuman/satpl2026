@@ -190,7 +190,7 @@
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 
         const params = new URLSearchParams(window.location.search);
-        const regNo = params.get("reg_no");
+        const playerToken = params.get("id");
         const errorParam = params.get("error");
 
         // Safe Base64 placeholder (transparent 1x1 pixel)
@@ -229,29 +229,29 @@
         let playerData = null;
 
         async function initSuccess() {
-            if (!regNo) {
+            if (!playerToken) {
                 document.getElementById("regNo").innerText = "Not Found";
                 return;
             }
-            document.getElementById("regNo").innerText = regNo;
 
-            // Fetch player details for ID card
+            // Fetch player details using TOKEN
             const { data, error } = await supabaseClient
                 .from('player_registrations')
                 .select('*')
-                .eq('registration_no', regNo)
+                .eq('token', playerToken)
                 .single();
 
             playerData = data;
 
             if (data) {
+                document.getElementById("regNo").innerText = data.registration_no;
                 document.getElementById('card-name').innerText = data.player_name;
                 document.getElementById('card-reg-no').innerText = data.registration_no;
                 document.getElementById('card-mobile').innerText = data.mobile_number || 'N/A';
 
-                // QR Code - Points to this page with auto-download flag
+                // QR Code - Points to this page with TOKEN and auto-download flag
                 const currentOrigin = window.location.origin;
-                const verifyUrl = `${currentOrigin}/success.html?reg_no=${data.registration_no}&auto_download=true`;
+                const verifyUrl = `${currentOrigin}/success.html?id=${data.token}&auto_download=true`;
                 const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(verifyUrl)}&bgcolor=ffffff&color=002D52`;
                 document.getElementById('qr-code').src = qrUrl;
 
@@ -399,7 +399,7 @@
                 const canvasB = await html2canvas(back, capOpts);
                 pdf.addImage(canvasB.toDataURL('image/jpeg', 0.9), 'JPEG', 0, 0, 350, 550);
 
-                pdf.save(`SATPL_ID_Card_${regNo}.pdf`);
+                pdf.save(`SATPL_ID_Card_${playerData.registration_no}.pdf`);
 
                 btn.innerText = "Download Digital ID Card (PDF) 📥";
                 btn.disabled = false;
