@@ -196,31 +196,42 @@ document.addEventListener("DOMContentLoaded", () => {
                     },
                     handler: async function (response) {
                         try {
+                            console.log("💳 Payment successful! ID:", response.razorpay_payment_id);
                             submitBtn.innerText = "⏳ Finalizing Registration...";
+                            submitBtn.disabled = true;
 
                             // Generate Reg No (using existing reg_serial)
                             if (isNaN(serialNum)) {
                                 throw new Error("ID Generation Error: Serial number is invalid.");
                             }
                             const registrationNo = `OSATPL01S${(serialNum + 2000).toString().padStart(4, "0")}`;
+                            console.log("📝 Generated Registration No:", registrationNo);
 
                             // Update to PAID
-                            const { error: updateError } = await supabaseClient
+                            const { data: updateData, error: updateError } = await supabaseClient
                                 .from("player_registrations")
                                 .update({
                                     payment_status: "paid",
                                     payment_id: response.razorpay_payment_id,
                                     registration_no: registrationNo
                                 })
-                                .eq("id", playerId);
+                                .eq("id", playerId)
+                                .select();
 
-                            if (updateError) throw new Error("Reg No Generation Failed: " + updateError.message);
+                            if (updateError) {
+                                console.error("❌ Supabase Update Error:", updateError);
+                                throw new Error("Reg No Generation Failed: " + updateError.message);
+                            }
 
+                            console.log("✅ Registration finalized successfully:", updateData);
                             window.location.href = `success.html?reg_no=${registrationNo}`;
 
                         } catch (error) {
-                            console.error("Payment Handler Error:", error);
-                            alert("Payment Successful, but Registration Update Failed. Please contact admin. Error: " + error.message);
+                            console.error("🚨 Payment Handler Error:", error);
+                            alert("Payment Successful, but we had trouble updating our records automatically.\nPlease take a screenshot of your Payment ID: " + response.razorpay_payment_id + "\nError: " + error.message);
+
+                            const registrationNoFallback = `OSATPL01S${(serialNum + 2000).toString().padStart(4, "0")}`;
+                            window.location.href = `success.html?reg_no=${registrationNoFallback}&error=sync_failed`;
                         }
                     },
                     modal: {
