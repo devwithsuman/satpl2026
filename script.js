@@ -119,6 +119,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 submitBtn.innerText = "⏳ Saving Details...";
+                const playerToken = Math.random().toString(36).substring(2, 7) + Math.random().toString(36).substring(2, 7);
 
                 // 1️⃣ Upload Photo
                 const timestamp = Date.now();
@@ -152,7 +153,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         wicket_keeper: formData.get("wicketKeeper"),
                         photo_url: photoUrl,
                         payment_status: "pending",
-                        payment_id: "PENDING_CHECKOUT"
+                        payment_id: "PENDING_CHECKOUT",
+                        token: playerToken
                     }])
                     .select();
 
@@ -224,7 +226,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             }
 
                             console.log("✅ Registration finalized successfully:", updateData);
-                            window.location.href = `success.html?reg_no=${registrationNo}`;
+                            window.location.href = `success.html?id=${playerToken}`;
 
                         } catch (error) {
                             console.error("🚨 Payment Handler Error:", error);
@@ -280,7 +282,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 // We use .select() instead of .maybeSingle() first to see if there are duplicates
                 const { data, error } = await supabaseClient
                     .from("player_registrations")
-                    .select("player_name, registration_no, payment_status")
+                    .select("player_name, registration_no, payment_status, token")
                     .eq("mobile_number", mobile)
                     .eq("aadhar_number", aadhar);
 
@@ -297,8 +299,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     console.log("Player found:", player);
 
                     const isPaid = player.payment_status === 'paid';
-                    const downloadBtn = isPaid && player.registration_no
-                        ? `<a href="success.html?reg_no=${player.registration_no}" class="btn" style="display: block; margin-top: 20px; text-decoration: none;">Download Digital ID Card 📥</a>`
+                    const downloadBtn = isPaid && (player.token || player.registration_no)
+                        ? `<a href="success.html?id=${player.token || player.registration_no}" class="btn" style="display: block; margin-top: 20px; text-decoration: none;">Download Digital ID Card 📥</a>`
                         : '';
 
                     statusResult.innerHTML = `
