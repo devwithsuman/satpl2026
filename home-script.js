@@ -8,6 +8,7 @@ async function loadHomepageContent() {
         loadSiteSettings(),
         loadNotices(),
         loadLeaderboard(),
+        loadGallery(),
         startCountdown()
     ]).catch(err => console.error("Initial Load Error:", err));
 
@@ -161,6 +162,13 @@ async function loadSiteSettings() {
         if (data.email && emailEl) emailEl.href = `mailto:${data.email}`;
         if (data.facebook_url && fbEl) fbEl.href = data.facebook_url;
 
+        // Map URL
+        const mapBtn = document.getElementById('home-map-link');
+        if (data.map_url && mapBtn) mapBtn.href = data.map_url;
+
+        // Store registration end date for countdown
+        window.siteRegEndDate = data.reg_end_date;
+
         // QR Code
         const qrContainer = document.getElementById('display-qr-container');
         if (qrContainer) {
@@ -300,6 +308,13 @@ async function loadHeroAndScores() {
     } else {
         recentContainer.style.display = 'none';
     }
+
+    // Global Map Button Update
+    const globalHeroData = matches['live-match'] || matches['upcoming-match'] || matches['main-hero'];
+    const mapBtn = document.getElementById('home-map-link');
+    if (globalHeroData && globalHeroData.map_url && mapBtn) {
+        mapBtn.href = globalHeroData.map_url;
+    }
 }
 
 async function loadPointsTable() {
@@ -386,8 +401,16 @@ async function loadLeaderboard() {
 }
 
 
-function startCountdown() {
-    const targetDate = new Date("February 27, 2026 18:00:00").getTime();
+async function startCountdown() {
+    // Wait a bit to ensure site settings are loaded if they are still pending
+    let attempts = 0;
+    while (!window.siteRegEndDate && attempts < 10) {
+        await new Promise(resolve => setTimeout(resolve, 300));
+        attempts++;
+    }
+
+    const dateStr = window.siteRegEndDate || "February 27, 2026 18:00:00"; // Fallback to old hardcoded date
+    const targetDate = new Date(dateStr).getTime();
     const countdownWrap = document.getElementById('countdown-wrap');
 
     if (!countdownWrap) return;
@@ -428,6 +451,61 @@ function startCountdown() {
         if (minutesEl) minutesEl.innerText = minutes.toString().padStart(2, '0');
         if (secondsEl) secondsEl.innerText = seconds.toString().padStart(2, '0');
     }, 1000);
+}
+
+async function loadGallery() {
+    const track = document.getElementById('gallery-track');
+    if (!track) return;
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('gallery')
+            .select('image_url, orientation')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        let galleryItems = [];
+        if (data && data.length > 0) {
+            galleryItems = data;
+        } else {
+            // Fallback placeholder images if gallery is empty
+            galleryItems = [
+                { image_url: "https://images.unsplash.com/photo-1531415074968-036ba1b575da?w=800&q=80", orientation: 'landscape' },
+                { image_url: "https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?w=800&q=80", orientation: 'landscape' },
+                { image_url: "https://images.unsplash.com/photo-1593341646782-e0b495cff86d?w=800&q=80", orientation: 'portrait' }
+            ];
+        }
+
+        const galleryHtml = galleryItems.map(item => `
+            <div class="gallery-item ${item.orientation || 'landscape'}" onclick="openLightbox('${item.image_url}')">
+                <img src="${item.image_url}" alt="Tournament Photo">
+            </div>
+        `).join('');
+
+        // Duplicate for infinity scroll
+        track.innerHTML = galleryHtml + galleryHtml;
+    } catch (err) {
+        console.error("Gallery Load Error:", err);
+    }
+}
+
+function openLightbox(url) {
+    const lightbox = document.getElementById('image-lightbox');
+    const img = document.getElementById('lightbox-img');
+    if (lightbox && img) {
+        img.src = url;
+        lightbox.style.display = 'flex';
+        document.body.style.overflow = 'hidden'; // Stop scrolling
+    }
+}
+
+function closeLightbox() {
+    const lightbox = document.getElementById('image-lightbox');
+    if (lightbox) {
+        lightbox.style.display = 'none';
+        document.body.style.overflow = 'auto'; // Restore scrolling
+    }
 }
 
 document.addEventListener('DOMContentLoaded', loadHomepageContent);
