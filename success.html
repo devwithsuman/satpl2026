@@ -171,7 +171,7 @@
                 <button id="downloadBtn" class="btn btn-red-blink" onclick="downloadIDCard()"
                     style="display: none;">Download Digital ID Card 📥</button>
 
-                
+
                 <a href="index.html" class="btn">Back to Home</a>
                 <p style="font-size: 0.8rem; color: var(--text-dim);">A copy of this registration has been sent to our
                     admin team.</p>
@@ -297,10 +297,6 @@
                 document.getElementById('downloadBtn').style.display = 'block';
                 document.getElementById('id-card-wrap').style.display = 'block';
 
-                // Set Standalone Link
-                const standalone = document.getElementById('standaloneLink');
-                standalone.href = `id-card.html?reg_no=${data.registration_no}`;
-                standalone.style.display = 'block';
 
                 // AUTO DOWNLOAD if coming from QR scan
                 if (params.get("auto_download") === "true") {
