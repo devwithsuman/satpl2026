@@ -64,16 +64,28 @@ async function populateCardData(data) {
 
 // Check for URL parameters if loaded standalone
 const cardParams = new URLSearchParams(window.location.search);
-const cardRegNo = cardParams.get('reg_no');
+const cardToken = cardParams.get('id'); // Use 'id' for token
 
-if (cardRegNo && typeof supabaseClient !== 'undefined') {
+if (cardToken && typeof supabaseClient !== 'undefined') {
     (async () => {
         const { data, error } = await supabaseClient
             .from('player_registrations')
             .select('*')
-            .eq('registration_no', cardRegNo)
+            .eq('token', cardToken) // Fetch by Token
             .single();
 
         if (data) populateCardData(data);
+        else {
+            // Fallback: try by reg_no if it's old link
+            const oldRegNo = cardParams.get('reg_no');
+            if (oldRegNo) {
+                const { data: oldData } = await supabaseClient
+                    .from('player_registrations')
+                    .select('*')
+                    .eq('registration_no', oldRegNo)
+                    .single();
+                if (oldData) populateCardData(oldData);
+            }
+        }
     })();
 }
