@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SATPL Player ID Card</title>
+    <link rel="stylesheet" href="id-card.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+    <div class="id-card-container" id="id-card-capture-area">
+
+        <!-- FRONT SIDE -->
+        <div class="id-card-view" id="id-front">
+            <div class="id-season-badge">SEASON 1: 2026</div>
+            <div class="id-header">
+                <div class="id-logo-wrap">
+                    <img src="IMG.svg" alt="SATPL">
+                    <div class="id-header-text">
+                        <h4>SATPL 2026</h4>
+                        <p>OFFICIAL PLAYER ID</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="id-accent-stripe"></div>
+            <div class="id-accent-stripe-2"></div>
+
+            <div class="id-photo-container">
+                <img id="player-photo" src="https://via.placeholder.com/150" crossorigin="anonymous">
+            </div>
+
+            <div class="id-wavy-bg"></div>
+
+            <div class="id-details-front">
+                <h1 class="id-name" id="player-name">PLAYER NAME</h1>
+                <p class="id-role" id="player-role">ALLROUNDER</p>
+
+                <div class="id-info-table">
+                    <div class="id-info-row">
+                        <span class="id-info-label">REG ID</span>
+                        <span class="id-info-value" id="reg-id">SATPL0000</span>
+                    </div>
+                    <div class="id-info-row">
+                        <span class="id-info-label">JOINED DATE</span>
+                        <span class="id-info-value" id="joined-date">FEB 2026</span>
+                    </div>
+                    <div class="id-info-row">
+                        <span class="id-info-label">MOBILE</span>
+                        <span class="id-info-value" id="player-mobile">+91 0000000000</span>
+                    </div>
+                    <!-- <div class="id-info-row">
+                        <span class="id-info-label">SESSION</span>
+                        <span class="id-info-value">1</span>
+                    </div> -->
+                </div>
+            </div>
+        </div>
+
+        <!-- BACK SIDE -->
+        <div class="id-card-view" id="id-back">
+            <div class="id-back-content">
+                <div class="id-logo-wrap" style="margin-bottom: 20px;">
+                    <img src="IMG.svg" alt="SATPL" style="height: 50px;">
+                    <div class="id-header-text">
+                        <h4 style="color: white; font-size: 1rem;">SATPL 2026</h4>
+                    </div>
+                </div>
+
+                <div class="id-terms-section">
+                    <h5>Terms & Conditions</h5>
+                    <p class="id-terms-text">
+                        - This card is the property of Sonaijuri Anchal Tennis Premier League (SATPL).<br>
+                        - It is non-transferable and valid only for Season 1 (2026).<br>
+                        - Misuse of this ID card may lead to disqualification from the tournament.<br>
+                        - In case of loss, please report to the admin team immediately.<br>
+                        - Participation indicates agreement to all league rules and safety protocols.
+                    </p>
+                </div>
+
+                <!-- Barcode Placeholder -->
+                <div style="width: 100%; text-align: center; margin: 20px 0;">
+                    <div style="height: 1px; background: rgba(255,255,255,0.2); width: 80%; margin: 0 auto 10px;"></div>
+                    <p style="font-size: 0.5rem; letter-spacing: 5px; opacity: 0.5;">|||| ||||| || |||| |||| ||||</p>
+                </div>
+            </div>
+
+            <div class="id-qr-section">
+                <div class="id-qr-box">
+                    <img id="player-qr" src="" alt="QR Verification">
+                </div>
+                <div class="id-qr-text">
+                    <p>SCAN TO DOWNLOAD</p>
+                    <p>ID CARD PDF</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- For Standalone Use -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <script>
+        // Initialize PDF.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="assets-base64.js"></script>
+    <script src="id-card.js"></script>
+</body>
+
+</html>

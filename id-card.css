@@ -1,0 +1,315 @@
+:root {
+    --id-navy: #001A33;
+    --id-gold: #FFD700;
+    --id-orange: #FF9800;
+    --id-white: #FFFFFF;
+    --id-glass: rgba(255, 255, 255, 0.1);
+    --id-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+* {
+    box-sizing: border-box;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+.id-card-container {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+    align-items: center;
+    padding: 30px;
+    font-family: 'Outfit', sans-serif;
+}
+
+.id-card-view {
+    width: 350px;
+    height: 550px;
+    background: var(--id-navy);
+    background: linear-gradient(135deg, #001A33 0%, #002D52 100%);
+    border-radius: 20px;
+    position: relative;
+    overflow: hidden;
+    color: white;
+    box-shadow: var(--id-shadow);
+}
+
+/* Decoration Pattern */
+.id-card-view::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.05) 1px, transparent 0);
+    background-size: 20px 20px;
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+/* --- FRONT SIDE --- */
+.id-header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 200px;
+    background: white;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 25px;
+    clip-path: polygon(0 0, 100% 0, 100% 85%, 0 100%);
+}
+
+.id-logo-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.id-logo-wrap img {
+    height: 80px;
+    width: auto;
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+}
+
+.id-header-text {
+    text-align: center;
+}
+
+.id-header-text h4 {
+    color: var(--id-navy);
+    margin: 0;
+    font-size: 1.4rem;
+    font-weight: 900;
+    letter-spacing: 1px;
+}
+
+.id-header-text p {
+    color: var(--id-orange);
+    margin: 0;
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+}
+
+.id-photo-container {
+    position: absolute;
+    top: 175px;
+    /* Moved down to avoid overlapping header text */
+    left: 97.5px;
+    /* (350px - 155px) / 2 to center without transform */
+    z-index: 10;
+    width: 155px;
+    height: 155px;
+    border-radius: 50%;
+    border: 6px solid white;
+    background: #f0f0f0;
+    overflow: hidden;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+}
+
+.id-photo-container::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: 2px solid var(--id-orange);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.id-photo-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top;
+    /* Prevent cutting forehead */
+}
+
+.id-details-front {
+    position: absolute;
+    top: 345px;
+    /* Adjusted for lowered photo */
+    width: 100%;
+    padding: 0 15px;
+    text-align: center;
+    z-index: 11;
+}
+
+.id-name {
+    font-size: 1.5rem;
+    /* Reduced for better fit */
+    font-weight: 900;
+    margin: 0;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+    text-transform: uppercase;
+    color: var(--id-white);
+    line-height: 1.1;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.id-role {
+    font-size: 1rem;
+    color: var(--id-orange);
+    margin: 3px 0 12px;
+    font-weight: 800;
+    letter-spacing: 1px;
+}
+
+.id-info-table {
+    background: var(--id-glass);
+    border-radius: 15px;
+    padding: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(5px);
+}
+
+.id-info-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.id-info-row:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.id-info-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+}
+
+.id-info-value {
+    font-size: 0.75rem;
+    /* Reduced from 0.85rem for better data fit */
+    font-weight: 800;
+    color: var(--id-white);
+    word-break: break-all;
+}
+
+/* Season Badge */
+.id-season-badge {
+    position: absolute;
+    top: 20px;
+    right: -30px;
+    background: var(--id-orange);
+    color: var(--id-navy);
+    padding: 5px 40px;
+    font-size: 0.7rem;
+    font-weight: 900;
+    transform: rotate(45deg);
+    z-index: 20;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* --- BACK SIDE --- */
+.id-back-content {
+    padding: 30px 20px 0;
+    /* Removed bottom padding */
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.id-terms-section {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 20px;
+    border-radius: 15px;
+    margin-top: 10px;
+    border: 1px solid rgba(255, 152, 0, 0.2);
+}
+
+.id-terms-section h5 {
+    font-size: 1.2rem;
+    color: var(--id-orange);
+    margin: 0 0 10px;
+    text-transform: uppercase;
+    text-align: center;
+}
+
+.id-terms-text {
+    font-size: 0.75rem;
+    color: #ccc;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.id-qr-section {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    background: white;
+    width: 100%;
+    padding: 15px 20px 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    border-radius: 0;
+    z-index: 15;
+}
+
+.id-qr-box {
+    background: white;
+    padding: 5px;
+    border: 2px solid var(--id-navy);
+    border-radius: 8px;
+}
+
+.id-qr-box img {
+    width: 65px;
+    /* Slightly smaller to ensure fit */
+    height: 65px;
+    display: block;
+}
+
+.id-qr-text {
+    text-align: left;
+}
+
+.id-qr-text p:first-child {
+    color: var(--id-navy);
+    font-weight: 900;
+    font-size: 0.85rem;
+    margin: 0;
+    line-height: 1.1;
+}
+
+.id-qr-text p:last-child {
+    color: var(--id-navy);
+    font-size: 0.6rem;
+    font-weight: 700;
+    opacity: 0.7;
+    margin-top: 2px;
+}
+
+.id-accent-blob {
+    position: absolute;
+    bottom: -50px;
+    right: -50px;
+    width: 150px;
+    height: 150px;
+    background: var(--id-orange);
+    border-radius: 50%;
+    filter: blur(40px);
+    opacity: 0.3;
+}
