@@ -17,6 +17,9 @@
             <nav class="sidebar-nav">
                 <button onclick="showSection('registrations')" class="active">Registrations</button>
                 <button onclick="showSection('hero')">Hero Settings</button>
+                <button onclick="showSection('announcements')">Announcements</button>
+                <button onclick="showSection('fixtures')">Schedule Manager</button>
+                <button onclick="showSection('leaderboard')">Leaderboard Stats</button>
                 <button onclick="showSection('points')">Points Table</button>
                 <button onclick="showSection('rosters')">Playing Players</button>
                 <button onclick="showSection('menu')">Menu Settings</button>
@@ -159,7 +162,14 @@
 
                             <div class="form-group">
                                 <label>Batsman 1 (On Strike)</label>
-                                <input type="text" id="hero-batsman1" class="table-input" placeholder="Enter Name">
+                                <div style="display: flex; gap: 8px;">
+                                    <input type="text" id="hero-batsman1" class="table-input" placeholder="Name"
+                                        style="flex: 2;">
+                                    <input type="number" id="hero-batsman1-runs" class="table-input" placeholder="Runs"
+                                        style="width: 70px; text-align: center;">
+                                    <input type="number" id="hero-batsman1-balls" class="table-input"
+                                        placeholder="Balls" style="width: 70px; text-align: center;">
+                                </div>
                             </div>
 
                             <div class="form-group">
@@ -216,6 +226,34 @@
                         Updates 🚀</button>
                 </div>
             </div>
+            <div id="leaderboard-section" class="admin-section animate-fade">
+                <header class="section-header">
+                    <div>
+                        <h2 class="gradient-text">Top Performers (Orange/Purple Cap)</h2>
+                        <p style="color: var(--text-dim); font-size: 0.9rem;">Manage leading run scorers and wicket
+                            takers</p>
+                    </div>
+                    <button class="btn" onclick="openLeaderboardModal()">+ Add/Update Legend</button>
+                </header>
+
+                <div class="table-wrapper">
+                    <table class="premium-table">
+                        <thead>
+                            <tr>
+                                <th>Player Name</th>
+                                <th>Team</th>
+                                <th>Category</th>
+                                <th>Stats (Runs/Wkts)</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-leaderboard-list">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <div id="points-section" class="admin-section animate-fade">
                 <header class="section-header">
                     <div>
@@ -230,6 +268,8 @@
                         <thead>
                             <tr>
                                 <th>Team Name</th>
+                                <th>Logo (Link)</th>
+                                <th>Owner Name</th>
                                 <th>Played</th>
                                 <th>Won</th>
                                 <th>Lost</th>
@@ -237,6 +277,73 @@
                             </tr>
                         </thead>
                         <tbody id="admin-points-list">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="announcements-section" class="admin-section animate-fade">
+                <header class="section-header">
+                    <div>
+                        <h2 class="gradient-text">Tournament Announcements</h2>
+                        <p style="color: var(--text-dim); font-size: 0.9rem;">Manage live news and official notices</p>
+                    </div>
+                    <div style="display: flex; gap: 20px; align-items: center;">
+                        <div class="glass"
+                            style="padding: 10px 20px; border-radius: 12px; display: flex; align-items: center; gap: 12px; border: 1px solid var(--glass-border);">
+                            <span style="font-size: 0.8rem; font-weight: 700; color: var(--secondary);">GLOBAL
+                                POPUP</span>
+                            <label class="switch">
+                                <input type="checkbox" id="popup-enable-toggle"
+                                    onchange="togglePopupSetting(this.checked)">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                        <button class="btn" onclick="openNoticeModal()">+ Add New Notice</button>
+                    </div>
+                </header>
+
+                <div class="table-wrapper">
+                    <table class="premium-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 150px;">Date</th>
+                                <th>Title</th>
+                                <th>Content Snippet</th>
+                                <th style="width: 100px;">Status</th>
+                                <th style="width: 120px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-notices-list">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="fixtures-section" class="admin-section animate-fade">
+                <header class="section-header">
+                    <div>
+                        <h2 class="gradient-text">Match Schedule (Fixtures)</h2>
+                        <p style="color: var(--text-dim); font-size: 0.9rem;">Manage all league matches and results</p>
+                    </div>
+                    <button class="btn" onclick="openFixtureModal()">+ Add New Match</button>
+                </header>
+
+                <div class="table-wrapper">
+                    <table class="premium-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 80px;">Match #</th>
+                                <th>Date & Time</th>
+                                <th>Teams (T1 vs T2)</th>
+                                <th>Venue</th>
+                                <th style="width: 120px;">Status</th>
+                                <th style="width: 100px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-fixtures-list">
                             <!-- Populated by JS -->
                         </tbody>
                     </table>
@@ -493,6 +600,119 @@
                     <button type="submit" id="addPlayerSubmitBtn" class="btn" style="flex: 2;">Register Player
                         🚀</button>
                     <button type="button" onclick="closeAddModal()" class="btn-secondary"
+                        style="flex: 1;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="fixture-modal" class="modal-backdrop" style="display: none;">
+        <div class="glass modal-content animate-fade"
+            style="max-width: 600px; width: 90%; margin: 80px auto; padding: 40px; position: relative;">
+            <button onclick="closeFixtureModal()"
+                style="position: absolute; top: 20px; right: 20px; background: none; border: none; font-size: 1.5rem; color: var(--text-dim); cursor: pointer;">✕</button>
+            <h2 class="gradient-text" style="margin-bottom: 25px;">Add New Match</h2>
+            <form onsubmit="saveFixture(event)">
+                <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="form-group">
+                        <label>Match Number</label>
+                        <input type="number" id="fix-no" class="table-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select id="fix-status" class="table-input">
+                            <option value="upcoming">Upcoming</option>
+                            <option value="completed">Completed</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Match Date</label>
+                        <input type="date" id="fix-date" class="table-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Match Time</label>
+                        <input type="time" id="fix-time" class="table-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Team 1</label>
+                        <input type="text" id="fix-t1" class="table-input" placeholder="Team A" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Team 2</label>
+                        <input type="text" id="fix-t2" class="table-input" placeholder="Team B" required>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top: 20px;">
+                    <label>Venue</label>
+                    <input type="text" id="fix-venue" class="table-input" value="Sonaijuri Cricket Ground">
+                </div>
+                <div style="margin-top: 30px; display: flex; gap: 15px;">
+                    <button type="submit" class="btn" style="flex: 2;">Save Match 🚀</button>
+                    <button type="button" onclick="closeFixtureModal()" class="btn-secondary"
+                        style="flex: 1;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="notice-modal" class="modal-backdrop" style="display: none;">
+        <div class="glass modal-content animate-fade"
+            style="max-width: 500px; width: 90%; margin: 100px auto; padding: 40px; position: relative;">
+            <button onclick="closeNoticeModal()"
+                style="position: absolute; top: 20px; right: 20px; background: none; border: none; font-size: 1.5rem; color: var(--text-dim); cursor: pointer;">✕</button>
+            <h2 id="notice-modal-title" class="gradient-text" style="margin-bottom: 25px;">Add New Announcement</h2>
+            <form onsubmit="saveNotice(event)">
+                <input type="hidden" id="edit-notice-id">
+                <div class="form-group">
+                    <label>Title</label>
+                    <input type="text" id="notice-title" class="table-input"
+                        placeholder="e.g. Match Delayed due to Rain" required>
+                </div>
+                <div class="form-group">
+                    <label>Content</label>
+                    <textarea id="notice-content" class="table-input" style="height: 100px;"
+                        placeholder="Full details of the announcement..."></textarea>
+                </div>
+                <div style="margin-top: 30px; display: flex; gap: 15px;">
+                    <button type="submit" class="btn" style="flex: 2;">Publish Notice 🚀</button>
+                    <button type="button" onclick="closeNoticeModal()" class="btn-secondary"
+                        style="flex: 1;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="leaderboard-modal" class="modal-backdrop" style="display: none;">
+        <div class="glass modal-content animate-fade"
+            style="max-width: 500px; width: 90%; margin: 80px auto; padding: 40px; position: relative;">
+            <button onclick="closeLeaderboardModal()"
+                style="position: absolute; top: 20px; right: 20px; background: none; border: none; font-size: 1.5rem; color: var(--text-dim); cursor: pointer;">✕</button>
+            <h2 class="gradient-text" style="margin-bottom: 25px;">Top Performer Entry</h2>
+            <form onsubmit="saveLeaderboard(event)">
+                <div class="form-group">
+                    <label>Player Name</label>
+                    <input type="text" id="stat-name" class="table-input" placeholder="e.g. Rahul Sharma" required>
+                </div>
+                <div class="form-group">
+                    <label>Team Name</label>
+                    <input type="text" id="stat-team" class="table-input" placeholder="e.g. Sonaijuri Bulls">
+                </div>
+                <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="form-group">
+                        <label>Category</label>
+                        <select id="stat-category" class="table-input">
+                            <option value="batsman">Batsman (Runs)</option>
+                            <option value="bowler">Bowler (Wickets)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Score (Runs/Wkts)</label>
+                        <input type="number" id="stat-value" class="table-input" value="0">
+                    </div>
+                </div>
+                <div style="margin-top: 30px; display: flex; gap: 15px;">
+                    <button type="submit" class="btn" style="flex: 2;">Save Stat 🏆</button>
+                    <button type="button" onclick="closeLeaderboardModal()" class="btn-secondary"
                         style="flex: 1;">Cancel</button>
                 </div>
             </form>
