@@ -28,7 +28,12 @@ function showSection(sectionId) {
     });
 
     const target = document.getElementById(sectionId + "-section");
-    if (target) target.classList.add("active");
+    if (target) {
+        target.classList.add("active");
+        if (sectionId === 'announcements') fetchNotices();
+        if (sectionId === 'fixtures') fetchFixtures();
+        if (sectionId === 'leaderboard') fetchLeaderboard();
+    }
 }
 
 // ================= MATCH CONTROL (HERO) =================
@@ -74,6 +79,8 @@ async function loadHero(matchKey = currentMatchIdKey) {
             document.getElementById("hero-balls").value = 0;
             document.getElementById("hero-target").value = 0;
             document.getElementById("hero-batsman1").value = "";
+            document.getElementById("hero-batsman1-runs").value = 0;
+            document.getElementById("hero-batsman1-balls").value = 0;
         }
         return;
     }
@@ -94,6 +101,8 @@ async function loadHero(matchKey = currentMatchIdKey) {
         document.getElementById("hero-balls").value = data.balls || 0;
         document.getElementById("hero-target").value = data.target || 0;
         document.getElementById("hero-batsman1").value = data.batsman1 || "";
+        document.getElementById("hero-batsman1-runs").value = data.batsman1_runs || 0;
+        document.getElementById("hero-batsman1-balls").value = data.batsman1_balls || 0;
     }
 
     // Toggle scoring panel based on match type
@@ -124,7 +133,9 @@ async function saveHero() {
         overs: Number(document.getElementById("hero-overs").value) || 0,
         balls: Number(document.getElementById("hero-balls").value) || 0,
         target: Number(document.getElementById("hero-target").value) || 0,
-        batsman1: document.getElementById("hero-batsman1").value
+        batsman1: document.getElementById("hero-batsman1").value,
+        batsman1_runs: Number(document.getElementById("hero-batsman1-runs").value) || 0,
+        batsman1_balls: Number(document.getElementById("hero-batsman1-balls").value) || 0
     };
 
     const { error } = await supabaseClient.from("hero_content").upsert([updates]);
@@ -547,7 +558,9 @@ async function fetchAdminPoints() {
 
     list.innerHTML = data.map(team => `
         <tr data-id="${team.id}">
-            <td><input type="text" value="${team.team_name}" class="table-input team-name-input"></td>
+            <td><input type="text" value="${team.team_name || ''}" class="table-input team-name-input"></td>
+            <td><input type="text" value="${team.logo_url || ''}" class="table-input logo-input" placeholder="URL"></td>
+            <td><input type="text" value="${team.owner_name || ''}" class="table-input owner-input"></td>
             <td><input type="number" value="${team.played}" class="table-input played-input"></td>
             <td><input type="number" value="${team.won}" class="table-input won-input"></td>
             <td><input type="number" value="${team.lost}" class="table-input lost-input"></td>
@@ -561,6 +574,8 @@ async function savePointsTable() {
     const updates = Array.from(rows).map(row => ({
         id: parseInt(row.dataset.id),
         team_name: row.querySelector(".team-name-input").value,
+        logo_url: row.querySelector(".logo-input").value,
+        owner_name: row.querySelector(".owner-input").value,
         played: parseInt(row.querySelector(".played-input").value) || 0,
         won: parseInt(row.querySelector(".won-input").value) || 0,
         lost: parseInt(row.querySelector(".lost-input").value) || 0,
@@ -685,6 +700,12 @@ async function loadSettings() {
         if (data.qr_code_url) {
             document.getElementById("qr-preview").innerHTML = `<img src="${data.qr_code_url}" style="width: 150px; height: 150px; border-radius: 10px; border: 1px solid var(--glass-border);">`;
         }
+
+        // Global Popup Toggle
+        const popupToggle = document.getElementById('popup-enable-toggle');
+        if (popupToggle) {
+            popupToggle.checked = data.is_popup_enabled === true;
+        }
     }
 }
 
@@ -746,6 +767,18 @@ async function saveSettings() {
     }
 }
 
+async function togglePopupSetting(enabled) {
+    console.log("Setting Global Popup:", enabled);
+    const { error } = await supabaseClient
+        .from("site_settings")
+        .update({ is_popup_enabled: enabled })
+        .eq("id", "global-settings");
+
+    if (error) {
+        alert("Failed to update popup setting: " + error.message);
+    }
+}
+
 // ================= INIT =================
 async function init() {
     // Safety Check: Ensure supabaseClient is defined
@@ -788,3 +821,267 @@ async function init() {
 
 init();
 showSection('registrations');
+
+// ================= SMART SQUAD (FUTURE USE) =================
+/* ... remaining functions ... */
+async function getPlayerByRegNo(regNo) {
+    if (!regNo) return null;
+    const { data, error } = await supabaseClient
+        .from("player_registrations")
+        .select("player_name, batting, bowling, wicket_keeper")
+        .eq("registration_no", regNo.trim().toUpperCase())
+        .single();
+    if (error) {
+        console.warn("Smart Squad Lookup Error:", error.message);
+        return null;
+    }
+    return data;
+}
+
+async function handleSquadRegNoInput(input) {
+    const regNo = input.value.trim().toUpperCase();
+    if (regNo.length < 10) return;
+
+    const player = await getPlayerByRegNo(regNo);
+    if (player) {
+        const row = input.closest('tr');
+        if (row) {
+            const nameInput = row.querySelector('.player-name');
+            const formatSelect = row.querySelector('.player-format');
+            const wkCheckbox = row.querySelector('.player-wk');
+
+            if (nameInput) nameInput.value = player.player_name;
+            if (formatSelect) {
+                let format = "Allrounder";
+                if (player.batting !== 'no' && player.bowling === 'no') format = "Batting";
+                else if (player.batting === 'no' && player.bowling !== 'no') format = "Bowling";
+                formatSelect.value = format;
+            }
+            if (wkCheckbox) wkCheckbox.checked = (player.wicket_keeper === 'yes' || player.wicket_keeper === true);
+            input.style.borderColor = "var(--secondary)";
+        }
+    } else {
+        input.style.borderColor = "#ff4d8d";
+    }
+}
+
+// ================= ANNOUNCEMENTS (NOTICES) =================
+async function fetchNotices() {
+    const [{ data: notices, error: noticeErr }, { data: settings }] = await Promise.all([
+        supabaseClient.from('notices').select('*').order('created_at', { ascending: false }),
+        supabaseClient.from('site_settings').select('featured_notice_id').eq('id', 'global-settings').single()
+    ]);
+
+    if (noticeErr) return;
+    const list = document.getElementById('admin-notices-list');
+    if (!list) return;
+
+    const featuredId = settings ? settings.featured_notice_id : null;
+
+    list.innerHTML = notices.map(notice => {
+        const date = new Date(notice.created_at).toLocaleDateString('en-GB', {
+            day: 'numeric', month: 'short', year: 'numeric'
+        });
+        const isPinned = notice.id === featuredId;
+
+        return `
+            <tr style="${isPinned ? 'border-left: 4px solid var(--secondary);' : ''}">
+                <td>${date}</td>
+                <td style="font-weight: 700;">
+                    ${notice.title}
+                    ${isPinned ? '<span style="font-size: 0.7rem; color: var(--secondary); margin-left: 8px;">📌 PINNED</span>' : ''}
+                </td>
+                <td style="font-size: 0.85rem; color: var(--text-dim);">${notice.content ? notice.content.substring(0, 50) + '...' : '-'}</td>
+                <td>
+                    <span class="status-badge ${notice.is_active ? 'paid' : 'pending'}" 
+                          onclick="toggleNoticeStatus('${notice.id}', ${notice.is_active})" 
+                          style="cursor: pointer;">
+                        ${notice.is_active ? 'Active' : 'Archived'}
+                    </span>
+                </td>
+                <td>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button class="btn" style="padding: 5px 12px; font-size: 0.75rem; background: ${isPinned ? 'var(--secondary)' : '#3b82f6'};" onclick="editNotice('${notice.id}')">Edit</button>
+                        <button class="btn" style="padding: 5px 12px; font-size: 0.75rem; background: ${isPinned ? 'var(--text-dim)' : 'var(--secondary)'};" onclick="setFeaturedNotice('${notice.id}', ${isPinned})">
+                            ${isPinned ? 'Unpin' : 'Pin to Popup'}
+                        </button>
+                        <button class="btn-secondary" style="padding: 5px 10px; background: #ef4444; border: none; font-size: 0.75rem;" onclick="deleteNotice('${notice.id}')">Del</button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function openNoticeModal(isEdit = false) {
+    document.getElementById('notice-modal-title').innerText = isEdit ? 'Edit Announcement' : 'Add New Announcement';
+    if (!isEdit) {
+        document.getElementById('edit-notice-id').value = '';
+        document.getElementById('notice-title').value = '';
+        document.getElementById('notice-content').value = '';
+    }
+    document.getElementById('notice-modal').style.display = 'flex';
+}
+
+function closeNoticeModal() {
+    document.getElementById('notice-modal').style.display = 'none';
+}
+
+async function editNotice(id) {
+    const { data, error } = await supabaseClient
+        .from('notices')
+        .select('*')
+        .eq('id', id)
+        .single();
+    if (data) {
+        document.getElementById('edit-notice-id').value = data.id;
+        document.getElementById('notice-title').value = data.title;
+        document.getElementById('notice-content').value = data.content || '';
+        openNoticeModal(true);
+    }
+}
+
+async function saveNotice(event) {
+    event.preventDefault();
+    const id = document.getElementById('edit-notice-id').value;
+    const title = document.getElementById('notice-title').value;
+    const content = document.getElementById('notice-content').value;
+    const noticeData = { title, content };
+
+    let result;
+    if (id) {
+        result = await supabaseClient.from('notices').update(noticeData).eq('id', id);
+    } else {
+        result = await supabaseClient.from('notices').insert([noticeData]);
+    }
+
+    if (result.error) alert(result.error.message);
+    else {
+        alert(id ? "✅ Updated!" : "✅ Published!");
+        closeNoticeModal();
+        fetchNotices();
+    }
+}
+
+async function setFeaturedNotice(id, isUnpin) {
+    const newId = isUnpin ? null : id;
+    const { error } = await supabaseClient
+        .from('site_settings')
+        .update({ featured_notice_id: newId })
+        .eq('id', 'global-settings');
+
+    if (error) alert("Error pinning notice: " + error.message);
+    else {
+        alert(isUnpin ? "📌 Notice Unpinned!" : "📌 Notice Pinned to Popup!");
+        fetchNotices();
+    }
+}
+
+async function toggleNoticeStatus(id, current) {
+    await supabaseClient.from('notices').update({ is_active: !current }).eq('id', id);
+    fetchNotices();
+}
+
+async function deleteNotice(id) {
+    if (!confirm("Are you sure?")) return;
+    await supabaseClient.from('notices').delete().eq('id', id);
+    fetchNotices();
+}
+
+// ================= FIXTURES (SCHEDULE) =================
+async function fetchFixtures() {
+    const { data, error } = await supabaseClient.from('fixtures').select('*').order('match_no', { ascending: true });
+    if (error) return;
+    const list = document.getElementById('admin-fixtures-list');
+    if (!list) return;
+
+    list.innerHTML = data.map(f => {
+        const date = new Date(f.match_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+        return `
+            <tr>
+                <td>${f.match_no}</td>
+                <td style="font-size: 0.9rem;"><strong>${date}</strong> | ${f.match_time.substring(0, 5)}</td>
+                <td style="font-weight: 700;">${f.team1} <span style="color: var(--text-dim);">vs</span> ${f.team2}</td>
+                <td style="font-size: 0.85rem;">${f.venue}</td>
+                <td>
+                    <span class="status-badge ${f.status === 'completed' ? 'paid' : 'pending'}" onclick="toggleFixtureStatus('${f.id}', '${f.status}')" style="cursor: pointer;">
+                        ${f.status.toUpperCase()}
+                    </span>
+                </td>
+                <td><button class="btn-secondary" style="background: #ef4444; border: none; padding: 5px 10px;" onclick="deleteFixture('${f.id}')">Del</button></td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function openFixtureModal() { document.getElementById('fixture-modal').style.display = 'flex'; }
+function closeFixtureModal() { document.getElementById('fixture-modal').style.display = 'none'; }
+
+async function saveFixture(event) {
+    event.preventDefault();
+    const updates = {
+        match_no: Number(document.getElementById('fix-no').value),
+        match_date: document.getElementById('fix-date').value,
+        match_time: document.getElementById('fix-time').value,
+        team1: document.getElementById('fix-t1').value,
+        team2: document.getElementById('fix-t2').value,
+        venue: document.getElementById('fix-venue').value,
+        status: document.getElementById('fix-status').value
+    };
+    const { error } = await supabaseClient.from('fixtures').insert([updates]);
+    if (error) alert(error.message);
+    else { closeFixtureModal(); fetchFixtures(); }
+}
+
+async function toggleFixtureStatus(id, current) {
+    const next = current === 'upcoming' ? 'completed' : 'upcoming';
+    await supabaseClient.from('fixtures').update({ status: next }).eq('id', id);
+    fetchFixtures();
+}
+
+async function deleteFixture(id) {
+    if (!confirm("Are you sure?")) return;
+    await supabaseClient.from('fixtures').delete().eq('id', id);
+    fetchFixtures();
+}
+
+// ================= LEADERBOARD (STATS) =================
+async function fetchLeaderboard() {
+    const { data, error } = await supabaseClient.from('top_performers').select('*').order('category', { ascending: true }).order('runs', { ascending: false }).order('wickets', { ascending: false });
+    if (error) return;
+    const list = document.getElementById('admin-leaderboard-list');
+    if (!list) return;
+
+    list.innerHTML = data.map(p => `
+        <tr>
+            <td style="font-weight: 700;">${p.player_name}</td>
+            <td>${p.team_name || '-'}</td>
+            <td><span class="status-badge ${p.category === 'batsman' ? 'paid' : 'pending'}">${p.category.toUpperCase()}</span></td>
+            <td style="font-weight: 800; color: var(--secondary);">${p.category === 'batsman' ? p.runs + ' Runs' : p.wickets + ' Wkts'}</td>
+            <td><button class="btn-secondary" style="background: #ef4444; border: none; padding: 5px 10px;" onclick="deleteLeaderboard('${p.id}')">Del</button></td>
+        </tr>
+    `).join('');
+}
+
+function openLeaderboardModal() { document.getElementById('leaderboard-modal').style.display = 'flex'; }
+function closeLeaderboardModal() { document.getElementById('leaderboard-modal').style.display = 'none'; }
+
+async function saveLeaderboard(event) {
+    event.preventDefault();
+    const cat = document.getElementById('stat-category').value;
+    const updates = {
+        player_name: document.getElementById('stat-name').value,
+        team_name: document.getElementById('stat-team').value,
+        category: cat,
+        runs: cat === 'batsman' ? Number(document.getElementById('stat-value').value) : 0,
+        wickets: cat === 'bowler' ? Number(document.getElementById('stat-value').value) : 0
+    };
+    await supabaseClient.from('top_performers').insert([updates]);
+    closeLeaderboardModal(); fetchLeaderboard();
+}
+
+async function deleteLeaderboard(id) {
+    if (!confirm("Are you sure?")) return;
+    await supabaseClient.from('top_performers').delete().eq('id', id);
+    fetchLeaderboard();
+}
