@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fixtures - SONAIJURI ANCHAL TENNIS PREMIER LEAGUE</title>
+    <link rel="stylesheet" href="home.css">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .fixtures-hero {
+            padding: 120px 0 60px;
+            text-align: center;
+            background: radial-gradient(circle at 50% 0%, rgba(0, 242, 255, 0.1) 0%, transparent 50%);
+        }
+
+        .filter-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 40px;
+        }
+
+        .tab-btn {
+            padding: 12px 25px;
+            border-radius: 30px;
+            border: 1px solid var(--glass-border);
+            background: var(--glass-bg);
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .tab-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            box-shadow: 0 0 20px var(--primary-glow);
+        }
+
+        .fixture-card {
+            display: grid;
+            grid-template-columns: 100px 1fr 100px;
+            align-items: center;
+            padding: 25px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .match-info {
+            font-size: 0.8rem;
+            color: var(--secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+
+        .team-name {
+            font-size: 1.2rem;
+            font-weight: 800;
+        }
+
+        .vs {
+            font-size: 0.9rem;
+            color: var(--text-dim);
+            font-weight: 400;
+        }
+
+        @media (max-width: 768px) {
+            .fixture-card {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="particles-bg"></div>
+    <nav id="main-nav"></nav>
+
+    <header class="fixtures-hero">
+        <div class="container animate-fade">
+            <h1 class="gradient-text" style="font-size: 3.5rem; margin-bottom: 10px;">Match Schedule</h1>
+            <p style="color: var(--text-dim); font-size: 1.1rem;">Follow every moment of SATPL 2026</p>
+        </div>
+    </header>
+
+    <main class="container" style="padding-bottom: 100px;">
+        <div class="filter-tabs animate-fade">
+            <button class="tab-btn active" onclick="filterFixtures('upcoming')">Upcoming Matches</button>
+            <button class="tab-btn" onclick="filterFixtures('completed')">Results</button>
+        </div>
+
+        <div id="fixtures-list" class="animate-fade">
+            <div style="text-align: center; padding: 50px; color: var(--text-dim);">
+                <div class="loading-spinner" style="margin: 0 auto 20px;"></div>
+                Loading fixtures...
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="nav-loader.js"></script>
+    <script>
+        let allFixtures = [];
+
+        async function loadFixtures() {
+            const { data, error } = await supabaseClient
+                .from('fixtures')
+                .select('*')
+                .order('match_date', { ascending: true })
+                .order('match_time', { ascending: true });
+
+            if (error) {
+                console.error("Error loading fixtures:", error.message);
+                return;
+            }
+            allFixtures = data;
+            filterFixtures('upcoming');
+        }
+
+        function filterFixtures(status) {
+            // Update UI Tabs
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.innerText.toLowerCase().includes(status)) btn.classList.add('active');
+            });
+
+            const list = document.getElementById('fixtures-list');
+            const filtered = allFixtures.filter(f => f.status === status);
+
+            if (filtered.length === 0) {
+                list.innerHTML = `<div class="glass" style="padding: 50px; text-align: center; color: var(--text-dim);">No matches found for this category.</div>`;
+                return;
+            }
+
+            list.innerHTML = filtered.map(f => {
+                const date = new Date(f.match_date).toLocaleDateString('en-GB', {
+                    day: 'numeric', month: 'short', year: 'numeric'
+                });
+                return `
+                    <div class="glass fixture-card animate-fade">
+                        <div>
+                            <div class="match-info">Match ${f.match_no}</div>
+                            <div style="font-weight: 700;">${date}</div>
+                            <div style="font-size: 0.85rem; color: var(--text-dim);">${f.match_time.substring(0, 5)}</div>
+                        </div>
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 30px; padding: 0 20px;">
+                            <div class="team-name">${f.team1}</div>
+                            <div class="vs">VS</div>
+                            <div class="team-name">${f.team2}</div>
+                        </div>
+                        <div>
+                            <div class="match-info">Venue</div>
+                            <div style="font-size: 0.9rem;">${f.venue}</div>
+                            <div style="font-size: 0.75rem; color: var(--secondary); margin-top: 5px; font-weight: 800; text-transform: uppercase;">
+                                ${f.status}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadFixtures();
+            // Optional: Init particles if present in home-script.js logic
+        });
+    </script>
+</body>
+
+</html>
