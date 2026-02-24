@@ -25,6 +25,7 @@
                 <button onclick="showSection('leaderboard')">Leaderboard Stats</button>
                 <button onclick="showSection('points')">Points Table</button>
                 <button onclick="showSection('rosters')">Playing Players</button>
+                <button onclick="showSection('gallery')">Gallery Manager</button>
                 <button onclick="showSection('menu')">Menu Settings</button>
                 <button onclick="showSection('settings')">Site Settings</button>
             </nav>
@@ -114,6 +115,11 @@
                         <div class="form-group">
                             <label>Timing / venue Description</label>
                             <input type="text" id="hero-time" class="table-input" placeholder="Finals: Tomorrow 10AM">
+                        </div>
+                        <div class="form-group">
+                            <label>Ground Location (Google Maps URL)</label>
+                            <input type="text" id="hero-map-url" class="table-input"
+                                placeholder="https://maps.google.com/...">
                         </div>
                     </div>
 
@@ -374,6 +380,7 @@
                         <thead>
                             <tr>
                                 <th style="width: 50px;">#</th>
+                                <th style="width: 120px;">Reg No</th>
                                 <th>Player Name</th>
                                 <th>Playing Format</th>
                                 <th style="width: 100px;">WK 🧤</th>
@@ -381,6 +388,32 @@
                         </thead>
                         <tbody id="admin-roster-list">
                             <!-- 13 rows will be generated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="gallery-section" class="admin-section animate-fade">
+                <header class="section-header">
+                    <div>
+                        <h2 class="gradient-text">Gallery Manager</h2>
+                        <p style="color: var(--text-dim); font-size: 0.9rem;">Add or remove tournament highlights</p>
+                    </div>
+                    <button class="btn" onclick="openAddGalleryModal()">+ Add New Photo</button>
+                </header>
+
+                <div class="table-wrapper">
+                    <table class="premium-table">
+                        <thead>
+                            <tr>
+                                <th>Preview</th>
+                                <th>Image URL</th>
+                                <th>Created At</th>
+                                <th style="width: 100px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-gallery-list">
+                            <!-- Populated by JS -->
                         </tbody>
                     </table>
                 </div>
@@ -426,6 +459,17 @@
                                 <label>Facebook Page URL</label>
                                 <input type="text" id="set-facebook" class="table-input"
                                     placeholder="https://facebook.com/...">
+                            </div>
+                            <div class="form-group">
+                                <label>Google Maps Location (URL)</label>
+                                <input type="text" id="set-map-url" class="table-input"
+                                    placeholder="https://maps.google.com/...">
+                            </div>
+                            <div class="form-group">
+                                <label style="color: var(--primary);">Registration Ends In (Countdown Date)</label>
+                                <input type="datetime-local" id="set-reg-end" class="table-input">
+                                <p style="font-size: 0.75rem; color: var(--text-dim); margin-top: 5px;">This date will
+                                    update the countdown timer on the homepage.</p>
                             </div>
                         </div>
 
@@ -716,6 +760,64 @@
                 <div style="margin-top: 30px; display: flex; gap: 15px;">
                     <button type="submit" class="btn" style="flex: 2;">Save Stat 🏆</button>
                     <button type="button" onclick="closeLeaderboardModal()" class="btn-secondary"
+                        style="flex: 1;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="gallery-modal" class="modal-backdrop" style="display: none;">
+        <div class="glass modal-content animate-fade"
+            style="max-width: 500px; width: 90%; margin: 80px auto; padding: 40px; position: relative;">
+            <button onclick="closeGalleryModal()"
+                style="position: absolute; top: 20px; right: 20px; background: none; border: none; font-size: 1.5rem; color: var(--text-dim); cursor: pointer;">✕</button>
+            <h2 id="gallery-modal-title" class="gradient-text" style="margin-bottom: 25px;">Add Gallery Photo</h2>
+            <input type="hidden" id="edit-gallery-id">
+            <div class="filter-tabs" style="margin-bottom: 20px;">
+                <button type="button" class="tab-btn active" id="tab-upload" onclick="switchGalleryTab('upload')">📁
+                    Upload File</button>
+                <button type="button" class="tab-btn" id="tab-link" onclick="switchGalleryTab('link')">🔗 Image
+                    Link</button>
+            </div>
+
+            <form onsubmit="saveGalleryPhoto(event)">
+                <div id="gallery-upload-area">
+                    <div class="form-group">
+                        <label>Select Photo (JPG/PNG)</label>
+                        <input type="file" id="gallery-photo-input" class="table-input" accept="image/*"
+                            onchange="handleGalleryUpload(this)">
+                    </div>
+                </div>
+
+                <div id="gallery-link-area" style="display: none;">
+                    <div class="form-group">
+                        <label>Direct Image URL</label>
+                        <input type="url" id="gallery-link-input" class="table-input"
+                            placeholder="https://example.com/photo.jpg">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top: 15px;">
+                    <label>Photo Orientation</label>
+                    <div style="display: flex; gap: 20px; margin-top: 5px;">
+                        <label
+                            style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem;">
+                            <input type="radio" name="gallery-orientation" value="landscape" checked> 🌅 Landscape
+                            (Wide)
+                        </label>
+                        <label
+                            style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem;">
+                            <input type="radio" name="gallery-orientation" value="portrait"> 📱 Portrait (Tall)
+                        </label>
+                    </div>
+                </div>
+
+                <div id="gallery-photo-preview"
+                    style="margin-top: 15px; text-align: center; border: 1px dashed var(--glass-border); padding: 10px; border-radius: 10px; min-height: 100px; display: flex; align-items: center; justify-content: center;">
+                    <span style="color: var(--text-dim); font-size: 0.8rem;">Photo Preview</span>
+                </div>
+                <div style="margin-top: 30px; display: flex; gap: 15px;">
+                    <button type="submit" id="gallerySubmitBtn" class="btn" style="flex: 2;">Upload Photo 📸</button>
+                    <button type="button" onclick="closeGalleryModal()" class="btn-secondary"
                         style="flex: 1;">Cancel</button>
                 </div>
             </form>
