@@ -295,8 +295,8 @@ async function fetchRegistrations(statusFilter = 'all') {
             <td>
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                     <button onclick="openEditModal('${player.id}')" class="btn" style="font-size: 0.75rem; padding: 5px 10px; background: #3b82f6;">Edit</button>
-                    ${player.registration_no ? `
-                        <a href="id-card.html?reg_no=${player.registration_no}" target="_blank" class="btn" style="font-size: 0.75rem; padding: 5px 10px; background: var(--secondary); color: var(--bg-dark); text-decoration: none;">View ID</a>
+                    ${player.token || player.registration_no ? `
+                        <a href="success.html?id=${player.token || player.registration_no}" target="_blank" class="btn" style="font-size: 0.75rem; padding: 5px 10px; background: var(--secondary); color: var(--bg-dark); text-decoration: none;">View ID</a>
                     ` : ''}
                     ${player.payment_status !== 'paid' ? `
                         <button onclick="updatePaymentStatus('${player.id}', 'paid')" class="btn" style="font-size: 0.75rem; padding: 5px 10px; background: #22c55e;">Confirm</button>
