@@ -1,16 +1,107 @@
 async function loadHomepageContent() {
     console.log("🚀 Initializing SATPL Homepage...");
-
+    initParticles();
     // 1. Initial Load
     await Promise.all([
         loadHeroAndScores(),
         loadPointsTable(),
         loadSiteSettings(),
+        loadNotices(),
+        loadLeaderboard(),
         startCountdown()
     ]).catch(err => console.error("Initial Load Error:", err));
 
     // 2. Setup Real-time Sync (The "Bulletproof" Flow)
     setupRealtimeSync();
+}
+
+async function loadNotices() {
+    const list = document.getElementById('notice-list');
+    const popup = document.getElementById('notice-popup');
+
+    try {
+        // 1. Fetch notices and site settings in parallel
+        const [noticesRes, settingsRes] = await Promise.all([
+            supabaseClient
+                .from('notices')
+                .select('*')
+                .eq('is_active', true)
+                .order('created_at', { ascending: false })
+                .limit(5),
+            supabaseClient
+                .from('site_settings')
+                .select('is_popup_enabled, featured_notice_id')
+                .eq('id', 'global-settings')
+                .single()
+        ]);
+
+        if (noticesRes.error) throw noticesRes.error;
+
+        const data = noticesRes.data;
+        const isPopupEnabled = settingsRes.data ? settingsRes.data.is_popup_enabled : true; // Default to true
+        const featuredNoticeId = settingsRes.data ? settingsRes.data.featured_notice_id : null;
+
+        if (!data || data.length === 0) {
+            if (list) list.innerHTML = `<div style="text-align: center; color: var(--text-dim); padding: 20px;">No new announcements at the moment.</div>`;
+            if (popup) popup.style.display = 'none';
+            return;
+        }
+
+        // 2. Select notice for popup: Featured first, then Latest
+        let popupNotice = data[0]; // Default to latest
+        if (featuredNoticeId) {
+            const featured = data.find(n => n.id === featuredNoticeId);
+            if (featured) {
+                popupNotice = featured;
+            } else {
+                // If featured notice not in the 5 active ones, fetch it specifically
+                const { data: specificNotice } = await supabaseClient
+                    .from('notices')
+                    .select('*')
+                    .eq('id', featuredNoticeId)
+                    .single();
+                if (specificNotice && specificNotice.is_active) {
+                    popupNotice = specificNotice;
+                }
+            }
+        }
+
+        if (popup) {
+            if (isPopupEnabled) {
+                document.getElementById('popup-title').innerText = popupNotice.title;
+                document.getElementById('popup-content').innerText = popupNotice.content || '';
+                popup.style.display = 'flex';
+            } else {
+                popup.style.display = 'none';
+            }
+        }
+
+        list.innerHTML = data.map(notice => {
+            return `
+                <div class="ticker-item">
+                    <span>📢 <strong>${notice.title}:</strong> ${notice.content || ''}</span>
+                </div>
+            `;
+        }).join('') + data.map(notice => { // Duplicate for seamless loop
+            return `
+                <div class="ticker-item">
+                    <span>📢 <strong>${notice.title}:</strong> ${notice.content || ''}</span>
+                </div>
+            `;
+        }).join('');
+
+    } catch (err) {
+        console.error("Error loading notices:", err);
+        list.innerHTML = `<div style="text-align: center; color: var(--primary); padding: 20px;">Unable to load news feed.</div>`;
+    }
+}
+
+function closeNoticePopup() {
+    const popup = document.getElementById('notice-popup');
+    if (popup) {
+        popup.style.display = 'none';
+        // Add a nice exit animation class if needed
+    }
 }
 
 function setupRealtimeSync() {
@@ -31,6 +122,16 @@ function setupRealtimeSync() {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'hero_content' }, () => {
             console.log("🔄 Match Center Updated! Syncing...");
             loadHeroAndScores();
+        })
+        .subscribe();
+
+    // Sync Notices
+    supabaseClient
+        .channel('public:notices')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'notices' }, () => {
+            console.log("🔄 Notices Updated! Syncing...");
+            loadNotices();
+            loadLeaderboard();
         })
         .subscribe();
 }
@@ -55,15 +156,19 @@ async function loadSiteSettings() {
         if (data.whatsapp2) document.getElementById('home-wa2').href = `https://wa.me/91${data.whatsapp2}`;
 
         // Socials
-        if (data.email) document.getElementById('home-email').href = `mailto:${data.email}`;
-        if (data.facebook_url) document.getElementById('home-facebook').href = data.facebook_url;
+        const emailEl = document.getElementById('home-email');
+        const fbEl = document.getElementById('home-facebook');
+        if (data.email && emailEl) emailEl.href = `mailto:${data.email}`;
+        if (data.facebook_url && fbEl) fbEl.href = data.facebook_url;
 
         // QR Code
         const qrContainer = document.getElementById('display-qr-container');
-        if (data.qr_code_url) {
-            qrContainer.innerHTML = `<img src="${data.qr_code_url}" style="width: 250px; height: 250px; border-radius: 20px; border: 5px solid rgba(255,255,255,0.05); background: white; padding: 10px;">`;
-        } else {
-            qrContainer.innerHTML = '<p style="color: var(--text-dim);">Coming Soon</p>';
+        if (qrContainer) {
+            if (data.qr_code_url) {
+                qrContainer.innerHTML = `<img src="${data.qr_code_url}" style="width: 100%; border-radius: 10px; background: white; padding: 5px;">`;
+            } else {
+                qrContainer.innerHTML = '<p style="color: #666; font-size: 0.8rem;">Coming Soon</p>';
+            }
         }
     }
 }
@@ -74,6 +179,29 @@ const MATCH_MAP = {
     'recent-match': '00000000-0000-0000-0000-000000000003',
     'main-hero': '00000001-0001-0001-0001-000000000000'
 };
+
+// --- PARTICLES BACKGROUND ---
+function initParticles() {
+    const container = document.getElementById('particles-bg');
+    if (!container) return;
+
+    for (let i = 0; i < 20; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+
+        const size = Math.random() * 5 + 2 + 'px';
+        particle.style.width = size;
+        particle.style.height = size;
+
+        particle.style.left = Math.random() * 100 + 'vw';
+        particle.style.top = Math.random() * 100 + 'vh';
+
+        particle.style.animationDuration = Math.random() * 15 + 10 + 's';
+        particle.style.animationDelay = Math.random() * 5 + 's';
+
+        container.appendChild(particle);
+    }
+}
 
 async function loadHeroAndScores() {
     console.log("Fetching Match Center data...");
@@ -101,14 +229,20 @@ async function loadHeroAndScores() {
     const liveContainer = document.getElementById('live-score-container');
     if (live && live.team1_name && live.team2_name) {
         liveContainer.style.display = 'block';
-        document.getElementById('display-live-badge').innerText = live.badge || "LIVE MATCH";
+
+        // Use the new pulse indicator
+        const badge = document.getElementById('display-live-badge');
+        badge.innerHTML = `<span class="pulse-dot"></span> ${live.badge || "LIVE MATCH"}`;
+        badge.className = "live-indicator";
+        badge.style.animation = "none"; // Remove blink animation in favor of pulse-dot
+
         document.getElementById('display-live-team1').innerText = live.team1_name;
         document.getElementById('display-live-score1').innerText = live.team1_score || 0;
         document.getElementById('display-live-team2').innerText = live.team2_name;
         document.getElementById('display-live-score2').innerText = live.team2_score || 0;
         document.getElementById('display-live-status').innerText = live.match_status || "";
 
-        // NEW: Detailed Score (Wickets, Overs, Balls)
+        // Detailed Score
         if (document.getElementById('display-live-wickets')) {
             document.getElementById('display-live-wickets').innerText = live.wickets || 0;
             document.getElementById('display-live-overs').innerText = live.overs || 0;
@@ -127,7 +261,12 @@ async function loadHeroAndScores() {
             const batsmanWrap = document.getElementById('display-live-batsman-wrap');
             if (live.batsman1) {
                 batsmanWrap.style.display = 'block';
-                document.getElementById('display-live-batsman').innerText = live.batsman1;
+                const runs = live.batsman1_runs || 0;
+                const balls = live.batsman1_balls || 0;
+                document.getElementById('display-live-batsman').innerHTML = `
+                    <span class="batsman-name">${live.batsman1}</span> 
+                    <span class="batsman-score">${runs} (${balls})</span>
+                `;
             } else {
                 batsmanWrap.style.display = 'none';
             }
@@ -181,23 +320,69 @@ async function loadPointsTable() {
     }
 
     if (!data || data.length === 0) {
-        console.warn('No teams found in points_table');
         list.innerHTML = `<tr><td colspan="6" style="color: var(--text-dim); padding: 20px;">Standings will be updated soon.</td></tr>`;
         return;
     }
 
-    console.log("Standings fetched successfully:", data.length, "teams");
+    list.innerHTML = data.map((team, index) => {
+        const logo = team.logo_url ? `<img src="${team.logo_url}" style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(255,255,255,0.1);">` : '<span class="stat-icon">🛡️</span>';
+        return `
+            <tr>
+                <td>${index + 1}</td>
+                <td style="text-align: left; font-weight: 600;">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        ${logo}
+                        <div>
+                            <div style="font-size: 1rem;">${team.team_name}</div>
+                            ${team.owner_name ? `<div style="font-size: 0.7rem; color: var(--text-dim); font-weight: 400;">Owner: ${team.owner_name}</div>` : ''}
+                        </div>
+                    </div>
+                </td>
+                <td>${team.played}</td>
+                <td>${team.won}</td>
+                <td>${team.lost}</td>
+                <td style="color: var(--secondary); font-weight: 800;">${team.points}</td>
+            </tr>
+        `;
+    }).join('');
+}
 
-    list.innerHTML = data.map((team, index) => `
-        <tr>
-            <td>${index + 1}</td>
-            <td style="text-align: left; font-weight: 600;">${team.team_name}</td>
-            <td>${team.played}</td>
-            <td>${team.won}</td>
-            <td>${team.lost}</td>
-            <td style="color: var(--secondary); font-weight: 800;">${team.points}</td>
-        </tr>
-    `).join('');
+async function loadLeaderboard() {
+    const orangeList = document.getElementById('orange-cap-list');
+    const purpleList = document.getElementById('purple-cap-list');
+    if (!orangeList || !purpleList) return;
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('top_performers')
+            .select('*')
+            .order('runs', { ascending: false })
+            .order('wickets', { ascending: false });
+
+        if (error) throw error;
+
+        const orangeData = data.filter(p => p.category === 'batsman').slice(0, 5);
+        const purpleData = data.filter(p => p.category === 'bowler').slice(0, 5);
+
+        const renderItems = (items, type) => {
+            if (items.length === 0) return '<p style="text-align: center; color: var(--text-dim); padding: 20px;">Results pending...</p>';
+            return items.map(p => `
+                <div class="leaderboard-item">
+                    <div class="player-info">
+                        <h4>${p.player_name}</h4>
+                        <p>${p.team_name || ''}</p>
+                    </div>
+                    <div class="stat-value">${type === 'runs' ? p.runs : p.wickets}</div>
+                </div>
+            `).join('');
+        };
+
+        orangeList.innerHTML = renderItems(orangeData, 'runs');
+        purpleList.innerHTML = renderItems(purpleData, 'wickets');
+
+    } catch (err) {
+        console.error("Leaderboard Error:", err);
+    }
 }
 
 
