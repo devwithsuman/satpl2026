@@ -33,6 +33,7 @@ function showSection(sectionId) {
         if (sectionId === 'announcements') fetchNotices();
         if (sectionId === 'fixtures') fetchFixtures();
         if (sectionId === 'leaderboard') fetchLeaderboard();
+        if (sectionId === 'gallery') fetchGallery();
     }
 }
 
@@ -71,6 +72,7 @@ async function loadHero(matchKey = currentMatchIdKey) {
         document.getElementById("hero-team2-name").value = "";
         document.getElementById("hero-team2-score").value = "0";
         document.getElementById("hero-time").value = "";
+        if (document.getElementById("hero-map-url")) document.getElementById("hero-map-url").value = "";
 
         // Reset Scoring fields too
         if (document.getElementById("hero-wickets")) {
@@ -93,6 +95,7 @@ async function loadHero(matchKey = currentMatchIdKey) {
     document.getElementById("hero-team2-name").value = data.team2_name || "";
     document.getElementById("hero-team2-score").value = data.team2_score || 0;
     document.getElementById("hero-time").value = data.match_status || "";
+    if (document.getElementById("hero-map-url")) document.getElementById("hero-map-url").value = data.map_url || "";
 
     // Detailed Scoring Fields
     if (document.getElementById("hero-wickets")) {
@@ -135,7 +138,8 @@ async function saveHero() {
         target: Number(document.getElementById("hero-target").value) || 0,
         batsman1: document.getElementById("hero-batsman1").value,
         batsman1_runs: Number(document.getElementById("hero-batsman1-runs").value) || 0,
-        batsman1_balls: Number(document.getElementById("hero-batsman1-balls").value) || 0
+        batsman1_balls: Number(document.getElementById("hero-batsman1-balls").value) || 0,
+        map_url: document.getElementById("hero-map-url").value
     };
 
     const { error } = await supabaseClient.from("hero_content").upsert([updates]);
@@ -636,10 +640,16 @@ async function fetchAdminRoster() {
     // Generate 13 rows
     let rowsHtml = "";
     for (let i = 0; i < 13; i++) {
-        const p = (data && data[i]) || { player_name: "", playing_format: "Allrounder", is_wicket_keeper: false };
+        const p = (data && data[i]) || { reg_no: "", player_name: "", playing_format: "Allrounder", is_wicket_keeper: false };
         rowsHtml += `
-            <tr data-index="${i}" data-id="${p.id || ''}">
+            <tr data-index="${i}" data-id="${p.id || ''}" data-batting="${p.batting_style || ''}" data-bowling="${p.bowling_style || ''}">
                 <td style="color: var(--text-dim);">${i + 1}</td>
+                <td>
+                    <div style="display: flex; gap: 5px; align-items: center;">
+                        <input type="text" class="table-input player-reg" value="${p.reg_no || ''}" placeholder="Reg No" style="width: 100px;">
+                        <button class="btn" style="padding: 5px 8px; font-size: 0.8rem; background: var(--secondary); color: var(--bg-dark);" onclick="handleRosterRegNoInput(this)">🔍</button>
+                    </div>
+                </td>
                 <td><input type="text" class="table-input player-name" value="${p.player_name}" placeholder="Player Name"></td>
                 <td>
                     <select class="table-input player-format">
@@ -657,6 +667,66 @@ async function fetchAdminRoster() {
     list.innerHTML = rowsHtml;
 }
 
+async function handleRosterRegNoInput(btn) {
+    const row = btn.closest('tr');
+    const input = row.querySelector('.player-reg');
+    const regNo = input.value.trim();
+
+    if (!regNo) return alert("Please enter a Registration No first!");
+
+    const originalText = btn.innerText;
+    btn.innerText = "⏳";
+    btn.disabled = true;
+
+    console.log(`🔍 Fetching details for Registration No: ${regNo}...`);
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('player_registrations')
+            .select('*')
+            .eq('registration_no', regNo)
+            .single();
+
+        if (error || !data) {
+            alert("❌ Player not found with this Registration No.");
+            return;
+        }
+
+        // Auto-fill the fields from database
+        row.querySelector('.player-name').value = data.player_name || "";
+
+        // Auto-select Role/Format (Intelligent Mapping)
+        const formatSelect = row.querySelector('.player-format');
+        const isBatsman = data.batting && data.batting !== 'no';
+        const isBowler = data.bowling && data.bowling !== 'no';
+
+        if (isBatsman && isBowler) {
+            formatSelect.value = "Allrounder";
+        } else if (isBatsman) {
+            formatSelect.value = "Batting";
+        } else if (isBowler) {
+            formatSelect.value = "Bowling";
+        }
+
+        const wkCheck = row.querySelector('.player-wk');
+        wkCheck.checked = (data.wicket_keeper && data.wicket_keeper.toLowerCase() === "yes");
+
+        // Store descriptive styles for display on squads page
+        const battingMap = { 'right': 'Right Hand Bat', 'left': 'Left Hand Bat', 'no': '' };
+        const bowlingMap = { 'right': 'Right Arm Bowl', 'left': 'Left Arm Bowl', 'no': '' };
+
+        row.dataset.batting = battingMap[data.batting] || "";
+        row.dataset.bowling = bowlingMap[data.bowling] || "";
+
+        console.log("✅ Player details (Format, Style, WK) auto-filled!");
+    } catch (err) {
+        console.error("Fetch Error:", err);
+    } finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
+}
+
 async function saveRoster() {
     const teamId = document.getElementById("roster-team-select").value;
     const teamName = document.getElementById("roster-team-select").options[document.getElementById("roster-team-select").selectedIndex].text;
@@ -667,13 +737,18 @@ async function saveRoster() {
 
     rows.forEach(row => {
         const name = row.querySelector(".player-name").value.trim();
+        const regNo = row.querySelector(".player-reg").value.trim();
         if (name) {
             const player = {
                 team_id: parseInt(teamId),
-                team_name: teamName, // Keep for display/backup
+                team_name: teamName,
                 player_name: name,
+                reg_no: regNo,
                 playing_format: row.querySelector(".player-format").value,
-                is_wicket_keeper: row.querySelector(".player-wk").checked
+                is_wicket_keeper: row.querySelector(".player-wk").checked,
+                // Extra details from dataset (stored during auto-fetch or existing data)
+                batting_style: row.dataset.batting || "",
+                bowling_style: row.dataset.bowling || ""
             };
             if (row.dataset.id) player.id = row.dataset.id;
             players.push(player);
@@ -709,6 +784,12 @@ async function loadSettings() {
         document.getElementById("set-whatsapp2").value = data.whatsapp2 || "";
         document.getElementById("set-email").value = data.email || "";
         document.getElementById("set-facebook").value = data.facebook_url || "";
+        if (document.getElementById("set-map-url")) {
+            document.getElementById("set-map-url").value = data.map_url || "";
+        }
+        if (document.getElementById("set-reg-end")) {
+            document.getElementById("set-reg-end").value = data.reg_end_date || "";
+        }
 
         if (data.qr_code_url) {
             document.getElementById("qr-preview").innerHTML = `<img src="${data.qr_code_url}" style="width: 150px; height: 150px; border-radius: 10px; border: 1px solid var(--glass-border);">`;
@@ -764,7 +845,9 @@ async function saveSettings() {
         whatsapp1: document.getElementById("set-whatsapp1").value,
         whatsapp2: document.getElementById("set-whatsapp2").value,
         email: document.getElementById("set-email").value,
-        facebook_url: document.getElementById("set-facebook").value
+        facebook_url: document.getElementById("set-facebook").value,
+        map_url: document.getElementById("set-map-url").value,
+        reg_end_date: document.getElementById("set-reg-end").value
     };
 
     if (qrUrl) settings.qr_code_url = qrUrl;
@@ -811,7 +894,8 @@ async function init() {
             { name: "Points", fn: fetchAdminPoints },
             { name: "Roster Teams", fn: loadRosterTeams },
             { name: "Settings", fn: loadSettings },
-            { name: "Navigation Menu", fn: fetchAdminMenu }
+            { name: "Navigation Menu", fn: fetchAdminMenu },
+            { name: "Gallery", fn: fetchGallery }
         ];
 
         for (const task of tasks) {
@@ -1092,4 +1176,232 @@ async function deleteLeaderboard(id) {
     if (!confirm("Are you sure?")) return;
     await supabaseClient.from('top_performers').delete().eq('id', id);
     fetchLeaderboard();
+}
+
+// ================= GALLERY MANAGER =================
+async function fetchGallery() {
+    console.log("📸 Fetching Gallery Photos...");
+    const list = document.getElementById('admin-gallery-list');
+    if (!list) return;
+
+    const { data, error } = await supabaseClient
+        .from('gallery')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error("Gallery Fetch Error:", error.message);
+        return;
+    }
+
+    list.innerHTML = data.map(photo => `
+        <tr>
+            <td>
+                <img src="${photo.image_url}" style="width: 80px; height: 50px; object-fit: cover; border-radius: 8px; border: 1px solid var(--glass-border);">
+            </td>
+            <td style="font-size: 0.8rem; color: var(--text-dim); max-width: 200px; overflow: hidden; text-overflow: ellipsis;">
+                ${photo.image_url}
+            </td>
+            <td style="font-size: 0.85rem;">${new Date(photo.created_at).toLocaleDateString()}</td>
+            <td><span class="status-badge ${photo.orientation === 'landscape' ? 'paid' : 'pending'}">${photo.orientation?.toUpperCase() || 'LANDSCAPE'}</span></td>
+            <td>
+                <div style="display: flex; gap: 5px;">
+                    <button class="btn-secondary" style="background: var(--secondary); color: var(--bg-dark); border: none; padding: 5px 10px;" onclick='editGalleryPhoto(${JSON.stringify(photo)})'>Edit</button>
+                    <button class="btn-secondary" style="background: #ef4444; border: none; padding: 5px 10px;" onclick="deleteGalleryPhoto('${photo.id}', '${photo.image_url}')">Del</button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function openGalleryModal(isEdit = false) {
+    document.getElementById('gallery-modal-title').innerText = isEdit ? "Edit Photo Alignment" : "Add Gallery Photo";
+    document.getElementById('edit-gallery-id').value = isEdit ? currentEditingPhotoId || "" : "";
+
+    if (!isEdit) {
+        document.getElementById('gallery-photo-input').value = '';
+        document.getElementById('gallery-link-input').value = '';
+        document.getElementById('gallery-photo-preview').innerHTML = '<span style="color: var(--text-dim); font-size: 0.8rem;">Photo Preview</span>';
+        galleryPhotoFile = null;
+        switchGalleryTab('upload');
+    }
+    document.getElementById('gallery-modal').style.display = 'flex';
+}
+
+let currentEditingPhotoId = null;
+let currentEditingPhotoUrl = null;
+function editGalleryPhoto(photo) {
+    currentEditingPhotoId = photo.id;
+    currentEditingPhotoUrl = photo.image_url;
+    openGalleryModal(true);
+
+    // Set orientation
+    document.querySelector(`input[name="gallery-orientation"][value="${photo.orientation || 'landscape'}"]`).checked = true;
+
+    // Show preview of existing
+    document.getElementById('gallery-photo-preview').innerHTML = `<img src="${photo.image_url}" style="max-width: 100%; max-height: 200px; border-radius: 8px;">`;
+
+    // Show all tabs so user can change the photo
+    document.querySelector('.filter-tabs').style.display = 'flex';
+    document.getElementById('gallery-upload-area').style.display = 'block';
+    document.getElementById('gallery-link-area').style.display = 'none';
+    switchGalleryTab('upload');
+
+    document.getElementById('gallerySubmitBtn').innerText = "Update Photo & Alignment 💾";
+}
+
+// Update openGalleryModal to show tabs again when adding
+function openAddGalleryModal() {
+    document.querySelector('.filter-tabs').style.display = 'flex';
+    document.getElementById('gallery-upload-area').style.display = 'block';
+    document.getElementById('gallerySubmitBtn').innerText = "Upload Photo 📸";
+    openGalleryModal(false);
+}
+
+function closeGalleryModal() {
+    document.getElementById('gallery-modal').style.display = 'none';
+}
+
+let activeGalleryTab = 'upload';
+function switchGalleryTab(tab) {
+    activeGalleryTab = tab;
+    document.getElementById('tab-upload').classList.toggle('active', tab === 'upload');
+    document.getElementById('tab-link').classList.toggle('active', tab === 'link');
+    document.getElementById('gallery-upload-area').style.display = tab === 'upload' ? 'block' : 'none';
+    document.getElementById('gallery-link-area').style.display = tab === 'link' ? 'block' : 'none';
+
+    // Clear other input
+    if (tab === 'upload') document.getElementById('gallery-link-input').value = '';
+    else {
+        document.getElementById('gallery-photo-input').value = '';
+        galleryPhotoFile = null;
+        document.getElementById('gallery-photo-preview').innerHTML = '<span style="color: var(--text-dim); font-size: 0.8rem;">Photo Preview</span>';
+    }
+}
+
+let galleryPhotoFile = null;
+function handleGalleryUpload(input) {
+    const previewEl = document.getElementById('gallery-photo-preview');
+    if (input.files && input.files[0]) {
+        galleryPhotoFile = input.files[0];
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            previewEl.innerHTML = `<img src="${e.target.result}" style="max-width: 100%; max-height: 200px; border-radius: 8px;">`;
+        };
+        reader.readAsDataURL(galleryPhotoFile);
+    }
+}
+
+async function saveGalleryPhoto(event) {
+    event.preventDefault();
+
+    let imageUrl = "";
+    const btn = document.getElementById('gallerySubmitBtn');
+    const originalText = btn.innerText;
+    const orientation = document.querySelector('input[name="gallery-orientation"]:checked').value;
+    const editId = document.getElementById('edit-gallery-id').value;
+
+    if (!editId) {
+        if (activeGalleryTab === 'upload') {
+            if (!galleryPhotoFile) return alert("Select a photo first!");
+        } else {
+            imageUrl = document.getElementById('gallery-link-input').value.trim();
+            if (!imageUrl) return alert("Enter image URL first!");
+        }
+    }
+    btn.disabled = true;
+    btn.innerText = "⏳ Uploading...";
+
+    try {
+        if (!editId) {
+            // --- ADD NEW PHOTO ---
+            if (activeGalleryTab === 'upload') {
+                const timestamp = Date.now();
+                const ext = galleryPhotoFile.name.split('.').pop();
+                const fileName = `gallery_${timestamp}.${ext}`;
+
+                const { data: uploadData, error: uploadError } = await supabaseClient.storage
+                    .from('player-photos')
+                    .upload(fileName, galleryPhotoFile);
+
+                if (uploadError) throw uploadError;
+
+                const { data: publicUrlData } = supabaseClient.storage
+                    .from('player-photos')
+                    .getPublicUrl(fileName);
+
+                imageUrl = publicUrlData.publicUrl;
+            }
+
+            const { error: dbError } = await supabaseClient
+                .from('gallery')
+                .insert([{
+                    image_url: imageUrl,
+                    orientation: orientation
+                }]);
+
+            if (dbError) throw dbError;
+            alert("✅ Photo added to gallery!");
+        } else {
+            // --- EDIT EXISTING PHOTO ---
+            let updates = { orientation: orientation };
+
+            // Check if user provided a new image
+            if (activeGalleryTab === 'upload' && galleryPhotoFile) {
+                const timestamp = Date.now();
+                const ext = galleryPhotoFile.name.split('.').pop();
+                const fileName = `gallery_${timestamp}.${ext}`;
+
+                const { data: uploadData, error: uploadError } = await supabaseClient.storage
+                    .from('player-photos')
+                    .upload(fileName, galleryPhotoFile);
+
+                if (uploadError) throw uploadError;
+
+                const { data: publicUrlData } = supabaseClient.storage
+                    .from('player-photos')
+                    .getPublicUrl(fileName);
+
+                updates.image_url = publicUrlData.publicUrl;
+            } else if (activeGalleryTab === 'link' && document.getElementById('gallery-link-input').value.trim()) {
+                updates.image_url = document.getElementById('gallery-link-input').value.trim();
+            }
+
+            const { error: dbError } = await supabaseClient
+                .from('gallery')
+                .update(updates)
+                .eq('id', editId);
+
+            if (dbError) throw dbError;
+            alert("✅ Gallery item updated successfully!");
+        }
+
+        closeGalleryModal();
+        fetchGallery();
+    } catch (err) {
+        alert("❌ Error: " + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerText = originalText;
+    }
+}
+
+async function deleteGalleryPhoto(id, url) {
+    if (!confirm("Remove this photo from gallery?")) return;
+
+    try {
+        // 1. Delete from DB
+        const { error: dbError } = await supabaseClient.from('gallery').delete().eq('id', id);
+        if (dbError) throw dbError;
+
+        // 2. Try to delete from storage if it's our URL
+        if (url.includes('player-photos')) {
+            const fileName = url.split('/').pop();
+            await supabaseClient.storage.from('player-photos').remove([fileName]);
+        }
+
+        fetchGallery();
+    } catch (err) {
+        alert("Error deleting: " + err.message);
+    }
 }
