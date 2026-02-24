@@ -27,19 +27,19 @@ async function loadNavbar() {
 
             navContainers.forEach(container => container.innerHTML = navHtml);
         } else {
-            // Static Fallback
+            console.warn("No nav items found in DB, using fallback.");
             const navHtml = `
                 <a href="index.html" class="btn-secondary">Home</a>
-                <a href="squads.html" class="btn-secondary">Squads</a>
+                <a href="fixtures.html" class="btn-secondary">Fixtures</a>
                 <a href="registration.html" class="btn btn-red-blink">Register Now</a>
             `;
             navContainers.forEach(container => container.innerHTML = navHtml);
         }
     } catch (err) {
-        console.warn("Navbar loading failed, using fallback:", err);
+        console.error("Navbar loading CRITICAL failure:", err);
         const navHtml = `
             <a href="index.html" class="btn-secondary">Home</a>
-            <a href="squads.html" class="btn-secondary">Squads</a>
+            <a href="fixtures.html" class="btn-secondary">Fixtures</a>
             <a href="registration.html" class="btn btn-red-blink">Register Now</a>
         `;
         navContainers.forEach(container => container.innerHTML = navHtml);
