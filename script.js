@@ -169,7 +169,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     currency: "INR",
                     name: "SATPL 2026",
                     description: "Player Registration Fee",
-                    image: "https://satpl-2026.vercel.app/logo.png", // Attempt to use a logo if available
+                    image: "IMG.svg", // Use the localized IMG.svg logo
                     prefill: {
                         name: playerName,
                         contact: mobile,
