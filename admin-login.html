@@ -32,72 +32,51 @@
         const loginForm = document.getElementById("loginForm");
         const errorMsg = document.getElementById("errorMsg");
 
-        // Connection Check
-        async function checkConnection() {
-            try {
-                if (typeof window.supabase === 'undefined') {
-                    throw new Error("Supabase library not loaded. Check internet connection or script tag.");
-                }
-
-                if (typeof window.supabaseClient === 'undefined') {
-                    throw new Error("Supabase client (config) not loaded correctly.");
-                }
-
-                // Test connection
-                const { error } = await supabaseClient.from('hero_content').select('id').limit(1);
-
-                if (error) {
-                    console.error("Supabase Error:", error);
-                    if (error.code === 'PGRST116' || error.message.includes('not found')) {
-                        console.log("Supabase Connection: OK (Table might be missing)");
-                    } else if (error.message.includes('Invalid API key') || error.code === '401') {
-                        errorMsg.innerText = "Error: Invalid Supabase API Key.";
-                    } else {
-                        errorMsg.innerText = "Error: " + error.message;
-                    }
-                } else {
-                    console.log("Supabase Connection: OK");
-                }
-            } catch (err) {
-                console.error("Diagnostic Error:", err);
-                errorMsg.innerText = "Error: " + err.message;
-            }
-        }
-        checkConnection();
-
         loginForm.addEventListener("submit", async (e) => {
             e.preventDefault();
             const submitBtn = e.target.querySelector('button');
             const originalBtnText = submitBtn.innerText;
 
             submitBtn.disabled = true;
-            submitBtn.innerText = "Verifying...";
+            submitBtn.innerText = "Logging In...";
             errorMsg.innerText = "";
             errorMsg.style.color = "var(--secondary)";
 
             const email = document.getElementById("email").value.trim();
             const password = document.getElementById("password").value;
 
+            if (!email || !password) {
+                errorMsg.style.color = "#ff4d8d";
+                errorMsg.innerText = "❌ Please enter both email and password.";
+                submitBtn.disabled = false;
+                submitBtn.innerText = originalBtnText;
+                return;
+            }
+
             try {
-                const { data, error } = await supabaseClient.auth.signInWithPassword({
-                    email,
-                    password
-                });
+                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
                 if (error) {
                     console.error("Login Error:", error);
-                    let message = error.message;
-                    if (message.includes("Email not confirmed")) {
-                        message = "Please confirm your email in Supabase.";
-                    } else if (message.includes("Invalid login credentials")) {
-                        message = "Invalid email or password.";
+                    let message = "Login failed. Please try again.";
+
+                    if (error.message.includes("Email not confirmed")) {
+                        message = "Your email is not confirmed. Please check your inbox and confirm it in Supabase Auth settings.";
+                    } else if (error.message.includes("Invalid login credentials") || error.message.includes("invalid_credentials")) {
+                        message = "Wrong email or password. Double-check and try again.";
+                    } else if (error.message.includes("network") || error.message.includes("fetch")) {
+                        message = "Network error. Check your internet connection.";
+                    } else {
+                        message = error.message;
                     }
+
                     errorMsg.style.color = "#ff4d8d";
                     errorMsg.innerText = "❌ " + message;
                     submitBtn.disabled = false;
                     submitBtn.innerText = originalBtnText;
                 } else {
-                    console.log("Login Success:", data);
+                    console.log("✅ Login Success:", data.user?.email);
+                    errorMsg.style.color = "#22c55e";
                     errorMsg.innerText = "✅ Login successful! Redirecting...";
                     setTimeout(() => {
                         window.location.href = "admin.html";
@@ -106,7 +85,7 @@
             } catch (err) {
                 console.error("Unexpected Error:", err);
                 errorMsg.style.color = "#ff4d8d";
-                errorMsg.innerText = "❌ An unexpected error occurred.";
+                errorMsg.innerText = "❌ Unexpected error: " + err.message;
                 submitBtn.disabled = false;
                 submitBtn.innerText = originalBtnText;
             }
