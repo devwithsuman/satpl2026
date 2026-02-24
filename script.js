@@ -296,15 +296,21 @@ document.addEventListener("DOMContentLoaded", () => {
                     const player = data[0];
                     console.log("Player found:", player);
 
+                    const isPaid = player.payment_status === 'paid';
+                    const downloadBtn = isPaid && player.registration_no
+                        ? `<a href="success.html?reg_no=${player.registration_no}" class="btn" style="display: block; margin-top: 20px; text-decoration: none;">Download Digital ID Card 📥</a>`
+                        : '';
+
                     statusResult.innerHTML = `
                         <div style="text-align: center;">
                             <p style="color: #00ffa3; font-weight: bold; margin-bottom: 10px;">✅ Registration Found!</p>
                             <h4 style="margin-bottom: 15px; color: #fff; font-size: 1.1rem;">${player.player_name}</h4>
                             <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px;">
                                 <p style="font-size: 0.8rem; color: #aaa; margin-bottom: 5px;">Registration Number</p>
-                                <p style="font-size: 1.2rem; color: #ff0000; font-family: monospace; font-weight: bold;">${player.registration_no || "PROCESING PAYMENT..."}</p>
+                                <p style="font-size: 1.2rem; color: #ff0000; font-family: monospace; font-weight: bold;">${player.registration_no || "PROCESSING PAYMENT..."}</p>
                             </div>
-                            <p style="margin-top: 15px; font-size: 0.9rem;">Payment Status: <strong style="color: ${player.payment_status === 'paid' ? '#00ffa3' : '#ff4d8d'}">${player.payment_status.toUpperCase()}</strong></p>
+                            <p style="margin-top: 15px; font-size: 0.9rem;">Payment Status: <strong style="color: ${isPaid ? '#00ffa3' : '#ff4d8d'}">${player.payment_status.toUpperCase()}</strong></p>
+                            ${downloadBtn}
                         </div>
                     `;
                 } else {
