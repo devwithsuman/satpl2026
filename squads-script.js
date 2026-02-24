@@ -70,9 +70,17 @@ async function loadTeamRoster(teamId, btn) {
                         <tr>
                             <td>${index + 1}</td>
                             <td style="text-align: left; font-weight: 600;">
-                                <span style="margin-right: 8px;">${formatIcon}</span>
-                                ${p.player_name} 
-                                ${p.is_wicket_keeper ? '<span title="Wicket Keeper" style="margin-left: 10px;">🧤</span>' : ''}
+                                <div style="display: flex; flex-direction: column; gap: 4px;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="font-size: 1.1rem;">${formatIcon}</span>
+                                        ${p.player_name}
+                                        ${p.is_wicket_keeper ? '<span title="Wicket Keeper" style="background: var(--primary); color: white; font-size: 0.6rem; padding: 2px 5px; border-radius: 4px;">WK 🧤</span>' : ''}
+                                    </div>
+                                    <div style="font-size: 0.75rem; color: var(--text-dim); display: flex; gap: 10px; margin-left: 28px;">
+                                        ${p.batting_style ? `<span>🏏 ${p.batting_style}</span>` : ''}
+                                        ${p.bowling_style ? `<span>🎾 ${p.bowling_style}</span>` : ''}
+                                    </div>
+                                </div>
                             </td>
                             <td>
                                 <span class="player-format-badge ${p.playing_format.toLowerCase()}">${p.playing_format}</span>
