@@ -188,8 +188,20 @@ async function fetchAdminMenu() {
         .select("*")
         .order("order_index", { ascending: true });
 
-    if (data) {
+    if (data && data.length > 0) {
         list.innerHTML = data.map(item => createMenuRowHtml(item)).join("");
+    } else {
+        // Auto-populate with default items if DB is empty
+        console.warn("No nav items found, seeding defaults...");
+        const defaults = [
+            { label: 'Home', link: 'index.html', order_index: 1, is_active: true },
+            { label: 'Fixtures', link: 'fixtures.html', order_index: 2, is_active: true },
+            { label: 'Register Now', link: 'registration.html', order_index: 3, is_active: true },
+        ];
+        list.innerHTML = defaults.map(item => createMenuRowHtml(item)).join("");
+        // Auto-save defaults to the DB
+        await supabaseClient.from("nav_menu").insert(defaults);
+        console.log("✅ Default nav items seeded to database.");
     }
 }
 
@@ -279,6 +291,9 @@ async function fetchRegistrations(statusFilter = 'all') {
             <td>
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                     <button onclick="openEditModal('${player.id}')" class="btn" style="font-size: 0.75rem; padding: 5px 10px; background: #3b82f6;">Edit</button>
+                    ${player.registration_no ? `
+                        <a href="id-card.html?reg_no=${player.registration_no}" target="_blank" class="btn" style="font-size: 0.75rem; padding: 5px 10px; background: var(--secondary); color: var(--bg-dark); text-decoration: none;">View ID</a>
+                    ` : ''}
                     ${player.payment_status !== 'paid' ? `
                         <button onclick="updatePaymentStatus('${player.id}', 'paid')" class="btn" style="font-size: 0.75rem; padding: 5px 10px; background: #22c55e;">Confirm</button>
                     ` : ''}
@@ -304,18 +319,18 @@ async function updatePaymentStatus(id, status) {
         // If newly paid and has no registration_no, generate it
         if (status === 'paid' && updated && updated[0] && !updated[0].registration_no) {
             const playerRow = updated[0];
-            const serial = playerRow.reg_serial || playerRow.id;
-            const serialNum = parseInt(serial);
-            const registrationNo = `OSATPL01S${(serialNum + 2000).toString().padStart(4, "0")}`;
+            const serialNum = parseInt(playerRow.reg_serial);
+            if (!isNaN(serialNum)) {
+                const registrationNo = `OSATPL01S${(serialNum + 2000).toString().padStart(4, "0")}`;
+                console.log("Confirmed Reg No:", registrationNo, "from Serial:", serialNum);
 
-            console.log("Confirmed Reg No:", registrationNo, "from Serial:", serial);
+                const { error: regError } = await supabaseClient
+                    .from("player_registrations")
+                    .update({ registration_no: registrationNo })
+                    .eq("id", id);
 
-            const { error: regError } = await supabaseClient
-                .from("player_registrations")
-                .update({ registration_no: registrationNo })
-                .eq("id", id);
-
-            if (regError) console.warn("Error generating reg_no:", regError.message);
+                if (regError) console.warn("Error generating reg_no:", regError.message);
+            }
         }
 
         fetchRegistrations();
@@ -554,8 +569,6 @@ async function fetchAdminPoints() {
 
     console.log("Points Table Data Loaded:", data);
 
-    console.log("Points Table Data Loaded:", data);
-
     list.innerHTML = data.map(team => `
         <tr data-id="${team.id}">
             <td><input type="text" value="${team.team_name || ''}" class="table-input team-name-input"></td>
@@ -781,16 +794,11 @@ async function togglePopupSetting(enabled) {
 
 // ================= INIT =================
 async function init() {
-    // Safety Check: Ensure supabaseClient is defined
+    // Safety Check: Ensure supabaseClient is defined (it's global now via 'var' in supabase-config.js)
     if (typeof window.supabaseClient === 'undefined') {
         console.error("🚨 Supabase Client is not defined! Ensure supabase-config.js is correctly included in HTML.");
-        alert("Critical Error: Database connection (supabaseClient) not found. Please refresh the page.");
+        alert("Critical Error: Database connection not found. Please refresh the page.");
         return;
-    }
-
-    // Alias global to local if needed
-    if (typeof supabaseClient === 'undefined') {
-        window.supabaseClient = window.supabaseClient;
     }
 
     try {
