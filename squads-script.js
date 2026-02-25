@@ -83,10 +83,11 @@ async function loadTeamRoster(teamId, btn) {
                         <tr>
                             <td>${index + 1}</td>
                             <td style="text-align: left; font-weight: 600;">
-                                <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <div style="display: flex; flex-direction: column; gap: 4px; cursor: pointer;" 
+                                     onclick="openPlayerStarCard('${p.reg_no}', '${p.player_name.replace(/'/g, "\\'")}', '${p.playing_format}', '${p.batting_style || ''}', '${p.bowling_style || ''}', ${p.is_wicket_keeper})">
                                     <div style="display: flex; align-items: center; gap: 8px;">
                                         <span style="font-size: 1.1rem;">${formatIcon}</span>
-                                        ${p.player_name}
+                                        <span class="player-link-hover">${p.player_name}</span>
                                         ${p.is_wicket_keeper ? '<span title="Wicket Keeper" style="background: var(--primary); color: white; font-size: 0.6rem; padding: 2px 5px; border-radius: 4px;">WK 🧤</span>' : ''}
                                     </div>
                                     <div style="font-size: 0.75rem; color: var(--text-dim); display: flex; gap: 10px; margin-left: 28px;">
@@ -108,5 +109,113 @@ async function loadTeamRoster(teamId, btn) {
 
     list.innerHTML = tableHtml;
 }
+
+// Configure PDF.js worker
+if (typeof pdfjsLib !== 'undefined') {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+}
+
+// Helper for PDF to Image
+async function renderPdfPhoto(url, imgElement) {
+    try {
+        if (typeof pdfjsLib === 'undefined') return;
+        const loadingTask = pdfjsLib.getDocument(url);
+        const pdf = await loadingTask.promise;
+        const page = await pdf.getPage(1);
+        const viewport = page.getViewport({ scale: 2.0 });
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+        await page.render({ canvasContext: context, viewport: viewport }).promise;
+        imgElement.src = canvas.toDataURL('image/jpeg', 0.9);
+    } catch (err) {
+        console.error("PDF Render Error:", err);
+    }
+}
+
+// --- Player Star Card Logic ---
+window.openPlayerStarCard = async function (regNo, name, format, batting, bowling, isWK) {
+    const modal = document.getElementById('player-modal');
+    const body = document.getElementById('player-card-body');
+
+    // Show empty loader card first
+    body.innerHTML = '<div style="padding: 100px; text-align: center;"><div class="loading-spinner"></div> Loading Player Profile...</div>';
+    modal.style.display = 'flex';
+
+    // Fetch Full Profile for Photo
+    console.log(`🔍 Loading Star Card for: ${name} (Reg: ${regNo})`);
+    let photoUrl = 'https://via.placeholder.com/400x400?text=SATPL+Player';
+    let teamName = "SATPL 2026";
+
+    if (regNo) {
+        try {
+            const { data, error } = await supabaseClient
+                .from('player_registrations')
+                .select('photo_url')
+                .eq('registration_no', regNo.trim())
+                .maybeSingle();
+
+            if (data && data.photo_url) {
+                photoUrl = data.photo_url;
+            }
+        } catch (e) {
+            console.error("❌ Profile Fetch Error:", e);
+        }
+    }
+
+    // Try to get team name from active filter
+    const activeBtn = document.querySelector('.roster-filter-btn.active-filter');
+    if (activeBtn) teamName = activeBtn.innerText.trim();
+
+    body.innerHTML = `
+        <div class="player-card-hero" style="background: #1a1a1a;">
+            <img id="modal-player-photo" src="${photoUrl}" alt="${name}" onerror="this.src='https://via.placeholder.com/400x400?text=No+Photo+Found'">
+            <div class="verified-badge">✓ VERIFIED PLAYER</div>
+        </div>
+        <div class="player-card-info">
+            <div class="player-name-main gradient-text">${name}</div>
+            <div class="player-reg-id">REG ID: ${regNo || 'PENDING'}</div>
+            <hr style="opacity: 0.1; margin: 20px 0;">
+            <div class="player-stats-grid">
+                <div class="stat-item">
+                    <div class="stat-label">Role</div>
+                    <div class="stat-value" style="color: var(--secondary);">${format} ${isWK ? '(WK)' : ''}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Batting</div>
+                    <div class="stat-value">${batting || 'Not Specified'}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Bowling</div>
+                    <div class="stat-value">${bowling || 'Not Specified'}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Team</div>
+                    <div class="stat-value" style="color: var(--secondary);">${teamName}</div>
+                </div>
+            </div>
+            <div style="margin-top: 30px;">
+                <button class="btn" style="width: 100%;" onclick="closePlayerModal()">Close Profile</button>
+            </div>
+        </div>
+    `;
+
+    // Handle PDF rendering if needed
+    if (photoUrl.toLowerCase().endsWith('.pdf')) {
+        const imgEl = document.getElementById('modal-player-photo');
+        renderPdfPhoto(photoUrl, imgEl);
+    }
+};
+
+window.closePlayerModal = function () {
+    document.getElementById('player-modal').style.display = 'none';
+};
+
+// Close modal on background click
+window.addEventListener('click', (e) => {
+    const modal = document.getElementById('player-modal');
+    if (e.target === modal) closePlayerModal();
+});
 
 document.addEventListener('DOMContentLoaded', initSquads);
