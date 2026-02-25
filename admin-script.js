@@ -175,13 +175,23 @@ function quickBall() {
     let b = parseInt(ballsVal.value) || 0;
     let o = parseInt(oversVal.value) || 0;
 
+    if (o >= 6) {
+        showToast("Innings limit (6 overs) reached!", "info");
+        return;
+    }
+
     b++;
     if (b >= 6) {
         b = 0;
         o++;
     }
+
     ballsVal.value = b;
     oversVal.value = o;
+
+    if (o === 6 && b === 0) {
+        showToast("Innings Completed (6.0 Overs)", "success");
+    }
 }
 
 // ================= NAVIGATION MENU =================
@@ -576,50 +586,115 @@ async function fetchAdminPoints() {
     list.innerHTML = data.map(team => `
         <tr data-id="${team.id}">
             <td><input type="text" value="${team.team_name || ''}" class="table-input team-name-input"></td>
-            <td><input type="text" value="${team.logo_url || ''}" class="table-input logo-input" placeholder="URL"></td>
+            <td>
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                    ${team.logo_url ? `<img src="${team.logo_url}" class="logo-preview" style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover;">` : '<div style="width:30px; height:30px; background:rgba(255,255,255,0.1); border-radius:50%;"></div>'}
+                    <input type="file" class="logo-upload-input" accept="image/png, image/jpeg" style="font-size: 0.6rem; width: 100px;">
+                    <input type="hidden" value="${team.logo_url || ''}" class="logo-url-hidden">
+                </div>
+            </td>
             <td><input type="text" value="${team.owner_name || ''}" class="table-input owner-input"></td>
-            <td><input type="number" value="${team.played}" class="table-input played-input" oninput="calculatePoints(this)"></td>
-            <td><input type="number" value="${team.won}" class="table-input won-input" oninput="calculatePoints(this)"></td>
-            <td><input type="number" value="${team.lost}" class="table-input lost-input" oninput="calculatePoints(this)"></td>
+            <td><input type="number" value="${team.played}" class="table-input played-input" oninput="calculateStats(this)"></td>
+            <td><input type="number" value="${team.won}" class="table-input won-input" oninput="calculateStats(this)"></td>
+            <td><input type="number" value="${team.lost}" class="table-input lost-input" oninput="calculateStats(this)"></td>
+            <td><input type="number" value="${team.runs_scored || 0}" class="table-input rs-input" oninput="calculateStats(this)"></td>
+            <td><input type="number" value="${team.overs_faced || 0}" step="0.1" class="table-input of-input" oninput="calculateStats(this)"></td>
+            <td><input type="number" value="${team.runs_conceded || 0}" class="table-input rc-input" oninput="calculateStats(this)"></td>
+            <td><input type="number" value="${team.overs_bowled || 0}" step="0.1" class="table-input ob-input" oninput="calculateStats(this)"></td>
+            <td><input type="number" value="${team.nrr || 0}" class="table-input nrr-input" readonly style="background: rgba(0,0,0,0.1);"></td>
             <td><input type="number" value="${team.points}" class="table-input points-input" readonly style="font-weight: bold; color: var(--secondary); background: rgba(0,0,0,0.2); cursor: not-allowed;"></td>
         </tr>
     `).join("");
 }
 
-// Global function to auto-calculate points
-function calculatePoints(input) {
+// Global function to auto-calculate Points & NRR
+function calculateStats(input) {
     const row = input.closest('tr');
+
+    // 1. Calculate Points (Win = 2)
     const won = parseInt(row.querySelector('.won-input').value) || 0;
+    row.querySelector('.points-input').value = won * 2;
 
-    // Logic: Win = 2 Points
-    const totalPoints = won * 2;
+    // 2. Calculate NRR
+    const rs = parseFloat(row.querySelector('.rs-input').value) || 0;
+    const of = parseFloat(row.querySelector('.of-input').value) || 0;
+    const rc = parseFloat(row.querySelector('.rc-input').value) || 0;
+    const ob = parseFloat(row.querySelector('.ob-input').value) || 0;
 
-    row.querySelector('.points-input').value = totalPoints;
-    console.log(`📊 Auto-calculated Points: ${totalPoints}`);
+    let nrr = 0;
+    if (of > 0 && ob > 0) {
+        nrr = (rs / of) - (rc / ob);
+    }
+
+    row.querySelector('.nrr-input').value = nrr.toFixed(3);
+    console.log(`📊 Stats Sync: Points=${won * 2}, NRR=${nrr.toFixed(3)}`);
 }
 
 async function savePointsTable() {
     const rows = document.querySelectorAll("#admin-points-list tr");
-    const updates = Array.from(rows).map(row => ({
-        id: parseInt(row.dataset.id),
-        team_name: row.querySelector(".team-name-input").value,
-        logo_url: row.querySelector(".logo-input").value,
-        owner_name: row.querySelector(".owner-input").value,
-        played: parseInt(row.querySelector(".played-input").value) || 0,
-        won: parseInt(row.querySelector(".won-input").value) || 0,
-        lost: parseInt(row.querySelector(".lost-input").value) || 0,
-        points: parseInt(row.querySelector(".points-input").value) || 0
-    }));
+    const saveBtn = document.querySelector("button[onclick='savePointsTable()']");
+    const originalText = saveBtn.innerText;
 
-    const { error } = await supabaseClient.from("points_table").upsert(updates);
+    saveBtn.innerText = "⏳ Saving & Uploading...";
+    saveBtn.disabled = true;
 
-    if (error) {
-        alert("Error saving: " + error.message);
-    } else {
-        console.log("Points table updated successfully.");
-        alert("Points Table Updated Successfully!");
-        fetchAdminPoints();
-        loadRosterTeams(); // Refresh roster dropdown with new names
+    try {
+        const updates = await Promise.all(Array.from(rows).map(async (row) => {
+            const fileInput = row.querySelector(".logo-upload-input");
+            let logoUrl = row.querySelector(".logo-url-hidden").value;
+
+            // Handle New Upload if file selected
+            if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                const timestamp = Date.now();
+                const fileName = `logo_${timestamp}_${Math.floor(Math.random() * 1000)}.png`;
+
+                const { error: uploadError } = await supabaseClient.storage
+                    .from("player-photos") // Re-using existing bucket
+                    .upload(fileName, file);
+
+                if (!uploadError) {
+                    const { data: photoData } = supabaseClient.storage
+                        .from("player-photos")
+                        .getPublicUrl(fileName);
+                    logoUrl = photoData.publicUrl;
+                } else {
+                    console.error("Logo Upload Error:", uploadError);
+                }
+            }
+
+            return {
+                id: parseInt(row.dataset.id),
+                team_name: row.querySelector(".team-name-input").value,
+                logo_url: logoUrl,
+                owner_name: row.querySelector(".owner-input").value,
+                played: parseInt(row.querySelector(".played-input").value) || 0,
+                won: parseInt(row.querySelector(".won-input").value) || 0,
+                lost: parseInt(row.querySelector(".lost-input").value) || 0,
+                runs_scored: parseInt(row.querySelector(".rs-input").value) || 0,
+                overs_faced: parseFloat(row.querySelector(".of-input").value) || 0,
+                runs_conceded: parseInt(row.querySelector(".rc-input").value) || 0,
+                overs_bowled: parseFloat(row.querySelector(".ob-input").value) || 0,
+                nrr: parseFloat(row.querySelector(".nrr-input").value) || 0,
+                points: parseInt(row.querySelector(".points-input").value) || 0
+            };
+        }));
+
+        const { error } = await supabaseClient.from("points_table").upsert(updates);
+
+        if (error) {
+            alert("Error saving: " + error.message);
+        } else {
+            showToast("Points Table & Logos Updated!", "success");
+            fetchAdminPoints();
+            loadRosterTeams();
+        }
+    } catch (err) {
+        console.error("Save Error:", err);
+        alert("An error occurred while saving.");
+    } finally {
+        saveBtn.innerText = originalText;
+        saveBtn.disabled = false;
     }
 }
 
