@@ -356,6 +356,9 @@ async function loadPointsTable() {
                 <td>${team.played}</td>
                 <td>${team.won}</td>
                 <td>${team.lost}</td>
+                <td style="color: ${parseFloat(team.nrr) >= 0 ? 'var(--secondary)' : '#ff4d4d'}; font-weight: 600;">
+                    ${parseFloat(team.nrr) >= 0 ? '+' : ''}${team.nrr || '0.000'}
+                </td>
                 <td style="color: var(--secondary); font-weight: 800;">${team.points}</td>
             </tr>
         `;
