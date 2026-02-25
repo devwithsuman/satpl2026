@@ -578,12 +578,24 @@ async function fetchAdminPoints() {
             <td><input type="text" value="${team.team_name || ''}" class="table-input team-name-input"></td>
             <td><input type="text" value="${team.logo_url || ''}" class="table-input logo-input" placeholder="URL"></td>
             <td><input type="text" value="${team.owner_name || ''}" class="table-input owner-input"></td>
-            <td><input type="number" value="${team.played}" class="table-input played-input"></td>
-            <td><input type="number" value="${team.won}" class="table-input won-input"></td>
-            <td><input type="number" value="${team.lost}" class="table-input lost-input"></td>
-            <td><input type="number" value="${team.points}" class="table-input points-input" style="font-weight: bold; color: var(--secondary);"></td>
+            <td><input type="number" value="${team.played}" class="table-input played-input" oninput="calculatePoints(this)"></td>
+            <td><input type="number" value="${team.won}" class="table-input won-input" oninput="calculatePoints(this)"></td>
+            <td><input type="number" value="${team.lost}" class="table-input lost-input" oninput="calculatePoints(this)"></td>
+            <td><input type="number" value="${team.points}" class="table-input points-input" readonly style="font-weight: bold; color: var(--secondary); background: rgba(0,0,0,0.2); cursor: not-allowed;"></td>
         </tr>
     `).join("");
+}
+
+// Global function to auto-calculate points
+function calculatePoints(input) {
+    const row = input.closest('tr');
+    const won = parseInt(row.querySelector('.won-input').value) || 0;
+
+    // Logic: Win = 2 Points
+    const totalPoints = won * 2;
+
+    row.querySelector('.points-input').value = totalPoints;
+    console.log(`📊 Auto-calculated Points: ${totalPoints}`);
 }
 
 async function savePointsTable() {
