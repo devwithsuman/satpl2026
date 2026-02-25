@@ -39,6 +39,21 @@ window.showToast = function (message, type = 'success') {
 // window.alert = (msg) => showToast(msg, 'info');
 
 document.addEventListener('DOMContentLoaded', () => {
+    // --- Preloader Removal Logic ---
+    const preloader = document.getElementById('preloader');
+    if (preloader) {
+        // Show for at least 1.8 seconds for the premium feel
+        setTimeout(() => {
+            preloader.classList.add('fade-out');
+            document.body.classList.remove('preloader-active');
+
+            // Completely remove from DOM after transition
+            setTimeout(() => {
+                preloader.remove();
+            }, 1000);
+        }, 1800);
+    }
+
     // Page load animation effect
     const progressBar = document.createElement('div');
     progressBar.id = 'page-progress-bar';
