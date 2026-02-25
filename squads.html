@@ -51,7 +51,18 @@
         </div>
     </footer>
 
+    <!-- Player Star Card Modal -->
+    <div id="player-modal" class="modal">
+        <div class="modal-content player-card-premium animate-slide-up">
+            <button class="close-modal" onclick="closePlayerModal()">×</button>
+            <div id="player-card-body">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <script src="supabase-config.js"></script>
     <script src="nav-loader.js"></script>
     <script src="squads-script.js"></script>
