@@ -252,7 +252,90 @@ body {
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
 }
 
-/* Interactive Buttons */
+/* Preloader Intro Animation Styles */
+#preloader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #000;
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    transition: opacity 1s cubic-bezier(0.4, 0, 0.2, 1), visibility 1s;
+}
+
+#preloader.fade-out {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.preloader-logo {
+    font-size: 3.5rem;
+    font-weight: 900;
+    letter-spacing: 5px;
+    background: linear-gradient(45deg, var(--primary), var(--secondary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: preloader-pulse 2s infinite ease-in-out;
+    margin-bottom: 20px;
+}
+
+.preloader-bar {
+    width: 150px;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.1);
+    position: relative;
+    overflow: hidden;
+    border-radius: 2px;
+}
+
+.preloader-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, var(--secondary), transparent);
+    animation: preloader-loading 1.5s infinite;
+}
+
+@keyframes preloader-pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 0.8;
+        filter: drop-shadow(0 0 10px rgba(255, 77, 141, 0));
+    }
+
+    50% {
+        transform: scale(1.05);
+        opacity: 1;
+        filter: drop-shadow(0 0 30px rgba(255, 77, 141, 0.4));
+    }
+}
+
+@keyframes preloader-loading {
+    0% {
+        left: -100%;
+    }
+
+    100% {
+        left: 100%;
+    }
+}
+
+/* Ensure no scroll during preloader */
+body.preloader-active {
+    overflow: hidden;
+}
+
 .btn,
 .btn-secondary {
     position: relative;
