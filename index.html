@@ -211,6 +211,8 @@
                                     </div>
                                     <div id="display-recent-score1" class="gradient-text"
                                         style="font-size: 1.5rem; font-weight: 800;">0</div>
+                                    <div id="display-recent-detail1" style="font-size: 0.7rem; color: var(--text-dim);">
+                                        (0/0.0)</div>
                                 </div>
                                 <div style="color: var(--text-dim); font-size: 0.8rem;">VS</div>
                                 <div style="text-align: left;">
@@ -218,6 +220,8 @@
                                     </div>
                                     <div id="display-recent-score2" class="gradient-text"
                                         style="font-size: 1.5rem; font-weight: 800;">0</div>
+                                    <div id="display-recent-detail2" style="font-size: 0.7rem; color: var(--text-dim);">
+                                        (0/0.0)</div>
                                 </div>
                             </div>
                             <div id="display-recent-status"
@@ -289,28 +293,56 @@
                 <div id="points-table" class="glass animate-fade" style="margin-top: 40px; padding: 30px;">
                     <h3 class="gradient-text" style="font-size: 2rem; margin-bottom: 25px; text-align: center;">League
                         Standings</h3>
-                    <div class="table-responsive">
-                        <table class="premium-table">
-                            <thead>
-                                <tr>
-                                    <th>Pos</th>
-                                    <th style="text-align: left;">Team Name</th>
-                                    <th>P</th>
-                                    <th>W</th>
-                                    <th>L</th>
-                                    <th>NRR</th>
-                                    <th>Points</th>
-                                </tr>
-                            </thead>
-                            <tbody id="home-points-list">
-                                <tr>
-                                    <td colspan="6" style="text-align: center; color: var(--text-dim); padding: 30px;">
-                                        <div class="loading-spinner"></div>
-                                        Fetching Standings...
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 30px;">
+                        <!-- Group A -->
+                        <div class="glass" style="padding: 20px; border-radius: 15px;">
+                            <h3 class="gradient-text"
+                                style="text-align: center; margin-bottom: 20px; font-size: 1.5rem;">Group A</h3>
+                            <table class="premium-table">
+                                <thead>
+                                    <tr>
+                                        <th>Pos</th>
+                                        <th style="text-align: left;">Team</th>
+                                        <th>P</th>
+                                        <th>W</th>
+                                        <th>NRR</th>
+                                        <th>Pts</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="points-group-a">
+                                    <tr>
+                                        <td colspan="6"
+                                            style="text-align: center; color: var(--text-dim); padding: 20px;">
+                                            Loading...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Group B -->
+                        <div class="glass" style="padding: 20px; border-radius: 15px;">
+                            <h3 class="gradient-text"
+                                style="text-align: center; margin-bottom: 20px; font-size: 1.5rem;">Group B</h3>
+                            <table class="premium-table">
+                                <thead>
+                                    <tr>
+                                        <th>Pos</th>
+                                        <th style="text-align: left;">Team</th>
+                                        <th>P</th>
+                                        <th>W</th>
+                                        <th>NRR</th>
+                                        <th>Pts</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="points-group-b">
+                                    <tr>
+                                        <td colspan="6"
+                                            style="text-align: center; color: var(--text-dim); padding: 20px;">
+                                            Loading...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
