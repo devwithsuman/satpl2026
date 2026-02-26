@@ -88,6 +88,8 @@ async function loadNavbar() {
     // Step 1: Show fallback immediately
     const fallbackItems = [
         { label: 'Home', link: 'index.html' },
+        { label: 'Scoreboard', link: 'scorecard.html' },
+        { label: 'Squads', link: 'squads.html' },
         { label: 'Fixtures', link: 'fixtures.html' },
         { label: 'Register Now', link: 'registration.html', isRegister: true },
     ];
