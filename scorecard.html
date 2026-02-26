@@ -164,6 +164,51 @@
             font-weight: 700;
             font-size: 1.1rem;
         }
+
+        /* Result Card Styles */
+        .result-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .result-card:hover {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: var(--secondary);
+            transform: translateY(-3px);
+        }
+
+        .res-team {
+            font-weight: 800;
+            font-size: 1.1rem;
+        }
+
+        .res-score {
+            color: var(--secondary);
+            font-weight: 900;
+            margin-left: 10px;
+        }
+
+        .res-vs {
+            color: var(--text-dim);
+            font-size: 0.8rem;
+            margin: 0 15px;
+        }
+
+        .res-winner-tag {
+            background: rgba(0, 242, 255, 0.1);
+            color: var(--secondary);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
     </style>
 </head>
 
@@ -193,22 +238,28 @@
 
         <div class="live-score-box glass">
             <div class="teams-display">
-                <div class="team-name" id="team1-name">Loading...</div>
+                <div style="text-align: left; flex: 1;">
+                    <div class="team-name" id="team1-name">Loading...</div>
+                    <div style="font-size: 2rem; font-weight: 900; color: var(--secondary);" id="t1-detailed-score">0/0
+                    </div>
+                    <div style="font-size: 0.9rem; color: var(--text-dim);" id="t1-detailed-overs">(0.0)</div>
+                </div>
                 <div class="vs-tag">VS</div>
-                <div class="team-name" id="team2-name">Loading...</div>
+                <div style="text-align: right; flex: 1;">
+                    <div class="team-name" id="team2-name">Loading...</div>
+                    <div style="font-size: 2rem; font-weight: 900; color: var(--secondary);" id="t2-detailed-score">0/0
+                    </div>
+                    <div style="font-size: 0.9rem; color: var(--text-dim);" id="t2-detailed-overs">(0.0)</div>
+                </div>
             </div>
 
-            <div class="score-main">
-                <span id="main-score">0</span>
-                <span class="wickets">/ <span id="main-wickets">0</span></span>
-                <span class="overs">(<span id="main-overs">0.0</span>)</span>
-            </div>
+            <div id="match-status" class="match-status">Connecting to live feed...</div>
 
-            <div class="timeline" id="ball-timeline">
+            <div id="extra-info" style="margin-top: 15px; font-size: 0.9rem; color: #ffeb3b; font-weight: 600;"></div>
+
+            <div class="timeline" id="ball-timeline" style="margin-top: 20px;">
                 <!-- Balls will appear here -->
             </div>
-
-            <div class="match-status" id="match-status">Connecting to live feed...</div>
         </div>
 
         <table class="stats-table">
@@ -242,6 +293,19 @@
                 <!-- Bowling details -->
             </tbody>
         </table>
+
+        <!-- Recent Results Section -->
+        <div style="margin-top: 60px;">
+            <h3 class="gradient-text" style="text-align: center; margin-bottom: 25px; font-size: 1.8rem;">Recent Match
+                Results</h3>
+            <div id="recent-results-list" style="display: grid; gap: 20px;">
+                <!-- Recent matches will be loaded here -->
+                <div
+                    style="text-align: center; color: var(--text-dim); padding: 40px; background: rgba(255,255,255,0.02); border-radius: 15px; border: 1px dashed rgba(255,255,255,0.1);">
+                    Fetching past results...
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -259,11 +323,26 @@
 
             document.getElementById('team1-name').innerText = data.team1_name;
             document.getElementById('team2-name').innerText = data.team2_name;
-            document.getElementById('main-score').innerText = data.team1_score || 0;
-            document.getElementById('main-wickets').innerText = data.wickets || 0;
-            document.getElementById('main-overs').innerText = `${data.overs || 0}.${data.balls || 0}`;
+
+            // Team 1 Display
+            document.getElementById('t1-detailed-score').innerText = `${data.team1_score || 0}/${data.wickets || 0}`;
+            document.getElementById('t1-detailed-overs').innerText = `(${data.overs || 0}.${data.balls || 0} Overs)`;
+
+            // Team 2 Display (If any)
+            document.getElementById('t2-detailed-score').innerText = `${data.team2_score || 0}/${data.team2_wickets || 0}`;
+            document.getElementById('t2-detailed-overs').innerText = `(${data.team2_overs || 0}.${data.team2_balls || 0} Overs)`;
+
             document.getElementById('match-status').innerText = data.match_status || "";
             document.getElementById('match-badge').innerText = data.badge || "LIVE MATCH";
+
+            // Extra Info (Target/RRR)
+            const extra = document.getElementById('extra-info');
+            if (data.target > 0) {
+                const runsNeeded = data.target - data.team1_score; // Assuming Team 1 is chasing in this logic
+                extra.innerText = runsNeeded > 0 ? `Target: ${data.target} | ${runsNeeded} runs more to win` : `Target Achieved!`;
+            } else {
+                extra.innerText = "";
+            }
 
             // Batting Stats
             const batBody = document.getElementById('batting-stats');
@@ -317,13 +396,51 @@
             }
         }
 
+        async function fetchRecentResults() {
+            const { data, error } = await supabaseClient
+                .from('fixtures')
+                .select('*')
+                .eq('status', 'completed')
+                .order('match_no', { ascending: false })
+                .limit(5);
+
+            if (error) return;
+            const list = document.getElementById('recent-results-list');
+            if (data.length === 0) {
+                list.innerHTML = `<div style="text-align: center; color: var(--text-dim); padding: 40px;">No completed matches yet.</div>`;
+                return;
+            }
+
+            list.innerHTML = data.map(f => `
+                <div class="result-card">
+                    <div>
+                        <div style="color: var(--text-dim); font-size: 0.7rem; margin-bottom: 5px;">MATCH #${f.match_no} • ${f.match_date}</div>
+                        <div style="display: flex; align-items: center;">
+                            <span class="res-team">${f.team1}</span>
+                            <span class="res-score">${f.t1_score}/${f.t1_wickets || 0}</span>
+                            <span class="res-vs">VS</span>
+                            <span class="res-team">${f.team2}</span>
+                            <span class="res-score">${f.t2_score}/${f.t2_wickets || 0}</span>
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div class="res-winner-tag">${f.winner === 'Draw' ? 'No Result' : f.winner + ' WON'}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-dim); margin-top: 5px;">${f.venue}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
         // Real-time Update
         supabaseClient
             .channel('live-score-sync')
             .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'hero_content' }, loadLiveScore)
             .subscribe();
 
-        window.onload = loadLiveScore;
+        window.onload = () => {
+            loadLiveScore();
+            fetchRecentResults();
+        };
     </script>
 </body>
 
