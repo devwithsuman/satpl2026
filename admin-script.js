@@ -38,6 +38,8 @@ function showSection(sectionId) {
         if (sectionId === 'points') fetchAdminPoints();
         if (sectionId === 'scoring') loadScoringSection();
         if (sectionId === 'gallery') fetchGallery();
+        if (sectionId === 'menu') fetchAdminMenu();
+        if (sectionId === 'results') fetchResults();
     }
 }
 
@@ -99,7 +101,6 @@ async function loadHero(matchKey = currentMatchIdKey) {
     document.getElementById("hero-team2-name").value = data.team2_name || "";
     document.getElementById("hero-team2-score").value = data.team2_score || 0;
     document.getElementById("hero-time").value = data.match_status || "";
-    if (document.getElementById("hero-map-url")) document.getElementById("hero-map-url").value = data.map_url || "";
 
     // Detailed Scoring Fields
     if (document.getElementById("hero-wickets")) {
@@ -110,12 +111,19 @@ async function loadHero(matchKey = currentMatchIdKey) {
         document.getElementById("hero-batsman1").value = data.batsman1 || "";
         document.getElementById("hero-batsman1-runs").value = data.batsman1_runs || 0;
         document.getElementById("hero-batsman1-balls").value = data.batsman1_balls || 0;
+
+        // Team 2 Details
+        if (document.getElementById("hero-t2-wickets")) {
+            document.getElementById("hero-t2-wickets").value = data.team2_wickets || 0;
+            document.getElementById("hero-t2-overs").value = data.team2_overs || 0;
+            document.getElementById("hero-t2-balls").value = data.team2_balls || 0;
+        }
     }
 
     // Toggle scoring panel based on match type
     const scoringPanel = document.getElementById("pro-scoring-panel");
     if (scoringPanel) {
-        scoringPanel.style.display = matchKey === 'live-match' ? 'block' : 'none';
+        scoringPanel.style.display = (matchKey === 'live-match' || matchKey === 'recent-match' || matchKey === 'upcoming-match') ? 'block' : 'none';
     }
 }
 
@@ -143,7 +151,9 @@ async function saveHero() {
         batsman1: document.getElementById("hero-batsman1").value,
         batsman1_runs: Number(document.getElementById("hero-batsman1-runs").value) || 0,
         batsman1_balls: Number(document.getElementById("hero-batsman1-balls").value) || 0,
-        map_url: document.getElementById("hero-map-url").value
+        team2_wickets: document.getElementById("hero-t2-wickets") ? (Number(document.getElementById("hero-t2-wickets").value) || 0) : 0,
+        team2_overs: document.getElementById("hero-t2-overs") ? (Number(document.getElementById("hero-t2-overs").value) || 0) : 0,
+        team2_balls: document.getElementById("hero-t2-balls") ? (Number(document.getElementById("hero-t2-balls").value) || 0) : 0
     };
 
     const { error } = await supabaseClient.from("hero_content").upsert([updates]);
@@ -589,6 +599,7 @@ async function fetchAdminPoints() {
 
     list.innerHTML = data.map(team => `
         <tr data-id="${team.id}">
+            <td><input type="text" value="${team.group_name || 'A'}" class="table-input group-input" style="width: 50px; text-align: center; font-weight: 800;"></td>
             <td><input type="text" value="${team.team_name || ''}" class="table-input team-name-input"></td>
             <td>
                 <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
@@ -669,6 +680,7 @@ async function savePointsTable() {
 
             return {
                 id: parseInt(row.dataset.id),
+                group_name: row.querySelector(".group-input").value.trim().toUpperCase(),
                 team_name: row.querySelector(".team-name-input").value,
                 logo_url: logoUrl,
                 owner_name: row.querySelector(".owner-input").value,
@@ -1201,17 +1213,67 @@ async function fetchFixtures() {
                         ${f.status.toUpperCase()}
                     </span>
                 </td>
-                <td><button class="btn-secondary" style="background: #ef4444; border: none; padding: 5px 10px;" onclick="deleteFixture('${f.id}')">Del</button></td>
+                <td>
+                    <div style="display: flex; gap: 5px;">
+                        <button class="btn" style="padding: 5px 10px; font-size: 0.75rem; background: #3b82f6;" onclick='editFixture(${JSON.stringify(f)})'>Edit</button>
+                        <button class="btn-secondary" style="background: #ef4444; border: none; padding: 5px 10px;" onclick="deleteFixture('${f.id}')">Del</button>
+                    </div>
+                </td>
             </tr>
         `;
     }).join('');
 }
 
-function openFixtureModal() { document.getElementById('fixture-modal').style.display = 'flex'; }
-function closeFixtureModal() { document.getElementById('fixture-modal').style.display = 'none'; }
+async function openFixtureModal(isEdit = false) {
+    document.getElementById('fixture-modal-title').innerText = isEdit ? 'Edit Match 🏏' : 'Add New Match 🏏';
+
+    // Fetch teams for dropdowns
+    const t1Select = document.getElementById('fix-t1');
+    const t2Select = document.getElementById('fix-t2');
+
+    const { data: teams } = await supabaseClient.from('points_table').select('team_name').order('team_name');
+    if (teams) {
+        const options = '<option value="">Select Team</option>' +
+            teams.map(t => `<option value="${t.team_name}">${t.team_name}</option>`).join('');
+        t1Select.innerHTML = options;
+        t2Select.innerHTML = options;
+    }
+
+    if (!isEdit) {
+        document.getElementById('edit-fixture-id').value = '';
+        document.getElementById('fix-no').value = '';
+        document.getElementById('fix-date').value = '';
+        document.getElementById('fix-time').value = '';
+        document.getElementById('fix-t1').value = '';
+        document.getElementById('fix-t2').value = '';
+        document.getElementById('fix-venue').value = 'Sonaijuri Cricket Ground';
+    }
+    document.getElementById('fixture-modal').style.display = 'flex';
+}
+
+function closeFixtureModal() {
+    document.getElementById('fixture-modal').style.display = 'none';
+}
+
+function editFixture(f) {
+    document.getElementById('edit-fixture-id').value = f.id;
+    if (f.status === 'completed') {
+        openResultModal(f.id, f.team1, f.team2);
+        return;
+    }
+    document.getElementById('fix-no').value = f.match_no;
+    document.getElementById('fix-date').value = f.match_date;
+    document.getElementById('fix-time').value = f.match_time;
+    document.getElementById('fix-t1').value = f.team1;
+    document.getElementById('fix-t2').value = f.team2;
+    document.getElementById('fix-venue').value = f.venue;
+    document.getElementById('fix-status').value = f.status;
+    openFixtureModal(true);
+}
 
 async function saveFixture(event) {
     event.preventDefault();
+    const id = document.getElementById('edit-fixture-id').value;
     const updates = {
         match_no: Number(document.getElementById('fix-no').value),
         match_date: document.getElementById('fix-date').value,
@@ -1221,9 +1283,23 @@ async function saveFixture(event) {
         venue: document.getElementById('fix-venue').value,
         status: document.getElementById('fix-status').value
     };
-    const { error } = await supabaseClient.from('fixtures').insert([updates]);
-    if (error) alert(error.message);
-    else { closeFixtureModal(); fetchFixtures(); }
+
+    let error;
+    if (id) {
+        const res = await supabaseClient.from('fixtures').update(updates).eq('id', id);
+        error = res.error;
+    } else {
+        const res = await supabaseClient.from('fixtures').insert([updates]);
+        error = res.error;
+    }
+
+    if (error) {
+        alert("Error: " + error.message);
+    } else {
+        logActivity('Fixture', `${id ? 'Updated' : 'Added'} Match #${updates.match_no}`);
+        closeFixtureModal();
+        fetchFixtures();
+    }
 }
 
 async function toggleFixtureStatus(id, current) {
@@ -1246,6 +1322,48 @@ async function deleteFixture(id) {
     fetchFixtures();
 }
 
+async function fetchResults() {
+    const { data, error } = await supabaseClient.from('fixtures').select('*').eq('status', 'completed').order('match_no', { ascending: false });
+    if (error) return;
+    const list = document.getElementById('admin-results-list');
+    if (!list) return;
+
+    if (!data || data.length === 0) {
+        list.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 40px; color: var(--text-dim);">No completed matches in results yet. Finalize a match to see it here.</td></tr>`;
+        return;
+    }
+
+    list.innerHTML = data.map(f => `
+        <tr>
+            <td style="font-weight: 800; color: var(--secondary);">#${f.match_no}</td>
+            <td>
+                <div style="display: flex; flex-direction: column;">
+                    <span style="font-weight: 700;">${f.team1} vs ${f.team2}</span>
+                    <span style="font-size: 0.75rem; color: var(--text-dim);">${f.match_date} • ${f.venue}</span>
+                </div>
+            </td>
+            <td>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <span style="background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 4px; font-weight: 700;">${f.t1_score}/${f.t1_wickets || 0}</span>
+                    <span style="color: var(--text-dim); font-size: 0.7rem;">-</span>
+                    <span style="background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 4px; font-weight: 700;">${f.t2_score}/${f.t2_wickets || 0}</span>
+                </div>
+            </td>
+            <td>
+                <span style="background: rgba(0, 242, 255, 0.1); color: var(--secondary); padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 800;">
+                    ${f.winner === 'Draw' ? 'NO RESULT' : (f.winner ? f.winner.toUpperCase() : 'N/A')}
+                </span>
+            </td>
+            <td>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn" style="padding: 6px 12px; font-size: 0.7rem; background: #3b82f6;" onclick="openResultModal('${f.id}', '${f.team1}', '${f.team2}')">EDIT</button>
+                    <button class="btn-secondary" style="padding: 6px 12px; font-size: 0.7rem; border-color: #ef4444; color: #ef4444;" onclick="deleteFixture('${f.id}')">DEL</button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
 // ================= LEADERBOARD (STATS) =================
 async function fetchLeaderboard() {
     const { data, error } = await supabaseClient.from('top_performers').select('*').order('category', { ascending: true }).order('runs', { ascending: false }).order('wickets', { ascending: false });
@@ -1266,7 +1384,7 @@ async function fetchLeaderboard() {
                 </div>
             </td>
         </tr>
-    `).join('');
+        `).join('');
 }
 
 function openLeaderboardModal(isEdit = false) {
@@ -1444,7 +1562,7 @@ function editGalleryPhoto(photo) {
     openGalleryModal(true);
 
     // Set orientation
-    document.querySelector(`input[name="gallery-orientation"][value="${photo.orientation || 'landscape'}"]`).checked = true;
+    document.querySelector(`input[name = "gallery-orientation"][value = "${photo.orientation || 'landscape'}"]`).checked = true;
 
     // Show preview of existing
     document.getElementById('gallery-photo-preview').innerHTML = `<img src="${photo.image_url}" style="max-width: 100%; max-height: 200px; border-radius: 8px;">`;
@@ -1526,7 +1644,7 @@ async function saveGalleryPhoto(event) {
             if (activeGalleryTab === 'upload') {
                 const timestamp = Date.now();
                 const ext = galleryPhotoFile.name.split('.').pop();
-                const fileName = `gallery_${timestamp}.${ext}`;
+                const fileName = `gallery_${timestamp}.${ext} `;
 
                 const { data: uploadData, error: uploadError } = await supabaseClient.storage
                     .from('player-photos')
@@ -1558,7 +1676,7 @@ async function saveGalleryPhoto(event) {
             if (activeGalleryTab === 'upload' && galleryPhotoFile) {
                 const timestamp = Date.now();
                 const ext = galleryPhotoFile.name.split('.').pop();
-                const fileName = `gallery_${timestamp}.${ext}`;
+                const fileName = `gallery_${timestamp}.${ext} `;
 
                 const { data: uploadData, error: uploadError } = await supabaseClient.storage
                     .from('player-photos')
@@ -1660,12 +1778,32 @@ async function loadDashboard() {
 }
 
 // ================= MATCH RESULT MODAL =================
-window.openResultModal = function (id, t1, t2) {
+window.openResultModal = async function (id, t1, t2) {
     document.getElementById('result-match-id').value = id;
     document.getElementById('result-t1-name').value = t1;
     document.getElementById('result-t2-name').value = t2;
     document.getElementById('res-t1-label').innerText = t1;
     document.getElementById('res-t2-label').innerText = t2;
+
+    // Fetch existing data if any
+    const { data: m } = await supabaseClient.from('fixtures').select('*').eq('id', id).single();
+    if (m) {
+        document.getElementById('res-t1-runs').value = m.t1_score || 0;
+        document.getElementById('res-t1-overs').value = m.t1_overs || 6.0;
+        document.getElementById('res-t1-wkts').value = m.t1_wickets || 0;
+        document.getElementById('res-t2-runs').value = m.t2_score || 0;
+        document.getElementById('res-t2-overs').value = m.t2_overs || 6.0;
+        document.getElementById('res-t2-wkts').value = m.t2_wickets || 0;
+    }
+
+    // Pre-fill top performers from live scoring state if it's the current live match
+    if (m && m.status === 'upcoming' && liveMatchState.team_name) {
+        // Simple heuristic: fill current batsman1 and bowler
+        document.getElementById('res-top-bat').value = liveMatchState.batsman1.name || '';
+        document.getElementById('res-top-bat-runs').value = liveMatchState.batsman1.runs || 0;
+        document.getElementById('res-top-bowl').value = liveMatchState.bowler.name || '';
+        document.getElementById('res-top-bowl-wkts').value = liveMatchState.bowler.wkts || 0;
+    }
 
     // Fill winner options
     const winnerSelect = document.getElementById('res-winner');
@@ -1674,6 +1812,7 @@ window.openResultModal = function (id, t1, t2) {
         <option value="${t2}">${t2}</option>
         <option value="Draw">Draw/No Result</option>
     `;
+    if (m && m.winner) winnerSelect.value = m.winner;
 
     document.getElementById('result-modal').style.display = 'flex';
 }
@@ -1688,82 +1827,180 @@ window.submitMatchResult = async function () {
     const t2 = document.getElementById('result-t2-name').value;
     const r1 = parseInt(document.getElementById('res-t1-runs').value) || 0;
     const o1 = parseFloat(document.getElementById('res-t1-overs').value) || 6.0;
+    const w1 = parseInt(document.getElementById('res-t1-wkts').value) || 0;
     const r2 = parseInt(document.getElementById('res-t2-runs').value) || 0;
     const o2 = parseFloat(document.getElementById('res-t2-overs').value) || 6.0;
+    const w2 = parseInt(document.getElementById('res-t2-wkts').value) || 0;
     const winner = document.getElementById('res-winner').value;
 
     try {
+        // 0. Fetch existing match to handle leaderboard corrections
+        const { data: oldM } = await supabaseClient.from('fixtures').select('*').eq('id', id).single();
+
         // 1. Update Fixture
         await supabaseClient.from('fixtures').update({
             status: 'completed',
             t1_score: r1,
             t2_score: r2,
-            winner: winner
+            t1_wickets: w1,
+            t2_wickets: w2,
+            t1_overs: o1,
+            t2_overs: o2,
+            winner: winner,
+            top_bat: document.getElementById('res-top-bat').value,
+            top_bat_runs: parseInt(document.getElementById('res-top-bat-runs').value) || 0,
+            top_bowl: document.getElementById('res-top-bowl').value,
+            top_bowl_wkts: parseInt(document.getElementById('res-top-bowl-wkts').value) || 0
         }).eq('id', id);
 
-        // 2. Update Points Table Automatically
-        await updatePointsFromMatch(t1, r1, o1, t2, r2, o2, winner);
+        // 2. Update Points Table Automatically (Full Sync)
+        await syncPointsTableFromFixtures();
+
+        // 3. Update Top Performers (Subtract OLD, Add NEW)
+        if (oldM && oldM.status === 'completed') {
+            if (oldM.top_bat) await updateTournamentCaps(oldM.top_bat, '', 'batsman', -oldM.top_bat_runs, 0);
+            if (oldM.top_bowl) await updateTournamentCaps(oldM.top_bowl, '', 'bowler', 0, -oldM.top_bowl_wkts);
+        }
+
+        const topBat = document.getElementById('res-top-bat').value;
+        const topBatRuns = parseInt(document.getElementById('res-top-bat-runs').value) || 0;
+        const topBowl = document.getElementById('res-top-bowl').value;
+        const topBowlWkts = parseInt(document.getElementById('res-top-bowl-wkts').value) || 0;
+
+        if (topBat) await updateTournamentCaps(topBat, '', 'batsman', topBatRuns, 0);
+        if (topBowl) await updateTournamentCaps(topBowl, '', 'bowler', 0, topBowlWkts);
 
         logActivity('Match', `Result updated: ${t1} vs ${t2}. Winner: ${winner}`);
-        alert("✅ Result Saved and Points Table Updated!");
+        alert("✅ Result Saved, Points Table & Leaderboard Updated!");
         closeResultModal();
         fetchFixtures();
+        fetchResults();
     } catch (e) {
         alert("Error saving result: " + e.message);
     }
 }
 
-async function updatePointsFromMatch(t1, r1, o1, t2, r2, o2, winner) {
-    const { data: teams } = await supabaseClient.from('points_table').select('*').or(`team_name.eq."${t1}",team_name.eq."${t2}"`);
+async function updateTournamentCaps(name, team, cat, r, w) {
+    const { data: existing } = await supabaseClient
+        .from('top_performers')
+        .select('*')
+        .eq('player_name', name)
+        .eq('category', cat)
+        .single();
 
-    const team1 = teams.find(t => t.team_name === t1);
-    const team2 = teams.find(t => t.team_name === t2);
+    if (existing) {
+        await supabaseClient.from('top_performers').update({
+            runs: (existing.runs || 0) + r,
+            wickets: (existing.wickets || 0) + w,
+            team_name: team || existing.team_name
+        }).eq('id', existing.id);
+    } else {
+        await supabaseClient.from('top_performers').insert([{
+            player_name: name,
+            team_name: team || 'Unknown',
+            category: cat,
+            runs: r,
+            wickets: w
+        }]);
+    }
+}
 
-    if (!team1 || !team2) return;
+async function syncPointsTableFromFixtures() {
+    console.log("🔄 Recalculating Points Table from all matches...");
 
-    // Team 1 Updates
-    const u1 = {
-        played: (team1.played || 0) + 1,
-        won: (team1.won || 0) + (winner === t1 ? 1 : 0),
-        lost: (team1.lost || 0) + (winner === t2 ? 1 : 0),
-        runs_scored: (team1.runs_scored || 0) + r1,
-        overs_faced: (team1.overs_faced || 0) + o1,
-        runs_conceded: (team1.runs_conceded || 0) + r2,
-        overs_bowled: (team1.overs_bowled || 0) + o2
-    };
-    u1.points = u1.won * 2;
-    // NRR Calculation
-    const nrr1 = (u1.runs_scored / u1.overs_faced) - (u1.runs_conceded / u1.overs_bowled);
-    u1.nrr = parseFloat(nrr1.toFixed(3));
+    // 1. Fetch all completed fixtures
+    const { data: fixtures } = await supabaseClient.from('fixtures').select('*').eq('status', 'completed');
+    // 2. Fetch all teams
+    const { data: teams } = await supabaseClient.from('points_table').select('*');
 
-    // Team 2 Updates
-    const u2 = {
-        played: (team2.played || 0) + 1,
-        won: (team2.won || 0) + (winner === t2 ? 1 : 0),
-        lost: (team2.lost || 0) + (winner === t1 ? 1 : 0),
-        runs_scored: (team2.runs_scored || 0) + r2,
-        overs_faced: (team2.overs_faced || 0) + o2,
-        runs_conceded: (team2.runs_conceded || 0) + r1,
-        overs_bowled: (team2.overs_bowled || 0) + o1
-    };
-    u2.points = u2.won * 2;
-    const nrr2 = (u2.runs_scored / u2.overs_faced) - (u2.runs_conceded / u2.overs_bowled);
-    u2.nrr = parseFloat(nrr2.toFixed(3));
+    if (!fixtures || !teams) return;
 
-    await supabaseClient.from('points_table').update(u1).eq('id', team1.id);
-    await supabaseClient.from('points_table').update(u2).eq('id', team2.id);
+    // Reset all team stats locally
+    const stats = {};
+    teams.forEach(t => {
+        stats[t.team_name] = {
+            played: 0, won: 0, lost: 0, points: 0,
+            runs_scored: 0, overs_faced: 0, runs_conceded: 0, overs_bowled: 0
+        };
+    });
+
+    // Loop through fixtures and sum stats
+    fixtures.forEach(f => {
+        const t1 = f.team1;
+        const t2 = f.team2;
+        if (!stats[t1] || !stats[t2]) return;
+
+        stats[t1].played += 1;
+        stats[t2].played += 1;
+        stats[t1].runs_scored += (f.t1_score || 0);
+        stats[t1].runs_conceded += (f.t2_score || 0);
+        stats[t2].runs_scored += (f.t2_score || 0);
+        stats[t2].runs_conceded += (f.t1_score || 0);
+
+        // Accurate NRR Calculation (Decimal Overs)
+        const getOversDecimal = (overs) => {
+            const val = parseFloat(overs) || 6.0;
+            const fullOvers = Math.floor(val);
+            const partialBalls = Math.round((val % 1) * 10);
+            return fullOvers + (partialBalls / 6);
+        };
+
+        const o1 = getOversDecimal(f.t1_overs);
+        const o2 = getOversDecimal(f.t2_overs);
+
+        stats[t1].overs_faced += o1;
+        stats[t1].overs_bowled += o2;
+        stats[t2].overs_faced += o2;
+        stats[t2].overs_bowled += o1;
+
+        if (f.winner === t1) {
+            stats[t1].won += 1;
+            stats[t1].points += 2;
+            stats[t2].lost += 1;
+        } else if (f.winner === t2) {
+            stats[t2].won += 1;
+            stats[t2].points += 2;
+            stats[t1].lost += 1;
+        } else if (f.winner === 'Draw') {
+            stats[t1].points += 1;
+            stats[t2].points += 1;
+        }
+    });
+
+    // Update Supabase for each team
+    for (const teamName of Object.keys(stats)) {
+        const s = stats[teamName];
+        const nrr = s.overs_faced > 0 ? ((s.runs_scored / s.overs_faced) - (s.runs_conceded / s.overs_bowled)) : 0;
+        await supabaseClient.from('points_table').update({
+            played: s.played,
+            won: s.won,
+            lost: s.lost,
+            points: s.points,
+            runs_scored: s.runs_scored,
+            runs_conceded: s.runs_conceded,
+            nrr: parseFloat(nrr.toFixed(3))
+        }).eq('team_name', teamName);
+    }
 }
 
 // ================= PROFESSIONAL LIVE SCORING SYSTEM =================
 let liveMatchState = {
     team_name: "",
+    team1_name: "",
+    team2_name: "",
     runs: 0, wkts: 0, overs: 0, balls: 0,
+    max_overs: 6,
+    max_wkts: 10,
     batsman1: { name: "Striker", runs: 0, balls: 0, f4s: 0, s6s: 0, reg: "" },
     batsman2: { name: "Non-Striker", runs: 0, balls: 0, f4s: 0, s6s: 0, reg: "" },
     bowler: { name: "Bowler", runs: 0, wkts: 0, overs: 0, balls: 0, reg: "" },
     striker: 1, // 1 or 2
-    timeline: []
+    timeline: [],
+    target: 0,
+    inning: 1
 };
+let scoreHistory = [];
+let redoHistory = [];
 
 async function loadScoringSection() {
     const { data, error } = await supabaseClient
@@ -1774,12 +2011,24 @@ async function loadScoringSection() {
 
     if (error || !data) return;
 
+    // Populate Fixture Dropdown
+    const { data: fixtures } = await supabaseClient.from('fixtures').select('*').eq('status', 'upcoming');
+    const fixSel = document.getElementById('score-fixture-id');
+    if (fixSel && fixtures) {
+        fixSel.innerHTML = '<option value="">-- Choose Match --</option>' +
+            fixtures.map(f => `<option value="${f.id}">${f.team1} vs ${f.team2} (#${f.match_no})</option>`).join('');
+    }
+
     liveMatchState = {
         team_name: data.team1_name || "Team A",
+        team1_name: data.team1_name || "Team A",
+        team2_name: data.team2_name || "Team B",
         runs: data.team1_score || 0,
         wkts: data.wickets || 0,
         overs: data.overs || 0,
         balls: data.balls || 0,
+        max_overs: data.max_overs || 6,
+        max_wkts: data.max_wickets || 10,
         batsman1: {
             name: data.batsman1 || "Striker",
             runs: data.batsman1_runs || 0,
@@ -1805,17 +2054,82 @@ async function loadScoringSection() {
             reg: data.bowler_reg || ""
         },
         striker: data.striker_idx || 1,
-        timeline: data.recent_balls ? data.recent_balls.split(',') : []
+        timeline: data.recent_balls ? data.recent_balls.split(',') : [],
+        target: parseInt(data.badge?.replace('TARGET: ', '')) || 0,
+        inning: data.badge?.includes('TARGET') ? 2 : 1
     };
 
     updateScoringUI();
+
+    // Populate Winner Dropdown
+    const winnerSel = document.getElementById('score-winner-select');
+    if (winnerSel) {
+        winnerSel.innerHTML = `
+            <option value="">Select Winner Team</option>
+            <option value="${liveMatchState.team1_name}">${liveMatchState.team1_name}</option>
+            <option value="${liveMatchState.team2_name}">${liveMatchState.team2_name}</option>
+            <option value="Draw">Draw/No Result</option>
+        `;
+    }
+}
+
+async function syncFixtureToScoring(fixtureId) {
+    if (!fixtureId) return;
+    const { data: f } = await supabaseClient.from('fixtures').select('*').eq('id', fixtureId).single();
+    if (!f) return;
+
+    if (!confirm(`Start scoring for ${f.team1} vs ${f.team2}? This will update the website live feed.`)) return;
+
+    // Reset local state for new match
+    resetInningsNoConfirm();
+    liveMatchState.team1_name = f.team1;
+    liveMatchState.team2_name = f.team2;
+    liveMatchState.team_name = f.team1; // First innings batting Team1
+
+    // Update Hero Content to reflect this match as LIVE
+    await supabaseClient.from('hero_content').update({
+        team1_name: f.team1,
+        team2_name: f.team2,
+        team1_score: 0,
+        wickets: 0,
+        overs: 0,
+        balls: 0,
+        match_status: "Match Started",
+        badge: "LIVE MATCH"
+    }).eq('id', '00000000-0000-0000-0000-000000000001');
+
+    updateScoringUI();
+
+    // Refresh Winner Dropdown
+    const winnerSel = document.getElementById('score-winner-select');
+    if (winnerSel) {
+        winnerSel.innerHTML = `
+            <option value="">Select Winner Team</option>
+            <option value="${f.team1}">${f.team1}</option>
+            <option value="${f.team2}">${f.team2}</option>
+            <option value="Draw">Draw/No Result</option>
+        `;
+    }
+}
+
+function resetInningsNoConfirm() {
+    scoreHistory = [];
+    liveMatchState.runs = 0; liveMatchState.wkts = 0; liveMatchState.overs = 0; liveMatchState.balls = 0;
+    liveMatchState.batsman1 = { name: "Striker", runs: 0, balls: 0, f4s: 0, s6s: 0, reg: "" };
+    liveMatchState.batsman2 = { name: "Non-Striker", runs: 0, balls: 0, f4s: 0, s6s: 0, reg: "" };
+    liveMatchState.bowler = { name: "Bowler", runs: 0, wkts: 0, overs: 0, balls: 0, reg: "" };
+    liveMatchState.timeline = [];
+    liveMatchState.inning = 1;
+    liveMatchState.target = 0;
 }
 
 function updateScoringUI() {
     document.getElementById('score-display-team').innerText = liveMatchState.team_name;
     document.getElementById('score-display-runs').innerText = liveMatchState.runs;
     document.getElementById('score-display-wkts').innerText = liveMatchState.wkts;
-    document.getElementById('score-display-overs').innerText = `${liveMatchState.overs}.${liveMatchState.balls}`;
+    document.getElementById('score-display-overs').innerText = `${liveMatchState.overs}.${liveMatchState.balls} `;
+    document.getElementById('score-max-overs').value = liveMatchState.max_overs;
+    document.getElementById('score-max-wkts').value = liveMatchState.max_wkts;
 
     document.getElementById('score-p1-name').innerText = liveMatchState.batsman1.name;
     document.getElementById('score-p1-runs').innerText = liveMatchState.batsman1.runs;
@@ -1856,6 +2170,33 @@ async function fetchPlayerForScore(type) {
 }
 
 function handleScoreAction(val) {
+    // Push current state to history before making changes
+    scoreHistory.push(JSON.parse(JSON.stringify(liveMatchState)));
+    if (scoreHistory.length > 20) scoreHistory.shift();
+    redoHistory = [];
+
+    const maxOvers = parseInt(document.getElementById('score-max-overs').value) || 6;
+    const maxWkts = parseInt(document.getElementById('score-max-wkts').value) || 10;
+    liveMatchState.max_overs = maxOvers;
+    liveMatchState.max_wkts = maxWkts;
+
+    // Check for Win in 2nd Innings
+    if (liveMatchState.inning === 2 && liveMatchState.target > 0) {
+        if (liveMatchState.runs >= liveMatchState.target) {
+            showToast(`${liveMatchState.team_name} WON THE MATCH! 🏆`, "success");
+            return;
+        }
+    }
+
+    if (liveMatchState.overs >= maxOvers || liveMatchState.wkts >= maxWkts) {
+        showToast("Innings Over! Please start next innings or reset.", "error");
+        return;
+    }
+
+    // Check if current action pushes it over
+    if (val === 'W' && liveMatchState.wkts + 1 >= maxWkts) {
+        showToast("ALL OUT! Innings Ended.", "warning");
+    }
     const isWicket = val === 'W';
     const isWide = val === 'WD';
     const isNoBall = val === 'NB';
@@ -1894,6 +2235,24 @@ function handleScoreAction(val) {
     if (runs % 2 !== 0 && !isWide && !isNoBall) switchStrike();
 
     updateScoringUI();
+
+    // After update, check for Win condition
+    if (liveMatchState.inning === 2 && liveMatchState.target > 0) {
+        if (liveMatchState.runs >= liveMatchState.target) {
+            const winText = `MATCH COMPLETED: ${liveMatchState.team_name} WON! 🏆`;
+            showToast(winText, "success");
+            supabaseClient.from('hero_content').update({
+                match_status: winText,
+                badge: "COMPLETED"
+            }).eq('id', '00000000-0000-0000-0000-000000000001');
+        } else {
+            // Update required runs
+            const req = liveMatchState.target - liveMatchState.runs;
+            supabaseClient.from('hero_content').update({
+                match_status: `${liveMatchState.team_name} needs ${req} runs from ${((liveMatchState.max_overs * 6) - (liveMatchState.overs * 6 + liveMatchState.balls))} balls.`
+            }).eq('id', '00000000-0000-0000-0000-000000000001');
+        }
+    }
 }
 
 function switchStrike() {
@@ -1926,20 +2285,183 @@ async function saveLiveScore() {
         bowler_over_balls: liveMatchState.bowler.balls,
         bowler_reg: liveMatchState.bowler.reg,
         striker_idx: liveMatchState.striker,
+        max_overs: liveMatchState.max_overs,
         recent_balls: liveMatchState.timeline.join(',')
     };
 
     const { error } = await supabaseClient.from('hero_content').update(updates).eq('id', '00000000-0000-0000-0000-000000000001');
     if (error) alert(error.message);
-    else showToast("Live Scorecard Updated!", "success");
+    else showSuccessPopup("Live Scorecard Updated Successfully! 🚀");
 }
 
 function resetInnings() {
     if (!confirm("Reset?")) return;
+    scoreHistory = [];
     liveMatchState.runs = 0; liveMatchState.wkts = 0; liveMatchState.overs = 0; liveMatchState.balls = 0;
     liveMatchState.batsman1 = { name: "Striker", runs: 0, balls: 0, f4s: 0, s6s: 0, reg: "" };
     liveMatchState.batsman2 = { name: "Non-Striker", runs: 0, balls: 0, f4s: 0, s6s: 0, reg: "" };
     liveMatchState.bowler = { name: "Bowler", runs: 0, wkts: 0, overs: 0, balls: 0, reg: "" };
     liveMatchState.timeline = [];
     updateScoringUI();
+}
+
+function undoLastBall() {
+    if (scoreHistory.length === 0) {
+        showToast("No balls to undo!", "info");
+        return;
+    }
+    // Save current state to redo history
+    redoHistory.push(JSON.parse(JSON.stringify(liveMatchState)));
+
+    const lastState = scoreHistory.pop();
+    liveMatchState = lastState;
+    updateScoringUI();
+    showToast("Last ball undone! ↩️", "info");
+}
+
+function redoLastBall() {
+    if (redoHistory.length === 0) {
+        showToast("No balls to redo!", "info");
+        return;
+    }
+    // Save current state back to undo history
+    scoreHistory.push(JSON.parse(JSON.stringify(liveMatchState)));
+
+    const nextState = redoHistory.pop();
+    liveMatchState = nextState;
+    updateScoringUI();
+    showToast("Ball re-done! ↪️", "info");
+}
+
+async function startSecondInnings() {
+    if (liveMatchState.wkts < liveMatchState.max_wkts && liveMatchState.overs < liveMatchState.max_overs) {
+        if (!confirm("The 1st Innings isn't finished yet. Are you sure you want to start the chase?")) return;
+    }
+
+    const firstInningsScore = liveMatchState.runs;
+    const firstInningsOvers = parseFloat(`${liveMatchState.overs}.${liveMatchState.balls}`);
+    const firstInningsWkts = liveMatchState.wkts;
+    const chasingTeam = liveMatchState.team2_name;
+
+    if (!confirm(`Switching to 2nd Innings. ${chasingTeam} will bat now. Target: ${firstInningsScore + 1}. Continue?`)) return;
+
+    // Save T1 Stats into State
+    liveMatchState.t1_score = firstInningsScore;
+    liveMatchState.t1_overs = firstInningsOvers;
+    liveMatchState.t1_wickets = firstInningsWkts;
+
+    // Reset for 2nd Innings
+    liveMatchState.team_name = chasingTeam;
+    liveMatchState.runs = 0;
+    liveMatchState.wkts = 0;
+    liveMatchState.overs = 0;
+    liveMatchState.balls = 0;
+    liveMatchState.batsman1 = { name: "Striker", runs: 0, balls: 0, f4s: 0, s6s: 0, reg: "" };
+    liveMatchState.batsman2 = { name: "Non-Striker", runs: 0, balls: 0, f4s: 0, s6s: 0, reg: "" };
+    liveMatchState.bowler = { name: "Bowler", runs: 0, wkts: 0, overs: 0, balls: 0, reg: "" };
+    liveMatchState.timeline = [];
+    scoreHistory = [];
+    redoHistory = [];
+
+    updateScoringUI();
+    liveMatchState.inning = 2;
+    liveMatchState.target = firstInningsScore + 1;
+
+    // Update Badge to reflect 2nd Innings / Target
+    const badgeText = `TARGET: ${firstInningsScore + 1}`;
+    await supabaseClient.from('hero_content').update({
+        badge: badgeText,
+        team1_score: 0,
+        wickets: 0,
+        overs: 0,
+        balls: 0,
+        match_status: `${chasingTeam} needs ${firstInningsScore + 1} runs to win.`
+    }).eq('id', '00000000-0000-0000-0000-000000000001');
+
+    showToast(`2nd Innings Started! Target: ${firstInningsScore + 1} `, "success");
+}
+
+async function finalizeLiveMatch() {
+    const winner = document.getElementById('score-winner-select').value;
+    if (!winner) {
+        showToast("Please select the winner team!", "error");
+        return;
+    }
+
+    if (!confirm("Are you sure you want to finalize this match and save to results?")) return;
+
+    try {
+        const id = document.getElementById('score-fixture-id').value;
+        if (!id) {
+            showToast("Please select the fixture first in the dropdown above!", "error");
+            return;
+        }
+
+        // 1. Fetch current live fixture to get scores etc
+        const { data: m } = await supabaseClient.from('fixtures').select('*').eq('id', id).single();
+        if (!m) throw new Error("Match not found in fixtures table");
+
+        // 2. Update Fixture Status & Results
+        const is2ndInning = liveMatchState.inning === 2;
+        const currentOvers = parseFloat(`${liveMatchState.overs}.${liveMatchState.balls}`);
+
+        const topBat = document.getElementById('score-top-bat').value;
+        const topBatRuns = parseInt(document.getElementById('score-top-bat-runs').value) || 0;
+        const topBowl = document.getElementById('score-top-bowl').value;
+        const topBowlWkts = parseInt(document.getElementById('score-top-bowl-wkts').value) || 0;
+
+        const finalData = {
+            status: 'completed',
+            winner: winner,
+            t1_score: is2ndInning ? (liveMatchState.t1_score || (liveMatchState.target - 1)) : liveMatchState.runs,
+            t1_wickets: is2ndInning ? (liveMatchState.t1_wickets || 10) : liveMatchState.wkts,
+            t1_overs: is2ndInning ? (liveMatchState.t1_overs || 6.0) : currentOvers,
+            t2_score: is2ndInning ? liveMatchState.runs : 0,
+            t2_wickets: is2ndInning ? liveMatchState.wkts : 0,
+            t2_overs: is2ndInning ? currentOvers : 0.0,
+            top_bat: topBat,
+            top_bat_runs: topBatRuns,
+            top_bowl: topBowl,
+            top_bowl_wkts: topBowlWkts
+        };
+
+        await supabaseClient.from('fixtures').update(finalData).eq('id', id);
+
+        // 3. Update Points Table
+        await syncPointsTableFromFixtures();
+
+        // 4. Update Top Performers (Subtract OLD if exists, Add NEW)
+        if (m && m.status === 'completed') {
+            if (m.top_bat) await updateTournamentCaps(m.top_bat, '', 'batsman', -m.top_bat_runs, 0);
+            if (m.top_bowl) await updateTournamentCaps(m.top_bowl, '', 'bowler', 0, -m.top_bowl_wkts);
+        }
+
+        if (topBat) await updateTournamentCaps(topBat, '', 'batsman', topBatRuns, 0);
+        if (topBowl) await updateTournamentCaps(topBowl, '', 'bowler', 0, topBowlWkts);
+
+        showSuccessPopup("Match Finalized & Results Updated Successfully! 🏆");
+
+        // Refresh UI
+        fetchResults();
+        fetchFixtures();
+    } catch (e) {
+        console.error(e);
+        showToast("Error finalizing match: " + e.message, "error");
+    }
+}
+
+function showSuccessPopup(msg) {
+    const modal = document.getElementById('success-modal');
+    const msgEl = document.getElementById('success-message');
+    if (modal && msgEl) {
+        msgEl.innerText = msg;
+        modal.style.display = 'flex';
+        // Auto close after 3 seconds
+        setTimeout(() => closeSuccessModal(), 3000);
+    }
+}
+
+function closeSuccessModal() {
+    const modal = document.getElementById('success-modal');
+    if (modal) modal.style.display = 'none';
 }
