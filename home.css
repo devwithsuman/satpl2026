@@ -110,41 +110,70 @@ h3 {
     min-width: 60px;
 }
 
-@media (max-width: 480px) {
+@media (max-width: 600px) {
     #countdown-wrap {
-        padding: 20px 10px !important;
-        min-width: 90% !important;
-        margin-top: 25px !important;
+        padding: 15px 10px !important;
+        min-width: 95% !important;
+        margin-top: 20px !important;
+        border-radius: 12px;
     }
 
     .countdown-grid {
-        gap: 12px !important;
+        gap: 8px !important;
     }
 
     .countdown-item {
-        min-width: 45px;
+        min-width: 40px;
     }
 
     .countdown-item span:first-child {
-        font-size: 1.5rem !important;
-    }
-
-    .countdown-item span:last-child {
-        font-size: 0.6rem !important;
+        font-size: 1.4rem !important;
     }
 
     .hero-actions {
         display: flex;
         flex-direction: column;
-        gap: 15px;
-        padding: 0 20px;
-        margin-top: 30px;
+        gap: 12px;
+        padding: 0 15px;
+        margin-top: 25px;
     }
 
-    .hero-actions .btn,
-    .hero-actions .btn-secondary {
-        width: 100%;
-        text-align: center;
+    .leaderboard-grid {
+        grid-template-columns: 1fr !important;
+        gap: 15px !important;
+    }
+
+    .stat-card {
+        padding: 20px !important;
+    }
+
+    /* Professional Touch: Small text for ticker on mobile */
+    .ticker-label {
+        padding: 0 15px !important;
+        font-size: 0.7rem !important;
+    }
+
+    .ticker-item {
+        font-size: 0.85rem !important;
+    }
+
+    /* Contact Grid Stacking */
+    .contact-grid {
+        grid-template-columns: 1fr !important;
+        gap: 15px !important;
+    }
+
+    .contact-card {
+        padding: 30px 20px !important;
+    }
+
+    /* Sponsors scaling */
+    .sponsor-name {
+        font-size: 1rem !important;
+    }
+
+    .sponsor-track {
+        gap: 40px !important;
     }
 }
 
