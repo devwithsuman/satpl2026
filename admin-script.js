@@ -603,12 +603,17 @@ async function fetchAdminPoints() {
             <td><input type="text" value="${team.team_name || ''}" class="table-input team-name-input"></td>
             <td>
                 <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
-                    ${team.logo_url ? `<img src="${team.logo_url}" class="logo-preview" style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover;">` : '<div style="width:30px; height:30px; background:rgba(255,255,255,0.1); border-radius:50%;"></div>'}
+                    ${team.logo_url ? `<img src="${team.logo_url}" onclick="previewTeam('${team.id}')" class="logo-preview" style="width: 35px; height: 35px; border-radius: 50%; object-fit: cover; cursor: pointer; border: 2px solid var(--secondary); transition: 0.3s;" title="Click to preview">` : `<div onclick="previewTeam('${team.id}')" style="width:35px; height:35px; background:rgba(255,255,255,0.1); border-radius:50%; cursor: pointer;" title="Click to preview"></div>`}
                     <input type="file" class="logo-upload-input" accept="image/png, image/jpeg" style="font-size: 0.6rem; width: 100px;">
                     <input type="hidden" value="${team.logo_url || ''}" class="logo-url-hidden">
                 </div>
             </td>
-            <td><input type="text" value="${team.owner_name || ''}" class="table-input owner-input"></td>
+            <td>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <input type="text" value="${team.owner_name || ''}" class="table-input owner-input">
+                    <button onclick="previewTeam('${team.id}')" class="btn-secondary" style="padding: 5px; min-width: 35px; border-radius: 8px;" title="Quick View">👁️</button>
+                </div>
+            </td>
             <td><input type="number" value="${team.played}" class="table-input played-input" oninput="calculateStats(this)"></td>
             <td><input type="number" value="${team.won}" class="table-input won-input" oninput="calculateStats(this)"></td>
             <td><input type="number" value="${team.lost}" class="table-input lost-input" oninput="calculateStats(this)"></td>
@@ -620,6 +625,37 @@ async function fetchAdminPoints() {
             <td><input type="number" value="${team.points}" class="table-input points-input" readonly style="font-weight: bold; color: var(--secondary); background: rgba(0,0,0,0.2); cursor: not-allowed;"></td>
         </tr>
     `).join("");
+}
+
+// Quick Preview for Team Details
+async function previewTeam(teamId) {
+    const modal = document.getElementById("team-details-modal");
+    const logoImg = document.getElementById("preview-team-logo");
+    const teamNameEl = document.getElementById("preview-team-name");
+    const ownerNameEl = document.getElementById("preview-owner-name");
+
+    // Show loading state
+    teamNameEl.innerText = "Loading...";
+    ownerNameEl.innerText = "...";
+    logoImg.src = "img.svg";
+    modal.style.display = "block";
+
+    const { data, error } = await supabaseClient
+        .from("points_table")
+        .select("*")
+        .eq("id", teamId)
+        .single();
+
+    if (error || !data) {
+        alert("Error loading team details: " + (error?.message || "Not found"));
+        modal.style.display = "none";
+        return;
+    }
+
+    // Populate Modal
+    logoImg.src = data.logo_url || "img.svg";
+    teamNameEl.innerText = data.team_name || "Unknown Team";
+    ownerNameEl.innerText = data.owner_name || "Not Set";
 }
 
 // Global function to auto-calculate Points & NRR
@@ -954,12 +990,12 @@ async function saveSettings() {
         whatsapp1: document.getElementById("set-whatsapp1").value,
         whatsapp2: document.getElementById("set-whatsapp2").value,
         email: document.getElementById("set-email").value,
-        facebook_url: document.getElementById("set-facebook").value,
-        map_url: document.getElementById("set-map-url").value,
+        facebook_url: ensureAbsoluteUrl(document.getElementById("set-facebook").value),
+        map_url: ensureAbsoluteUrl(document.getElementById("set-map-url").value),
         reg_end_date: document.getElementById("set-reg-end").value,
         dev_name: document.getElementById("set-dev-name").value,
         dev_insta: document.getElementById("set-dev-insta").value,
-        dev_web: document.getElementById("set-dev-web").value,
+        dev_web: ensureAbsoluteUrl(document.getElementById("set-dev-web").value),
         dev_whatsapp: document.getElementById("set-dev-whatsapp").value
     };
 
