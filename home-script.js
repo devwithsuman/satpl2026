@@ -295,74 +295,84 @@ async function loadHeroAndScores() {
         upContainer.style.display = 'none';
     }
 
-    // 5. Render Recent Match
-    const recent = matches['recent-match'];
+    // 5. Render Recent Match (Fetch ACTUAL last result from Fixtures)
+    const { data: lastMatch } = await supabaseClient
+        .from('fixtures')
+        .select('*')
+        .eq('status', 'completed')
+        .order('match_no', { ascending: false })
+        .limit(1)
+        .single();
+
     const recentContainer = document.getElementById('recent-container');
-    if (recent && recent.team1_name && recent.team2_name) {
+    if (lastMatch && recentContainer) {
         recentContainer.style.display = 'block';
-        document.getElementById('display-recent-team1').innerText = recent.team1_name;
-        document.getElementById('display-recent-score1').innerText = recent.team1_score || 0;
-        document.getElementById('display-recent-team2').innerText = recent.team2_name;
-        document.getElementById('display-recent-score2').innerText = recent.team2_score || 0;
-        document.getElementById('display-recent-status').innerText = recent.match_status || "";
+        document.getElementById('display-recent-team1').innerText = lastMatch.team1;
+        document.getElementById('display-recent-score1').innerText = lastMatch.t1_score || 0;
+        document.getElementById('display-recent-detail1').innerText = `(${lastMatch.t1_wickets || 0}/6.0)`;
+
+        document.getElementById('display-recent-team2').innerText = lastMatch.team2;
+        document.getElementById('display-recent-score2').innerText = lastMatch.t2_score || 0;
+        document.getElementById('display-recent-detail2').innerText = `(${lastMatch.t2_wickets || 0}/6.0)`;
+
+        const winnerText = lastMatch.winner === 'Draw' ? "MATCH TIED" : `${lastMatch.winner.toUpperCase()} WON`;
+        document.getElementById('display-recent-status').innerText = winnerText;
     } else {
-        recentContainer.style.display = 'none';
+        if (recentContainer) recentContainer.style.display = 'none';
     }
 
-    // Global Map Button Update
-    const globalHeroData = matches['live-match'] || matches['upcoming-match'] || matches['main-hero'];
-    const mapBtn = document.getElementById('home-map-link');
-    if (globalHeroData && globalHeroData.map_url && mapBtn) {
-        mapBtn.href = globalHeroData.map_url;
-    }
+    // Global Map Link is handled in loadSiteSettings
 }
 
 async function loadPointsTable() {
-    const list = document.getElementById('home-points-list');
-    if (!list) return;
+    const listA = document.getElementById('points-group-a');
+    const listB = document.getElementById('points-group-b');
+    if (!listA && !listB) return;
 
-    console.log("Fetching Standings...");
+    console.log("Fetching Group Standings...");
     const { data, error } = await supabaseClient
         .from('points_table')
         .select('*')
         .order('points', { ascending: false })
-        .order('won', { ascending: false });
+        .order('won', { ascending: false })
+        .order('nrr', { ascending: false });
 
     if (error) {
         console.error('Points Table Error:', error.message);
-        list.innerHTML = `<tr><td colspan="6" style="color: #ff4d8d; padding: 20px;">Connection Error: ${error.message}</td></tr>`;
         return;
     }
 
-    if (!data || data.length === 0) {
-        list.innerHTML = `<tr><td colspan="6" style="color: var(--text-dim); padding: 20px;">Standings will be updated soon.</td></tr>`;
-        return;
-    }
+    if (!data || data.length === 0) return;
 
-    list.innerHTML = data.map((team, index) => {
-        const logo = team.logo_url ? `<img src="${team.logo_url}" style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(255,255,255,0.1);">` : '<span class="stat-icon">🛡️</span>';
-        return `
-            <tr>
-                <td>${index + 1}</td>
-                <td style="text-align: left; font-weight: 600;">
-                    <div style="display: flex; align-items: center; gap: 15px;">
-                        ${logo}
-                        <div>
-                            <div style="font-size: 1rem;">${team.team_name}</div>
-                            ${team.owner_name ? `<div style="font-size: 0.7rem; color: var(--text-dim); font-weight: 400;">Owner: ${team.owner_name}</div>` : ''}
+    const groupA = data.filter(t => (t.group_name || 'A').toUpperCase() === 'A');
+    const groupB = data.filter(t => (t.group_name || '').toUpperCase() === 'B');
+
+    const renderRows = (teams) => {
+        if (teams.length === 0) return '<tr><td colspan="6" style="padding:20px; color:var(--text-dim);">No teams assigned.</td></tr>';
+        return teams.map((team, index) => {
+            const logo = team.logo_url ? `<img src="${team.logo_url}" style="width: 25px; height: 25px; border-radius: 50%; object-fit: cover;">` : '🛡️';
+            return `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td style="text-align: left; font-weight: 600;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            ${logo}
+                            <div style="font-size: 0.9rem;">${team.team_name}</div>
                         </div>
-                    </div>
-                </td>
-                <td>${team.played}</td>
-                <td>${team.won}</td>
-                <td>${team.lost}</td>
-                <td style="color: ${parseFloat(team.nrr) >= 0 ? 'var(--secondary)' : '#ff4d4d'}; font-weight: 600;">
-                    ${parseFloat(team.nrr) >= 0 ? '+' : ''}${team.nrr || '0.000'}
-                </td>
-                <td style="color: var(--secondary); font-weight: 800;">${team.points}</td>
-            </tr>
-        `;
-    }).join('');
+                    </td>
+                    <td>${team.played}</td>
+                    <td>${team.won}</td>
+                    <td style="color: ${parseFloat(team.nrr) >= 0 ? 'var(--secondary)' : '#ff4d4d'}; font-size: 0.8rem;">
+                        ${parseFloat(team.nrr) >= 0 ? '+' : ''}${team.nrr || '0.000'}
+                    </td>
+                    <td style="color: var(--secondary); font-weight: 800;">${team.points}</td>
+                </tr>
+            `;
+        }).join('');
+    };
+
+    if (listA) listA.innerHTML = renderRows(groupA);
+    if (listB) listB.innerHTML = renderRows(groupB);
 }
 
 async function loadLeaderboard() {
