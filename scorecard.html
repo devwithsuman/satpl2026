@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Scorecard | SATPL 2026</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --font-main: 'Outfit', sans-serif;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background: var(--bg-dark);
+            color: white;
+            margin: 0;
+        }
+
+        .scorecard-container {
+            max-width: 800px;
+            margin: 100px auto;
+            padding: 20px;
+        }
+
+        .match-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .live-score-box {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .live-score-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--secondary);
+        }
+
+        .score-main {
+            font-size: 4rem;
+            font-weight: 900;
+            margin: 20px 0;
+            display: flex;
+            align-items: baseline;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .wickets {
+            color: var(--secondary);
+        }
+
+        .overs {
+            font-size: 1.2rem;
+            color: var(--text-dim);
+            font-weight: 400;
+        }
+
+        .teams-display {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .team-name {
+            font-size: 1.5rem;
+            font-weight: 800;
+        }
+
+        .vs-tag {
+            background: var(--secondary);
+            color: var(--bg-dark);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-weight: 900;
+            font-size: 0.8rem;
+        }
+
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 30px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        .stats-table th {
+            background: rgba(255, 255, 255, 0.05);
+            text-align: left;
+            padding: 15px;
+            color: var(--text-dim);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stats-table td {
+            padding: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .on-strike {
+            color: var(--secondary);
+        }
+
+        .on-strike::after {
+            content: '*';
+            margin-left: 5px;
+        }
+
+        .timeline {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 25px;
+        }
+
+        .ball {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 0.9rem;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .ball.boundary {
+            background: var(--secondary);
+            color: var(--bg-dark);
+        }
+
+        .ball.six {
+            background: var(--primary);
+            color: white;
+        }
+
+        .ball.wicket {
+            background: #ef4444;
+            color: white;
+        }
+
+        .match-status {
+            margin-top: 20px;
+            color: var(--secondary);
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+    </style>
+</head>
+
+<body class="preloader-active">
+    <div id="preloader">
+        <div class="preloader-logo">SATPL SCORECARD</div>
+        <div class="preloader-bar"></div>
+    </div>
+
+    <div id="particles-bg"></div>
+
+    <nav class="navbar animate-fade">
+        <div class="container" style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <img src="img.svg" alt="SATPL Logo" style="height: 50px; width: auto;">
+                <h1 class="gradient-text" style="font-size: 1.8rem; margin: 0;">SATPL 2026</h1>
+            </div>
+            <div class="nav-links" id="dynamic-navbar"></div>
+        </div>
+    </nav>
+
+    <div class="scorecard-container animate-fade">
+        <div class="match-header">
+            <span class="badge" id="match-badge">LIVE MATCH</span>
+            <h2 id="match-title" style="margin-top: 10px;">Sonaijuri Anchal Tennis Premier League</h2>
+        </div>
+
+        <div class="live-score-box glass">
+            <div class="teams-display">
+                <div class="team-name" id="team1-name">Loading...</div>
+                <div class="vs-tag">VS</div>
+                <div class="team-name" id="team2-name">Loading...</div>
+            </div>
+
+            <div class="score-main">
+                <span id="main-score">0</span>
+                <span class="wickets">/ <span id="main-wickets">0</span></span>
+                <span class="overs">(<span id="main-overs">0.0</span>)</span>
+            </div>
+
+            <div class="timeline" id="ball-timeline">
+                <!-- Balls will appear here -->
+            </div>
+
+            <div class="match-status" id="match-status">Connecting to live feed...</div>
+        </div>
+
+        <table class="stats-table">
+            <thead>
+                <tr>
+                    <th>Batter</th>
+                    <th>R</th>
+                    <th>B</th>
+                    <th>4s</th>
+                    <th>6s</th>
+                    <th>SR</th>
+                </tr>
+            </thead>
+            <tbody id="batting-stats">
+                <!-- Batting details -->
+            </tbody>
+        </table>
+
+        <table class="stats-table" style="margin-top: 20px;">
+            <thead>
+                <tr>
+                    <th>Bowler</th>
+                    <th>O</th>
+                    <th>M</th>
+                    <th>R</th>
+                    <th>W</th>
+                    <th>ECO</th>
+                </tr>
+            </thead>
+            <tbody id="bowling-stats">
+                <!-- Bowling details -->
+            </tbody>
+        </table>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="nav-loader.js"></script>
+    <script>
+        async function loadLiveScore() {
+            const { data, error } = await supabaseClient
+                .from('hero_content')
+                .select('*')
+                .eq('id', '00000000-0000-0000-0000-000000000001')
+                .single();
+
+            if (error || !data) return;
+
+            document.getElementById('team1-name').innerText = data.team1_name;
+            document.getElementById('team2-name').innerText = data.team2_name;
+            document.getElementById('main-score').innerText = data.team1_score || 0;
+            document.getElementById('main-wickets').innerText = data.wickets || 0;
+            document.getElementById('main-overs').innerText = `${data.overs || 0}.${data.balls || 0}`;
+            document.getElementById('match-status').innerText = data.match_status || "";
+            document.getElementById('match-badge').innerText = data.badge || "LIVE MATCH";
+
+            // Batting Stats
+            const batBody = document.getElementById('batting-stats');
+            const b1_sr = data.batsman1_balls > 0 ? ((data.batsman1_runs / data.batsman1_balls) * 100).toFixed(1) : "0.0";
+            const b2_sr = data.batsman2_balls > 0 ? ((data.batsman2_runs / data.batsman2_balls) * 100).toFixed(1) : "0.0";
+
+            batBody.innerHTML = `
+                <tr>
+                    <td class="${data.striker_idx == 1 ? 'on-strike' : ''}">${data.batsman1 || '---'}</td>
+                    <td>${data.batsman1_runs || 0}</td>
+                    <td>${data.batsman1_balls || 0}</td>
+                    <td>${data.batsman1_4s || 0}</td>
+                    <td>${data.batsman1_6s || 0}</td>
+                    <td>${b1_sr}</td>
+                </tr>
+                <tr>
+                    <td class="${data.striker_idx == 2 ? 'on-strike' : ''}">${data.batsman2 || '---'}</td>
+                    <td>${data.batsman2_runs || 0}</td>
+                    <td>${data.batsman2_balls || 0}</td>
+                    <td>${data.batsman2_4s || 0}</td>
+                    <td>${data.batsman2_6s || 0}</td>
+                    <td>${b2_sr}</td>
+                </tr>
+            `;
+
+            // Bowling Stats
+            const bowlBody = document.getElementById('bowling-stats');
+            const eco = data.bowler_overs > 0 ? (data.bowler_runs / data.bowler_overs).toFixed(1) : "0.0";
+            bowlBody.innerHTML = `
+                <tr>
+                    <td>${data.bowler_name || '---'}</td>
+                    <td>${data.bowler_overs || 0}</td>
+                    <td>${data.bowler_maidens || 0}</td>
+                    <td>${data.bowler_runs || 0}</td>
+                    <td>${data.bowler_wickets || 0}</td>
+                    <td>${eco}</td>
+                </tr>
+            `;
+
+            // Timeline
+            const timeline = document.getElementById('ball-timeline');
+            if (data.recent_balls) {
+                const balls = data.recent_balls.split(',');
+                timeline.innerHTML = balls.map(b => {
+                    let cls = 'ball';
+                    if (b == '4') cls += ' boundary';
+                    if (b == '6') cls += ' six';
+                    if (b.toLowerCase().includes('w')) cls += ' wicket';
+                    return `<div class="${cls}">${b}</div>`;
+                }).join('');
+            }
+        }
+
+        // Real-time Update
+        supabaseClient
+            .channel('live-score-sync')
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'hero_content' }, loadLiveScore)
+            .subscribe();
+
+        window.onload = loadLiveScore;
+    </script>
+</body>
+
+</html>
