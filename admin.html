@@ -18,23 +18,62 @@
                 <h2 class="gradient-text" style="font-size: 1.2rem; margin: 0;">SATPL Admin</h2>
             </div>
             <nav class="sidebar-nav">
-                <button onclick="showSection('registrations')" class="active">Registrations</button>
-                <button onclick="showSection('hero')">Hero Settings</button>
-                <button onclick="showSection('announcements')">Announcements</button>
-                <button onclick="showSection('fixtures')">Schedule Manager</button>
-                <button onclick="showSection('leaderboard')">Leaderboard Stats</button>
-                <button onclick="showSection('points')">Points Table</button>
-                <button onclick="showSection('rosters')">Playing Players</button>
-                <button onclick="showSection('gallery')">Gallery Manager</button>
-                <button onclick="showSection('menu')">Menu Settings</button>
-                <button onclick="showSection('settings')">Site Settings</button>
+                <button onclick="showSection('dashboard')" class="active">🏠 Dashboard</button>
+                <button onclick="showSection('registrations')">👥 Registrations</button>
+                <button onclick="showSection('hero')">📡 Match Center</button>
+                <button onclick="showSection('scoring')">🏏 Live Scoring</button>
+                <button onclick="showSection('announcements')">📢 News Manager</button>
+                <button onclick="showSection('fixtures')">📅 Schedule Manager</button>
+                <button onclick="showSection('leaderboard')">🏆 Leaderboard</button>
+                <button onclick="showSection('points')">📊 Points Table</button>
+                <button onclick="showSection('rosters')">🏏 Squads</button>
+                <button onclick="showSection('gallery')">🖼️ Gallery</button>
+                <button onclick="showSection('settings')">⚙️ Settings</button>
             </nav>
             <button onclick="logout()" class="btn-secondary" style="margin-top: auto;">Logout</button>
         </aside>
 
         <main class="main-content">
 
-            <div id="registrations-section" class="admin-section active animate-fade">
+            <div id="dashboard-section" class="admin-section active animate-fade">
+                <header class="section-header">
+                    <div>
+                        <h2 class="gradient-text">Admin Dashboard</h2>
+                        <p style="color: var(--text-dim); font-size: 0.9rem;">Overview of tournament activity</p>
+                    </div>
+                </header>
+
+                <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 30px;">
+                    <div class="glass dashboard-card">
+                        <h3 class="card-title">Quick Stats</h3>
+                        <div id="stats-container"
+                            style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
+                            <div
+                                style="background: rgba(255,255,255,0.03); padding: 15px; border-radius: 10px; text-align: center;">
+                                <div style="font-size: 0.75rem; color: var(--text-dim);">Registrations</div>
+                                <div id="stat-reg-count"
+                                    style="font-size: 1.5rem; font-weight: 800; color: var(--secondary);">0</div>
+                            </div>
+                            <div
+                                style="background: rgba(255,255,255,0.03); padding: 15px; border-radius: 10px; text-align: center;">
+                                <div style="font-size: 0.75rem; color: var(--text-dim);">Paid</div>
+                                <div id="stat-paid-count" style="font-size: 1.5rem; font-weight: 800; color: #22c55e;">0
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass dashboard-card" style="grid-column: span 2;">
+                        <h3 class="card-title">Recent Activity Feed</h3>
+                        <div id="activity-feed" style="max-height: 400px; overflow-y: auto; margin-top: 15px;">
+                            <div style="text-align: center; padding: 20px; color: var(--text-dim);">Loading activity...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="registrations-section" class="admin-section animate-fade">
                 <header class="section-header">
                     <div>
                         <h2 class="gradient-text">Player Registrations</h2>
@@ -524,6 +563,122 @@
                 </div>
             </div>
 
+            <!-- Live Scoring Section -->
+            <div id="scoring-section" class="admin-section animate-fade">
+                <header class="section-header">
+                    <div>
+                        <h2 class="gradient-text">Live Match Scoring</h2>
+                        <p style="color: var(--text-dim); font-size: 0.9rem;">Professional ball-by-ball match control
+                        </p>
+                    </div>
+                </header>
+
+                <div class="grid" style="grid-template-columns: 2fr 1fr; gap: 30px;">
+                    <!-- Scoring Box -->
+                    <div class="glass dashboard-card">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 25px;">
+                            <div>
+                                <h3 id="score-display-team" style="font-size: 1.8rem; margin: 0;">Loading Match...</h3>
+                                <div style="display: flex; align-items: baseline; gap: 10px; margin-top: 10px;">
+                                    <span id="score-display-runs"
+                                        style="font-size: 3rem; font-weight: 900; color: white;">0</span>
+                                    <span style="font-size: 2.5rem; color: var(--secondary); font-weight: 800;">/ <span
+                                            id="score-display-wkts">0</span></span>
+                                    <span id="score-display-overs"
+                                        style="font-size: 1.5rem; color: var(--text-dim);">0.0</span>
+                                </div>
+                            </div>
+                            <div class="badge animate-pulse" id="live-dot" style="background: #22c55e;">● LIVE</div>
+                        </div>
+
+                        <!-- Player Stats (Batting) -->
+                        <div class="grid"
+                            style="grid-template-columns: 1fr 1fr; gap: 20px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px;">
+                            <div class="player-entry glass" id="player-1-box"
+                                style="padding: 15px; border: 1px solid rgba(255,255,255,0.05);">
+                                <div
+                                    style="display: flex; gap: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; margin-bottom: 10px;">
+                                    <input type="text" id="score-p1-reg" class="table-input" placeholder="Strike Reg No"
+                                        style="height: 35px; font-size: 0.8rem;">
+                                    <button onclick="fetchPlayerForScore(1)" class="btn"
+                                        style="padding: 0 10px;">🔍</button>
+                                </div>
+                                <div id="score-p1-name" style="font-weight: 800; color: var(--secondary);">Striker Name
+                                </div>
+                                <div style="font-size: 1.2rem; font-weight: 900; margin-top: 5px;"><span
+                                        id="score-p1-runs">0</span> (<span id="score-p1-balls">0</span>)</div>
+                            </div>
+                            <div class="player-entry glass" id="player-2-box"
+                                style="padding: 15px; border: 1px solid rgba(255,255,255,0.05); opacity: 0.7;">
+                                <div
+                                    style="display: flex; gap: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; margin-bottom: 10px;">
+                                    <input type="text" id="score-p2-reg" class="table-input"
+                                        placeholder="Non-Strike Reg No" style="height: 35px; font-size: 0.8rem;">
+                                    <button onclick="fetchPlayerForScore(2)" class="btn"
+                                        style="padding: 0 10px;">🔍</button>
+                                </div>
+                                <div id="score-p2-name" style="font-weight: 800; color: white;">Non-Striker Name</div>
+                                <div style="font-size: 1.2rem; font-weight: 900; margin-top: 5px;"><span
+                                        id="score-p2-runs">0</span> (<span id="score-p2-balls">0</span>)</div>
+                            </div>
+                        </div>
+
+                        <!-- Bowling Stats -->
+                        <div
+                            style="margin-top: 20px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <input type="text" id="score-bowl-reg" class="table-input" placeholder="Bowler Reg No"
+                                    style="height: 35px; width: 120px;">
+                                <button onclick="fetchPlayerForScore('bowl')" class="btn"
+                                    style="padding: 0 10px;">🔍</button>
+                                <span id="score-bowl-name" style="font-weight: 700;">Bowler Name</span>
+                            </div>
+                            <div style="font-weight: 900;"><span id="score-bowl-wkts">0</span> - <span
+                                    id="score-bowl-runs">0</span> (<span id="score-bowl-overs">0.0</span>)</div>
+                        </div>
+
+                        <!-- Control Buttons (CRICBUZZ STYLE) -->
+                        <div style="margin-top: 30px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+                            <button onclick="handleScoreAction(0)" class="btn-scoring">0</button>
+                            <button onclick="handleScoreAction(1)" class="btn-scoring">1</button>
+                            <button onclick="handleScoreAction(2)" class="btn-scoring">2</button>
+                            <button onclick="handleScoreAction(3)" class="btn-scoring">3</button>
+                            <button onclick="handleScoreAction(4)" class="btn-scoring"
+                                style="background: var(--secondary); color: var(--bg-dark);">4</button>
+                            <button onclick="handleScoreAction(6)" class="btn-scoring"
+                                style="background: var(--primary);">6</button>
+                            <button onclick="handleScoreAction('WD')" class="btn-scoring"
+                                style="background: #fbbf24; color: black;">WD</button>
+                            <button onclick="handleScoreAction('NB')" class="btn-scoring"
+                                style="background: #fbbf24; color: black;">NB</button>
+                            <button onclick="handleScoreAction('W')" class="btn-scoring"
+                                style="background: #ef4444; grid-column: span 2;">OUT ☝️</button>
+                            <button onclick="switchStrike()" class="btn-scoring"
+                                style="background: #3b82f6; grid-column: span 2;">SWITCH STRIKE 🔄</button>
+                        </div>
+                    </div>
+
+                    <!-- Match History / Timeline -->
+                    <div class="glass dashboard-card">
+                        <h3 class="card-title">Recent Balls (Over)</h3>
+                        <div id="score-timeline" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px;">
+                            <!-- Balls -->
+                        </div>
+                        <div style="margin-top: 40px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px;">
+                            <h3 class="card-title">Quick Settings</h3>
+                            <button onclick="resetInnings()" class="btn-secondary"
+                                style="width: 100%; margin-bottom: 10px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: #ef4444;">Reset
+                                Innings</button>
+                            <button onclick="undoLastBall()" class="btn-secondary"
+                                style="width: 100%; margin-bottom: 10px;">Undo Last Ball (Beta)</button>
+                            <button onclick="saveLiveScore()" class="btn"
+                                style="width: 100%; padding: 15px; font-weight: 900;">Push Update to Website 🚀</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </main>
 
     </div>
@@ -764,8 +919,22 @@
             style="max-width: 500px; width: 90%; margin: 80px auto; padding: 40px; position: relative;">
             <button onclick="closeLeaderboardModal()"
                 style="position: absolute; top: 20px; right: 20px; background: none; border: none; font-size: 1.5rem; color: var(--text-dim); cursor: pointer;">✕</button>
-            <h2 class="gradient-text" style="margin-bottom: 25px;">Top Performer Entry</h2>
+            <h2 id="leaderboard-modal-title" class="gradient-text" style="margin-bottom: 25px;">Top Performer Entry</h2>
             <form onsubmit="saveLeaderboard(event)">
+                <input type="hidden" id="edit-leaderboard-id">
+                <div class="form-group"
+                    style="background: rgba(255,255,255,0.03); padding: 15px; border-radius: 10px; border: 1px solid var(--glass-border); margin-bottom: 20px;">
+                    <label style="color: var(--secondary);">Quick Fetch (Optional)</label>
+                    <div style="display: flex; gap: 10px; margin-top: 5px;">
+                        <input type="text" id="stat-lookup-reg" class="table-input"
+                            placeholder="Enter Registration No (e.g. OSATPL...)">
+                        <button type="button" onclick="lookupPlayerForStat()" class="btn"
+                            style="padding: 10px 20px;">Fetch 🔍</button>
+                    </div>
+                    <p style="font-size: 0.75rem; color: var(--text-dim); margin-top: 5px;">Search by ID to auto-fill
+                        name and team.</p>
+                </div>
+
                 <div class="form-group">
                     <label>Player Name</label>
                     <input type="text" id="stat-name" class="table-input" placeholder="e.g. Rahul Sharma" required>
@@ -851,6 +1020,58 @@
                         style="flex: 1;">Cancel</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Match Result Modal -->
+    <div id="result-modal" class="modal-backdrop" style="display: none;">
+        <div class="glass modal-content animate-slide-up" style="max-width: 600px;">
+            <h2 class="gradient-text">Finalize Match Result</h2>
+            <p style="color: var(--text-dim); margin-bottom: 25px;">Enter final scores to update Points Table
+                automatically.</p>
+
+            <input type="hidden" id="result-match-id">
+            <input type="hidden" id="result-t1-name">
+            <input type="hidden" id="result-t2-name">
+
+            <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div class="glass" style="padding: 15px;">
+                    <h4 id="res-t1-label" style="color: var(--secondary); margin-bottom: 10px;">Team 1</h4>
+                    <div class="form-group">
+                        <label>Runs Scored</label>
+                        <input type="number" id="res-t1-runs" class="table-input" placeholder="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Overs Played (e.g. 5.4)</label>
+                        <input type="number" step="0.1" id="res-t1-overs" class="table-input" placeholder="6.0">
+                    </div>
+                </div>
+
+                <div class="glass" style="padding: 15px;">
+                    <h4 id="res-t2-label" style="color: var(--secondary); margin-bottom: 10px;">Team 2</h4>
+                    <div class="form-group">
+                        <label>Runs Scored</label>
+                        <input type="number" id="res-t2-runs" class="table-input" placeholder="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Overs Played</label>
+                        <input type="number" step="0.1" id="res-t2-overs" class="table-input" placeholder="6.0">
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <label>Winner Team</label>
+                <select id="res-winner" class="table-input">
+                    <!-- Populated dynamically -->
+                </select>
+            </div>
+
+            <div style="margin-top: 30px; display: flex; gap: 15px;">
+                <button onclick="submitMatchResult()" class="btn" style="flex: 2;">Save Result & Update Table
+                    🏆</button>
+                <button onclick="closeResultModal()" class="btn-secondary" style="flex: 1;">Cancel</button>
+            </div>
         </div>
     </div>
 
