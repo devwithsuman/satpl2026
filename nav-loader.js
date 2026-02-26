@@ -116,9 +116,55 @@ async function loadNavbar() {
     }
 }
 
+// --- Developer Credits Loader ---
+async function loadDevCredits() {
+    const container = document.getElementById('dev-credits-container');
+    if (!container || typeof supabaseClient === 'undefined') return;
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('site_settings')
+            .select('*')
+            .eq('id', 'global-settings')
+            .single();
+
+        if (error || !data || !data.dev_name) {
+            container.style.display = 'none';
+            return;
+        }
+
+        container.innerHTML = `
+            <div class="dev-credits">
+                <span class="dev-label">Developed ❤️ by</span>
+                <span class="dev-name">${data.dev_name}</span>
+                <div class="dev-socials">
+                    ${data.dev_insta ? `
+                        <a href="https://instagram.com/${data.dev_insta}" target="_blank" class="dev-icon" title="Instagram">
+                            <img src="https://cdn-icons-png.flaticon.com/512/174/174855.png" alt="Insta">
+                        </a>` : ''}
+                    ${data.dev_web ? `
+                        <a href="${data.dev_web}" target="_blank" class="dev-icon" title="Website">
+                            <img src="https://img.icons8.com/?size=100&id=BXD00LqXXzlc&format=png&color=000000" alt="Web">
+                        </a>` : ''}
+                    ${data.dev_whatsapp ? `
+                        <a href="https://wa.me/${data.dev_whatsapp}" target="_blank" class="dev-icon" title="WhatsApp">
+                            <img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" alt="WA">
+                        </a>` : ''}
+                </div>
+            </div>
+        `;
+    } catch (err) {
+        console.warn("Dev Credits Load Failed:", err);
+    }
+}
+
 // Auto-init on load
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', loadNavbar);
+    document.addEventListener('DOMContentLoaded', () => {
+        loadNavbar();
+        loadDevCredits();
+    });
 } else {
     loadNavbar();
+    loadDevCredits();
 }
