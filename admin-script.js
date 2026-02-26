@@ -878,6 +878,12 @@ async function loadSettings() {
             document.getElementById("set-reg-end").value = data.reg_end_date || "";
         }
 
+        // Developer Settings
+        if (document.getElementById("set-dev-name")) document.getElementById("set-dev-name").value = data.dev_name || "";
+        if (document.getElementById("set-dev-insta")) document.getElementById("set-dev-insta").value = data.dev_insta || "";
+        if (document.getElementById("set-dev-web")) document.getElementById("set-dev-web").value = data.dev_web || "";
+        if (document.getElementById("set-dev-whatsapp")) document.getElementById("set-dev-whatsapp").value = data.dev_whatsapp || "";
+
         if (data.qr_code_url) {
             document.getElementById("qr-preview").innerHTML = `<img src="${data.qr_code_url}" style="width: 150px; height: 150px; border-radius: 10px; border: 1px solid var(--glass-border);">`;
         }
@@ -934,7 +940,11 @@ async function saveSettings() {
         email: document.getElementById("set-email").value,
         facebook_url: document.getElementById("set-facebook").value,
         map_url: document.getElementById("set-map-url").value,
-        reg_end_date: document.getElementById("set-reg-end").value
+        reg_end_date: document.getElementById("set-reg-end").value,
+        dev_name: document.getElementById("set-dev-name").value,
+        dev_insta: document.getElementById("set-dev-insta").value,
+        dev_web: document.getElementById("set-dev-web").value,
+        dev_whatsapp: document.getElementById("set-dev-whatsapp").value
     };
 
     if (qrUrl) settings.qr_code_url = qrUrl;
