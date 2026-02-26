@@ -145,7 +145,7 @@ async function loadDevCredits() {
                             <img src="https://cdn-icons-png.flaticon.com/512/174/174855.png" alt="Insta">
                         </a>` : ''}
                     ${data.dev_web ? `
-                        <a href="${data.dev_web}" target="_blank" class="dev-icon" title="Website">
+                        <a href="${ensureAbsoluteUrl(data.dev_web)}" target="_blank" class="dev-icon" title="Website">
                             <img src="https://img.icons8.com/?size=100&id=BXD00LqXXzlc&format=png&color=000000" alt="Web">
                         </a>` : ''}
                     ${data.dev_whatsapp ? `
