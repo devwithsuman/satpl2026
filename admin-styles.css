@@ -549,3 +549,70 @@ input:checked+.slider:before {
 .slider.round:before {
     border-radius: 50%;
 }
+
+/* Professional Scoring Buttons */
+.btn-scoring {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    color: white;
+    padding: 15px;
+    border-radius: 12px;
+    font-size: 1.1rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-scoring:hover {
+    background: var(--glass-border);
+    transform: translateY(-2px);
+}
+
+.btn-scoring:active {
+    transform: scale(0.95);
+}
+
+.ball {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.1);
+    font-weight: 800;
+    font-size: 0.9rem;
+}
+
+.ball.boundary {
+    background: var(--secondary);
+    color: var(--bg-dark);
+}
+
+.ball.six {
+    background: var(--primary);
+    color: white;
+}
+
+.ball.wicket {
+    background: #ef4444;
+    color: white;
+}
+
+.animate-pulse {
+    animation: scoringPulse 2s infinite;
+}
+
+@keyframes scoringPulse {
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
