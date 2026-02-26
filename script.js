@@ -118,17 +118,60 @@ document.addEventListener("DOMContentLoaded", () => {
                     return;
                 }
 
-                submitBtn.innerText = "⏳ Saving Details...";
-                const playerToken = Math.random().toString(36).substring(2, 7) + Math.random().toString(36).substring(2, 7);
+                submitBtn.innerText = "⏳ Compressing Photo...";
+
+                // Helper to compress image
+                const compressImage = async (file) => {
+                    const ext = file.name.split('.').pop().toLowerCase();
+                    if (ext === 'pdf') return file; // Skip PDF compression
+
+                    return new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.readAsDataURL(file);
+                        reader.onload = (event) => {
+                            const img = new Image();
+                            img.src = event.target.result;
+                            img.onload = () => {
+                                const canvas = document.createElement("canvas");
+                                let width = img.width;
+                                let height = img.height;
+                                // Max resolution 1200px
+                                const max_size = 1200;
+                                if (width > height) {
+                                    if (width > max_size) {
+                                        height *= max_size / width;
+                                        width = max_size;
+                                    }
+                                } else {
+                                    if (height > max_size) {
+                                        width *= max_size / height;
+                                        height = max_size;
+                                    }
+                                }
+                                canvas.width = width;
+                                canvas.height = height;
+                                const ctx = canvas.getContext("2d");
+                                ctx.drawImage(img, 0, 0, width, height);
+                                canvas.toBlob((blob) => {
+                                    const compressedFile = new File([blob], file.name, { type: "image/jpeg" });
+                                    resolve(compressedFile);
+                                }, "image/jpeg", 0.7); // 70% quality
+                            };
+                        };
+                    });
+                };
+
+                const compressedPhoto = await compressImage(photo);
 
                 // 1️⃣ Upload Photo
+                submitBtn.innerText = "⏳ Uploading Photo...";
                 const timestamp = Date.now();
-                const ext = photo.name ? photo.name.split('.').pop() : 'jpg';
-                const fileName = `player_${timestamp}_${Math.floor(Math.random() * 1000)}.${ext}`;
+                const fileExt = compressedPhoto.name ? compressedPhoto.name.split('.').pop() : 'jpg';
+                const fileName = `player_${timestamp}_${Math.floor(Math.random() * 1000)}.${fileExt}`;
 
                 const { error: uploadError } = await supabaseClient.storage
                     .from("player-photos")
-                    .upload(fileName, photo);
+                    .upload(fileName, compressedPhoto);
 
                 if (uploadError) throw new Error("Photo Upload Failed: " + uploadError.message);
 
@@ -138,7 +181,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 const photoUrl = photoData.publicUrl;
 
+                const playerToken = Math.random().toString(36).substring(2, 7) + Math.random().toString(36).substring(2, 7);
+
                 // 2️⃣ Save as PENDING record first
+                submitBtn.innerText = "⏳ Saving Your Data...";
                 const { data: insertedData, error: insertError } = await supabaseClient
                     .from("player_registrations")
                     .insert([{
