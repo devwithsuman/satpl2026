@@ -160,11 +160,11 @@ async function loadSiteSettings() {
         const emailEl = document.getElementById('home-email');
         const fbEl = document.getElementById('home-facebook');
         if (data.email && emailEl) emailEl.href = `mailto:${data.email}`;
-        if (data.facebook_url && fbEl) fbEl.href = data.facebook_url;
+        if (data.facebook_url && fbEl) fbEl.href = ensureAbsoluteUrl(data.facebook_url);
 
         // Map URL
         const mapBtn = document.getElementById('home-map-link');
-        if (data.map_url && mapBtn) mapBtn.href = data.map_url;
+        if (data.map_url && mapBtn) mapBtn.href = ensureAbsoluteUrl(data.map_url);
 
         // Store registration end date for countdown
         window.siteRegEndDate = data.reg_end_date;
