@@ -23,3 +23,17 @@ var supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KE
 window.supabaseClient = supabaseClient;
 
 console.log("💎 Supabase Client Initialized [" + (isAdminPage ? "ADMIN MODE" : "PUBLIC MODE") + "]");
+
+// Helper: Ensure external links have a protocol
+window.ensureAbsoluteUrl = function (url) {
+    if (!url) return "";
+    const trimmed = url.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('mailto:') || trimmed.startsWith('tel:') || trimmed.startsWith('#')) {
+        return trimmed;
+    }
+    // If it contains a dot and doesn't look like a local file, assume it's a domain
+    if (trimmed.includes('.') && !trimmed.startsWith('/') && !trimmed.endsWith('.html')) {
+        return 'https://' + trimmed;
+    }
+    return trimmed;
+};
