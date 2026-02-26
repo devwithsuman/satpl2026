@@ -30,9 +30,13 @@ function showSection(sectionId) {
     const target = document.getElementById(sectionId + "-section");
     if (target) {
         target.classList.add("active");
+        if (sectionId === 'dashboard') loadDashboard();
+        if (sectionId === 'registrations') fetchRegistrations();
         if (sectionId === 'announcements') fetchNotices();
         if (sectionId === 'fixtures') fetchFixtures();
         if (sectionId === 'leaderboard') fetchLeaderboard();
+        if (sectionId === 'points') fetchAdminPoints();
+        if (sectionId === 'scoring') loadScoringSection();
         if (sectionId === 'gallery') fetchGallery();
     }
 }
@@ -1223,9 +1227,17 @@ async function saveFixture(event) {
 }
 
 async function toggleFixtureStatus(id, current) {
-    const next = current === 'upcoming' ? 'completed' : 'upcoming';
-    await supabaseClient.from('fixtures').update({ status: next }).eq('id', id);
-    fetchFixtures();
+    if (current === 'upcoming') {
+        const { data: match } = await supabaseClient.from('fixtures').select('*').eq('id', id).single();
+        if (match) {
+            openResultModal(id, match.team1, match.team2);
+        }
+    } else {
+        const next = 'upcoming';
+        await supabaseClient.from('fixtures').update({ status: next }).eq('id', id);
+        logActivity('Fixture', `Match status changed for match ID: ${id}`);
+        fetchFixtures();
+    }
 }
 
 async function deleteFixture(id) {
@@ -1247,16 +1259,100 @@ async function fetchLeaderboard() {
             <td>${p.team_name || '-'}</td>
             <td><span class="status-badge ${p.category === 'batsman' ? 'paid' : 'pending'}">${p.category.toUpperCase()}</span></td>
             <td style="font-weight: 800; color: var(--secondary);">${p.category === 'batsman' ? p.runs + ' Runs' : p.wickets + ' Wkts'}</td>
-            <td><button class="btn-secondary" style="background: #ef4444; border: none; padding: 5px 10px;" onclick="deleteLeaderboard('${p.id}')">Del</button></td>
+            <td>
+                <div style="display: flex; gap: 5px;">
+                    <button class="btn" style="background: #3b82f6; padding: 5px 10px; font-size: 0.75rem;" onclick='editLeaderboard(${JSON.stringify(p)})'>Edit</button>
+                    <button class="btn-secondary" style="background: #ef4444; border: none; padding: 5px 10px;" onclick="deleteLeaderboard('${p.id}')">Del</button>
+                </div>
+            </td>
         </tr>
     `).join('');
 }
 
-function openLeaderboardModal() { document.getElementById('leaderboard-modal').style.display = 'flex'; }
-function closeLeaderboardModal() { document.getElementById('leaderboard-modal').style.display = 'none'; }
+function openLeaderboardModal(isEdit = false) {
+    document.getElementById('leaderboard-modal-title').innerText = isEdit ? 'Edit Performance 🏆' : 'New Performance Entry 🏆';
+    if (!isEdit) {
+        document.getElementById('edit-leaderboard-id').value = '';
+        document.getElementById('stat-lookup-reg').value = '';
+        document.getElementById('stat-name').value = '';
+        document.getElementById('stat-team').value = '';
+        document.getElementById('stat-value').value = 0;
+    }
+    document.getElementById('leaderboard-modal').style.display = 'flex';
+}
+
+function closeLeaderboardModal() {
+    document.getElementById('leaderboard-modal').style.display = 'none';
+}
+
+function editLeaderboard(p) {
+    document.getElementById('edit-leaderboard-id').value = p.id;
+    document.getElementById('stat-lookup-reg').value = '';
+    document.getElementById('stat-name').value = p.player_name;
+    document.getElementById('stat-team').value = p.team_name || '';
+    document.getElementById('stat-category').value = p.category;
+    document.getElementById('stat-value').value = p.category === 'batsman' ? p.runs : p.wickets;
+    openLeaderboardModal(true);
+}
+
+async function lookupPlayerForStat() {
+    const regNo = document.getElementById('stat-lookup-reg').value.trim().toUpperCase();
+    if (!regNo) return alert("Please enter a Registration Number!");
+
+    const fetchBtn = event.target;
+    const originalText = fetchBtn.innerText;
+    fetchBtn.innerText = "⏳...";
+    fetchBtn.disabled = true;
+
+    try {
+        // 1. First search in player_registrations to get the official name
+        const { data: regData, error: regErr } = await supabaseClient
+            .from('player_registrations')
+            .select('player_name')
+            .eq('registration_no', regNo)
+            .single();
+
+        if (regErr || !regData) {
+            alert("No player found with this Registration ID!");
+            return;
+        }
+
+        document.getElementById('stat-name').value = regData.player_name;
+
+        // 2. Search in team_players to get their Team Name
+        const { data: teamPlayerData, error: teamErr } = await supabaseClient
+            .from('team_players')
+            .select('team_id')
+            .eq('reg_no', regNo)
+            .single();
+
+        if (teamPlayerData && teamPlayerData.team_id) {
+            const { data: teamData } = await supabaseClient
+                .from('points_table')
+                .select('team_name')
+                .eq('id', teamPlayerData.team_id)
+                .single();
+
+            if (teamData) {
+                document.getElementById('stat-team').value = teamData.team_name;
+            }
+        } else {
+            document.getElementById('stat-team').value = "Independent / No Team";
+        }
+
+        showToast("Player details fetched!", "success");
+
+    } catch (e) {
+        console.error("Lookup error:", e);
+    } finally {
+        fetchBtn.innerText = originalText;
+        fetchBtn.disabled = false;
+    }
+}
 
 async function saveLeaderboard(event) {
     event.preventDefault();
+    const id = document.getElementById('edit-leaderboard-id').value;
     const cat = document.getElementById('stat-category').value;
     const updates = {
         player_name: document.getElementById('stat-name').value,
@@ -1265,8 +1361,23 @@ async function saveLeaderboard(event) {
         runs: cat === 'batsman' ? Number(document.getElementById('stat-value').value) : 0,
         wickets: cat === 'bowler' ? Number(document.getElementById('stat-value').value) : 0
     };
-    await supabaseClient.from('top_performers').insert([updates]);
-    closeLeaderboardModal(); fetchLeaderboard();
+
+    let error;
+    if (id) {
+        const res = await supabaseClient.from('top_performers').update(updates).eq('id', id);
+        error = res.error;
+    } else {
+        const res = await supabaseClient.from('top_performers').insert([updates]);
+        error = res.error;
+    }
+
+    if (error) {
+        alert("Error: " + error.message);
+    } else {
+        logActivity('Leaderboard', `${id ? 'Updated' : 'Added'} stats for ${updates.player_name}`);
+        closeLeaderboardModal();
+        fetchLeaderboard();
+    }
 }
 
 async function deleteLeaderboard(id) {
@@ -1496,9 +1607,339 @@ async function deleteGalleryPhoto(id, url) {
             const fileName = url.split('/').pop();
             await supabaseClient.storage.from('player-photos').remove([fileName]);
         }
-
         fetchGallery();
     } catch (err) {
         alert("Error deleting: " + err.message);
     }
+}
+
+// ================= ADMIN ACTIVITY & DASHBOARD =================
+async function logActivity(type, description) {
+    try {
+        await supabaseClient.from('admin_activity').insert([{
+            action_type: type,
+            description: description,
+            admin_name: 'Admin'
+        }]);
+    } catch (e) { console.warn("Logging failed:", e); }
+}
+
+async function loadDashboard() {
+    const activityFeed = document.getElementById('activity-feed');
+    const statsReg = document.getElementById('stat-reg-count');
+    const statsPaid = document.getElementById('stat-paid-count');
+
+    // 1. Load Stats
+    const { count: total } = await supabaseClient.from('player_registrations').select('*', { count: 'exact', head: true });
+    const { count: paid } = await supabaseClient.from('player_registrations').select('*', { count: 'exact', head: true }).eq('payment_status', 'paid');
+
+    if (statsReg) statsReg.innerText = total || 0;
+    if (statsPaid) statsPaid.innerText = paid || 0;
+
+    // 2. Load Activity
+    const { data: activities, error } = await supabaseClient
+        .from('admin_activity')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+    if (error || !activities || activities.length === 0) {
+        activityFeed.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-dim);">No recent activity.</div>';
+        return;
+    }
+
+    activityFeed.innerHTML = activities.map(act => `
+        <div style="padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; gap: 10px; align-items: center;">
+            <div style="background: var(--secondary); color: var(--bg-dark); padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase;">${act.action_type}</div>
+            <div style="flex: 1;">
+                <div style="font-size: 0.85rem; color: white;">${act.description}</div>
+                <div style="font-size: 0.7rem; color: var(--text-dim);">${new Date(act.created_at).toLocaleString()}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// ================= MATCH RESULT MODAL =================
+window.openResultModal = function (id, t1, t2) {
+    document.getElementById('result-match-id').value = id;
+    document.getElementById('result-t1-name').value = t1;
+    document.getElementById('result-t2-name').value = t2;
+    document.getElementById('res-t1-label').innerText = t1;
+    document.getElementById('res-t2-label').innerText = t2;
+
+    // Fill winner options
+    const winnerSelect = document.getElementById('res-winner');
+    winnerSelect.innerHTML = `
+        <option value="${t1}">${t1}</option>
+        <option value="${t2}">${t2}</option>
+        <option value="Draw">Draw/No Result</option>
+    `;
+
+    document.getElementById('result-modal').style.display = 'flex';
+}
+
+window.closeResultModal = function () {
+    document.getElementById('result-modal').style.display = 'none';
+}
+
+window.submitMatchResult = async function () {
+    const id = document.getElementById('result-match-id').value;
+    const t1 = document.getElementById('result-t1-name').value;
+    const t2 = document.getElementById('result-t2-name').value;
+    const r1 = parseInt(document.getElementById('res-t1-runs').value) || 0;
+    const o1 = parseFloat(document.getElementById('res-t1-overs').value) || 6.0;
+    const r2 = parseInt(document.getElementById('res-t2-runs').value) || 0;
+    const o2 = parseFloat(document.getElementById('res-t2-overs').value) || 6.0;
+    const winner = document.getElementById('res-winner').value;
+
+    try {
+        // 1. Update Fixture
+        await supabaseClient.from('fixtures').update({
+            status: 'completed',
+            t1_score: r1,
+            t2_score: r2,
+            winner: winner
+        }).eq('id', id);
+
+        // 2. Update Points Table Automatically
+        await updatePointsFromMatch(t1, r1, o1, t2, r2, o2, winner);
+
+        logActivity('Match', `Result updated: ${t1} vs ${t2}. Winner: ${winner}`);
+        alert("✅ Result Saved and Points Table Updated!");
+        closeResultModal();
+        fetchFixtures();
+    } catch (e) {
+        alert("Error saving result: " + e.message);
+    }
+}
+
+async function updatePointsFromMatch(t1, r1, o1, t2, r2, o2, winner) {
+    const { data: teams } = await supabaseClient.from('points_table').select('*').or(`team_name.eq."${t1}",team_name.eq."${t2}"`);
+
+    const team1 = teams.find(t => t.team_name === t1);
+    const team2 = teams.find(t => t.team_name === t2);
+
+    if (!team1 || !team2) return;
+
+    // Team 1 Updates
+    const u1 = {
+        played: (team1.played || 0) + 1,
+        won: (team1.won || 0) + (winner === t1 ? 1 : 0),
+        lost: (team1.lost || 0) + (winner === t2 ? 1 : 0),
+        runs_scored: (team1.runs_scored || 0) + r1,
+        overs_faced: (team1.overs_faced || 0) + o1,
+        runs_conceded: (team1.runs_conceded || 0) + r2,
+        overs_bowled: (team1.overs_bowled || 0) + o2
+    };
+    u1.points = u1.won * 2;
+    // NRR Calculation
+    const nrr1 = (u1.runs_scored / u1.overs_faced) - (u1.runs_conceded / u1.overs_bowled);
+    u1.nrr = parseFloat(nrr1.toFixed(3));
+
+    // Team 2 Updates
+    const u2 = {
+        played: (team2.played || 0) + 1,
+        won: (team2.won || 0) + (winner === t2 ? 1 : 0),
+        lost: (team2.lost || 0) + (winner === t1 ? 1 : 0),
+        runs_scored: (team2.runs_scored || 0) + r2,
+        overs_faced: (team2.overs_faced || 0) + o2,
+        runs_conceded: (team2.runs_conceded || 0) + r1,
+        overs_bowled: (team2.overs_bowled || 0) + o1
+    };
+    u2.points = u2.won * 2;
+    const nrr2 = (u2.runs_scored / u2.overs_faced) - (u2.runs_conceded / u2.overs_bowled);
+    u2.nrr = parseFloat(nrr2.toFixed(3));
+
+    await supabaseClient.from('points_table').update(u1).eq('id', team1.id);
+    await supabaseClient.from('points_table').update(u2).eq('id', team2.id);
+}
+
+// ================= PROFESSIONAL LIVE SCORING SYSTEM =================
+let liveMatchState = {
+    team_name: "",
+    runs: 0, wkts: 0, overs: 0, balls: 0,
+    batsman1: { name: "Striker", runs: 0, balls: 0, f4s: 0, s6s: 0, reg: "" },
+    batsman2: { name: "Non-Striker", runs: 0, balls: 0, f4s: 0, s6s: 0, reg: "" },
+    bowler: { name: "Bowler", runs: 0, wkts: 0, overs: 0, balls: 0, reg: "" },
+    striker: 1, // 1 or 2
+    timeline: []
+};
+
+async function loadScoringSection() {
+    const { data, error } = await supabaseClient
+        .from('hero_content')
+        .select('*')
+        .eq('id', '00000000-0000-0000-0000-000000000001')
+        .single();
+
+    if (error || !data) return;
+
+    liveMatchState = {
+        team_name: data.team1_name || "Team A",
+        runs: data.team1_score || 0,
+        wkts: data.wickets || 0,
+        overs: data.overs || 0,
+        balls: data.balls || 0,
+        batsman1: {
+            name: data.batsman1 || "Striker",
+            runs: data.batsman1_runs || 0,
+            balls: data.batsman1_balls || 0,
+            f4s: data.batsman1_4s || 0,
+            s6s: data.batsman1_6s || 0,
+            reg: data.batsman1_reg || ""
+        },
+        batsman2: {
+            name: data.batsman2 || "Non-Striker",
+            runs: data.batsman2_runs || 0,
+            balls: data.batsman2_balls || 0,
+            f4s: data.batsman2_4s || 0,
+            s6s: data.batsman2_6s || 0,
+            reg: data.batsman2_reg || ""
+        },
+        bowler: {
+            name: data.bowler_name || "Bowler",
+            runs: data.bowler_runs || 0,
+            wkts: data.bowler_wickets || 0,
+            overs: data.bowler_overs || 0,
+            balls: data.bowler_over_balls || 0,
+            reg: data.bowler_reg || ""
+        },
+        striker: data.striker_idx || 1,
+        timeline: data.recent_balls ? data.recent_balls.split(',') : []
+    };
+
+    updateScoringUI();
+}
+
+function updateScoringUI() {
+    document.getElementById('score-display-team').innerText = liveMatchState.team_name;
+    document.getElementById('score-display-runs').innerText = liveMatchState.runs;
+    document.getElementById('score-display-wkts').innerText = liveMatchState.wkts;
+    document.getElementById('score-display-overs').innerText = `${liveMatchState.overs}.${liveMatchState.balls}`;
+
+    document.getElementById('score-p1-name').innerText = liveMatchState.batsman1.name;
+    document.getElementById('score-p1-runs').innerText = liveMatchState.batsman1.runs;
+    document.getElementById('score-p1-balls').innerText = liveMatchState.batsman1.balls;
+    document.getElementById('score-p1-reg').value = liveMatchState.batsman1.reg;
+
+    document.getElementById('score-p2-name').innerText = liveMatchState.batsman2.name;
+    document.getElementById('score-p2-runs').innerText = liveMatchState.batsman2.runs;
+    document.getElementById('score-p2-balls').innerText = liveMatchState.batsman2.balls;
+    document.getElementById('score-p2-reg').value = liveMatchState.batsman2.reg;
+
+    document.getElementById('score-bowl-name').innerText = liveMatchState.bowler.name;
+    document.getElementById('score-bowl-runs').innerText = liveMatchState.bowler.runs;
+    document.getElementById('score-bowl-wkts').innerText = liveMatchState.bowler.wkts;
+    document.getElementById('score-bowl-overs').innerText = `${liveMatchState.bowler.overs}.${liveMatchState.bowler.balls}`;
+    document.getElementById('score-bowl-reg').value = liveMatchState.bowler.reg;
+
+    document.getElementById('player-1-box').style.border = liveMatchState.striker === 1 ? '2px solid var(--secondary)' : '1px solid rgba(255,255,255,0.05)';
+    document.getElementById('player-2-box').style.border = liveMatchState.striker === 2 ? '2px solid var(--secondary)' : '1px solid rgba(255,255,255,0.05)';
+
+    const timeline = document.getElementById('score-timeline');
+    timeline.innerHTML = liveMatchState.timeline.map(b => `<div class="ball ${b == '4' ? 'boundary' : b == '6' ? 'six' : b.toLowerCase().includes('w') ? 'wicket' : ''}">${b}</div>`).join('');
+}
+
+async function fetchPlayerForScore(type) {
+    const regId = type === 1 ? 'score-p1-reg' : type === 2 ? 'score-p2-reg' : 'score-bowl-reg';
+    const regNo = document.getElementById(regId).value.trim().toUpperCase();
+    if (!regNo) return;
+
+    const { data } = await supabaseClient.from('player_registrations').select('player_name').eq('registration_no', regNo).single();
+    if (!data) return alert("Not Found");
+
+    if (type === 1) { liveMatchState.batsman1.name = data.player_name; liveMatchState.batsman1.reg = regNo; }
+    else if (type === 2) { liveMatchState.batsman2.name = data.player_name; liveMatchState.batsman2.reg = regNo; }
+    else { liveMatchState.bowler.name = data.player_name; liveMatchState.bowler.reg = regNo; }
+
+    updateScoringUI();
+}
+
+function handleScoreAction(val) {
+    const isWicket = val === 'W';
+    const isWide = val === 'WD';
+    const isNoBall = val === 'NB';
+    const runs = typeof val === 'number' ? val : 0;
+
+    if (!isWicket) {
+        liveMatchState.runs += runs;
+        if (isWide || isNoBall) liveMatchState.runs += 1;
+    } else {
+        liveMatchState.wkts += 1;
+    }
+
+    const striker = liveMatchState.striker === 1 ? liveMatchState.batsman1 : liveMatchState.batsman2;
+    if (!isWide) {
+        striker.runs += runs;
+        striker.balls += 1;
+        if (runs === 4) striker.f4s += 1;
+        if (runs === 6) striker.s6s += 1;
+    }
+
+    if (!isWide && !isNoBall) {
+        liveMatchState.bowler.balls += 1;
+        if (liveMatchState.bowler.balls >= 6) { liveMatchState.bowler.balls = 0; liveMatchState.bowler.overs += 1; }
+    }
+    if (isWicket) liveMatchState.bowler.wkts += 1;
+    liveMatchState.bowler.runs += (runs + (isWide || isNoBall ? 1 : 0));
+
+    if (!isWide && !isNoBall) {
+        liveMatchState.balls += 1;
+        if (liveMatchState.balls >= 6) { liveMatchState.balls = 0; liveMatchState.overs += 1; switchStrike(); }
+    }
+
+    liveMatchState.timeline.push(val);
+    if (liveMatchState.timeline.length > 8) liveMatchState.timeline.shift();
+
+    if (runs % 2 !== 0 && !isWide && !isNoBall) switchStrike();
+
+    updateScoringUI();
+}
+
+function switchStrike() {
+    liveMatchState.striker = liveMatchState.striker === 1 ? 2 : 1;
+    updateScoringUI();
+}
+
+async function saveLiveScore() {
+    const updates = {
+        team1_score: liveMatchState.runs,
+        wickets: liveMatchState.wkts,
+        overs: liveMatchState.overs,
+        balls: liveMatchState.balls,
+        batsman1: liveMatchState.batsman1.name,
+        batsman1_runs: liveMatchState.batsman1.runs,
+        batsman1_balls: liveMatchState.batsman1.balls,
+        batsman1_4s: liveMatchState.batsman1.f4s,
+        batsman1_6s: liveMatchState.batsman1.s6s,
+        batsman1_reg: liveMatchState.batsman1.reg,
+        batsman2: liveMatchState.batsman2.name,
+        batsman2_runs: liveMatchState.batsman2.runs,
+        batsman2_balls: liveMatchState.batsman2.balls,
+        batsman2_4s: liveMatchState.batsman2.f4s,
+        batsman2_6s: liveMatchState.batsman2.s6s,
+        batsman2_reg: liveMatchState.batsman2.reg,
+        bowler_name: liveMatchState.bowler.name,
+        bowler_runs: liveMatchState.bowler.runs,
+        bowler_wickets: liveMatchState.bowler.wkts,
+        bowler_overs: liveMatchState.bowler.overs,
+        bowler_over_balls: liveMatchState.bowler.balls,
+        bowler_reg: liveMatchState.bowler.reg,
+        striker_idx: liveMatchState.striker,
+        recent_balls: liveMatchState.timeline.join(',')
+    };
+
+    const { error } = await supabaseClient.from('hero_content').update(updates).eq('id', '00000000-0000-0000-0000-000000000001');
+    if (error) alert(error.message);
+    else showToast("Live Scorecard Updated!", "success");
+}
+
+function resetInnings() {
+    if (!confirm("Reset?")) return;
+    liveMatchState.runs = 0; liveMatchState.wkts = 0; liveMatchState.overs = 0; liveMatchState.balls = 0;
+    liveMatchState.batsman1 = { name: "Striker", runs: 0, balls: 0, f4s: 0, s6s: 0, reg: "" };
+    liveMatchState.batsman2 = { name: "Non-Striker", runs: 0, balls: 0, f4s: 0, s6s: 0, reg: "" };
+    liveMatchState.bowler = { name: "Bowler", runs: 0, wkts: 0, overs: 0, balls: 0, reg: "" };
+    liveMatchState.timeline = [];
+    updateScoringUI();
 }
