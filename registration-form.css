@@ -105,8 +105,8 @@
     }
 
     .form-grid {
-        grid-template-columns: 1fr;
-        gap: 15px;
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
     }
 
     .form-section-title,
