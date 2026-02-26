@@ -24,10 +24,12 @@
                 <button onclick="showSection('scoring')">🏏 Live Scoring</button>
                 <button onclick="showSection('announcements')">📢 News Manager</button>
                 <button onclick="showSection('fixtures')">📅 Schedule Manager</button>
+                <button onclick="showSection('results')">📊 Results Manager</button>
                 <button onclick="showSection('leaderboard')">🏆 Leaderboard</button>
                 <button onclick="showSection('points')">📊 Points Table</button>
                 <button onclick="showSection('rosters')">🏏 Squads</button>
                 <button onclick="showSection('gallery')">🖼️ Gallery</button>
+                <button onclick="showSection('menu')">🔗 Menu Manager</button>
                 <button onclick="showSection('settings')">⚙️ Settings</button>
             </nav>
             <button onclick="logout()" class="btn-secondary" style="margin-top: auto;">Logout</button>
@@ -56,11 +58,15 @@
                             </div>
                             <div
                                 style="background: rgba(255,255,255,0.03); padding: 15px; border-radius: 10px; text-align: center;">
-                                <div style="font-size: 0.75rem; color: var(--text-dim);">Paid</div>
-                                <div id="stat-paid-count" style="font-size: 1.5rem; font-weight: 800; color: #22c55e;">0
-                                </div>
+                                <div style="font-size: 0.75rem; color: var(--text-dim);">Live Matches</div>
+                                <div id="stat-live-count"
+                                    style="font-size: 1.5rem; font-weight: 800; color: var(--primary);">0</div>
                             </div>
                         </div>
+                        <button
+                            onclick="syncPointsTableFromFixtures().then(() => alert('✅ Points Table Recalculated!'))"
+                            class="btn-secondary" style="width: 100%; margin-top: 15px; font-size: 0.8rem;">🔄
+                            Recalculate All Points</button>
                     </div>
 
                     <div class="glass dashboard-card" style="grid-column: span 2;">
@@ -152,13 +158,8 @@
                             <input type="text" id="hero-badge" class="table-input badge-input" placeholder="LIVE NOW">
                         </div>
                         <div class="form-group">
-                            <label>Timing / venue Description</label>
+                            <label>Timing / Venue Description</label>
                             <input type="text" id="hero-time" class="table-input" placeholder="Finals: Tomorrow 10AM">
-                        </div>
-                        <div class="form-group">
-                            <label>Ground Location (Google Maps URL)</label>
-                            <input type="text" id="hero-map-url" class="table-input"
-                                placeholder="https://maps.google.com/...">
                         </div>
                     </div>
 
@@ -192,37 +193,55 @@
                         style="grid-column: span 2; display: none; background: rgba(59, 130, 246, 0.05); border-color: rgba(59, 130, 246, 0.2);">
                         <h3 class="card-title" style="color: #3b82f6;">🏏 Professional Scoring Dashboard</h3>
 
-                        <div class="grid" style="grid-template-columns: 1.5fr 1fr 1fr; gap: 20px;">
-                            <!-- Runs & Wickets -->
-                            <div class="form-group">
-                                <label>Detailed Score (Wickets / Overs)</label>
+                        <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <!-- Team 1 Detailed -->
+                            <div class="form-group"
+                                style="background: rgba(255,255,255,0.03); padding: 15px; border-radius: 10px;">
+                                <label style="color: var(--secondary);">Team 1: Wickets / Overs</label>
                                 <div style="display: flex; gap: 10px; align-items: center;">
-                                    <input type="number" id="hero-wickets" class="table-input" placeholder="Wkts"
-                                        style="width: 80px; text-align: center;">
-                                    <span style="font-size: 1.5rem; color: var(--text-dim);">/</span>
-                                    <input type="number" id="hero-overs" class="table-input" placeholder="Overs"
-                                        style="width: 80px; text-align: center;" max="6">
+                                    <input type="number" id="hero-wickets" class="table-input" placeholder="W"
+                                        style="width: 70px;">
+                                    <span style="font-size: 1.2rem; color: var(--text-dim);">/</span>
+                                    <input type="number" id="hero-overs" class="table-input" placeholder="O"
+                                        style="width: 70px;">
                                     <span style="color: var(--text-dim);">.</span>
-                                    <input type="number" id="hero-balls" class="table-input" placeholder="Ball"
-                                        style="width: 80px; text-align: center;" max="5">
+                                    <input type="number" id="hero-balls" class="table-input" placeholder="B"
+                                        style="width: 70px;">
                                 </div>
                             </div>
 
+                            <!-- Team 2 Detailed -->
+                            <div class="form-group"
+                                style="background: rgba(59, 130, 246, 0.05); padding: 15px; border-radius: 10px;">
+                                <label style="color: #3b82f6;">Team 2: Wickets / Overs</label>
+                                <div style="display: flex; gap: 10px; align-items: center;">
+                                    <input type="number" id="hero-t2-wickets" class="table-input" placeholder="W"
+                                        style="width: 70px;">
+                                    <span style="font-size: 1.2rem; color: var(--text-dim);">/</span>
+                                    <input type="number" id="hero-t2-overs" class="table-input" placeholder="O"
+                                        style="width: 70px;">
+                                    <span style="color: var(--text-dim);">.</span>
+                                    <input type="number" id="hero-t2-balls" class="table-input" placeholder="B"
+                                        style="width: 70px;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid" style="grid-template-columns: 2fr 1fr; gap: 20px; margin-top: 15px;">
                             <div class="form-group">
-                                <label>Batsman 1 (On Strike)</label>
+                                <label>Batsman (Live/Highlights)</label>
                                 <div style="display: flex; gap: 8px;">
                                     <input type="text" id="hero-batsman1" class="table-input" placeholder="Name"
                                         style="flex: 2;">
-                                    <input type="number" id="hero-batsman1-runs" class="table-input" placeholder="Runs"
-                                        style="width: 70px; text-align: center;">
-                                    <input type="number" id="hero-batsman1-balls" class="table-input"
-                                        placeholder="Balls" style="width: 70px; text-align: center;">
+                                    <input type="number" id="hero-batsman1-runs" class="table-input" placeholder="R"
+                                        style="width: 70px;">
+                                    <input type="number" id="hero-batsman1-balls" class="table-input" placeholder="B"
+                                        style="width: 70px;">
                                 </div>
                             </div>
-
                             <div class="form-group">
-                                <label>Target (if chasing)</label>
-                                <input type="number" id="hero-target" class="table-input" placeholder="e.g. 150">
+                                <label>Target (2nd Innings)</label>
+                                <input type="number" id="hero-target" class="table-input" placeholder="Target">
                             </div>
                         </div>
 
@@ -315,6 +334,7 @@
                     <table>
                         <thead>
                             <tr>
+                                <th style="width: 80px;">Group</th>
                                 <th>Team Name</th>
                                 <th>Logo (Link)</th>
                                 <th>Owner Name</th>
@@ -397,6 +417,33 @@
                             </tr>
                         </thead>
                         <tbody id="admin-fixtures-list">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="results-section" class="admin-section animate-fade">
+                <header class="section-header">
+                    <div>
+                        <h2 class="gradient-text">Match Results Manager</h2>
+                        <p style="color: var(--text-dim); font-size: 0.9rem;">View and edit details of completed matches
+                        </p>
+                    </div>
+                </header>
+
+                <div class="table-wrapper">
+                    <table class="premium-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 80px;">Match #</th>
+                                <th>Match Detail</th>
+                                <th>Score / Result</th>
+                                <th>Winner</th>
+                                <th style="width: 100px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-results-list">
                             <!-- Populated by JS -->
                         </tbody>
                     </table>
@@ -571,6 +618,14 @@
                         <p style="color: var(--text-dim); font-size: 0.9rem;">Professional ball-by-ball match control
                         </p>
                     </div>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <span style="color: var(--text-dim); font-size: 0.8rem;">Select Fixture:</span>
+                        <select id="score-fixture-id" class="table-input" style="width: 250px;"
+                            onchange="syncFixtureToScoring(this.value)">
+                            <option value="">-- Choose Match --</option>
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
                 </header>
 
                 <div class="grid" style="grid-template-columns: 2fr 1fr; gap: 30px;">
@@ -640,22 +695,18 @@
 
                         <!-- Control Buttons (CRICBUZZ STYLE) -->
                         <div style="margin-top: 30px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
-                            <button onclick="handleScoreAction(0)" class="btn-scoring">0</button>
-                            <button onclick="handleScoreAction(1)" class="btn-scoring">1</button>
-                            <button onclick="handleScoreAction(2)" class="btn-scoring">2</button>
-                            <button onclick="handleScoreAction(3)" class="btn-scoring">3</button>
-                            <button onclick="handleScoreAction(4)" class="btn-scoring"
-                                style="background: var(--secondary); color: var(--bg-dark);">4</button>
-                            <button onclick="handleScoreAction(6)" class="btn-scoring"
-                                style="background: var(--primary);">6</button>
-                            <button onclick="handleScoreAction('WD')" class="btn-scoring"
-                                style="background: #fbbf24; color: black;">WD</button>
-                            <button onclick="handleScoreAction('NB')" class="btn-scoring"
-                                style="background: #fbbf24; color: black;">NB</button>
-                            <button onclick="handleScoreAction('W')" class="btn-scoring"
-                                style="background: #ef4444; grid-column: span 2;">OUT ☝️</button>
-                            <button onclick="switchStrike()" class="btn-scoring"
-                                style="background: #3b82f6; grid-column: span 2;">SWITCH STRIKE 🔄</button>
+                            <button onclick="handleScoreAction(0)" class="btn-scoring runs">0</button>
+                            <button onclick="handleScoreAction(1)" class="btn-scoring runs">1</button>
+                            <button onclick="handleScoreAction(2)" class="btn-scoring runs">2</button>
+                            <button onclick="handleScoreAction(3)" class="btn-scoring runs">3</button>
+                            <button onclick="handleScoreAction(4)" class="btn-scoring boundary-4">4</button>
+                            <button onclick="handleScoreAction(6)" class="btn-scoring boundary-6">6</button>
+                            <button onclick="handleScoreAction('WD')" class="btn-scoring extra">WD</button>
+                            <button onclick="handleScoreAction('NB')" class="btn-scoring extra">NB</button>
+                            <button onclick="handleScoreAction('W')" class="btn-scoring wicket-btn"
+                                style="grid-column: span 2;">WICKET ☝️</button>
+                            <button onclick="switchStrike()" class="btn-scoring strike-btn"
+                                style="grid-column: span 2;">STRIKE 🔄</button>
                         </div>
                     </div>
 
@@ -667,11 +718,57 @@
                         </div>
                         <div style="margin-top: 40px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px;">
                             <h3 class="card-title">Quick Settings</h3>
+                            <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <div class="form-group">
+                                    <label>Overs Limit</label>
+                                    <input type="number" id="score-max-overs" class="table-input" value="6">
+                                </div>
+                                <div class="form-group">
+                                    <label>Wicket Limit</label>
+                                    <input type="number" id="score-max-wkts" class="table-input" value="10">
+                                </div>
+                            </div>
+                            <div
+                                style="margin-bottom:15px; background: rgba(0, 242, 255, 0.05); padding: 15px; border-radius: 12px; border: 1px solid rgba(0, 242, 255, 0.2);">
+                                <label
+                                    style="display: block; margin-bottom: 10px; color: var(--secondary); font-weight: 800;">🏆
+                                    Finalize Match Result</label>
+                                <select id="score-winner-select" class="table-input" style="margin-bottom:10px;">
+                                    <option value="">Select Winner Team</option>
+                                    <!-- Populated dynamically -->
+                                </select>
+                                <div
+                                    style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                                    <input type="text" id="score-top-bat" class="table-input"
+                                        placeholder="Best Batsman">
+                                    <input type="number" id="score-top-bat-runs" class="table-input" placeholder="Runs">
+                                </div>
+                                <div
+                                    style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                                    <input type="text" id="score-top-bowl" class="table-input"
+                                        placeholder="Best Bowler">
+                                    <input type="number" id="score-top-bowl-wkts" class="table-input"
+                                        placeholder="Wkts">
+                                </div>
+                                <button onclick="finalizeLiveMatch()" class="btn"
+                                    style="width: 100%; background: var(--secondary); color: var(--bg-dark); font-weight: 900;">SAVE
+                                    FINAL RESULT 🏁</button>
+                            </div>
+                            <button onclick="startSecondInnings()" class="btn-scoring strike-btn"
+                                style="width: 100%; margin-bottom: 10px; font-size: 0.9rem;">🔄 Start 2nd Innings
+                                (Chase)</button>
+                            <button onclick="window.open('scorecard.html','_blank')" class="btn-primary"
+                                style="width: 100%; margin-bottom: 10px; background: var(--secondary); color: var(--bg-dark); border-color: var(--secondary);">View
+                                Scorecard 📊</button>
                             <button onclick="resetInnings()" class="btn-secondary"
                                 style="width: 100%; margin-bottom: 10px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: #ef4444;">Reset
                                 Innings</button>
-                            <button onclick="undoLastBall()" class="btn-secondary"
-                                style="width: 100%; margin-bottom: 10px;">Undo Last Ball (Beta)</button>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                                <button onclick="undoLastBall()" class="btn-scoring"
+                                    style="font-size: 0.9rem; padding: 10px;">↩️ Undo</button>
+                                <button onclick="redoLastBall()" class="btn-scoring"
+                                    style="font-size: 0.9rem; padding: 10px;">Redo ↪️</button>
+                            </div>
                             <button onclick="saveLiveScore()" class="btn"
                                 style="width: 100%; padding: 15px; font-weight: 900;">Push Update to Website 🚀</button>
                         </div>
@@ -843,8 +940,9 @@
             style="max-width: 600px; width: 90%; margin: 80px auto; padding: 40px; position: relative;">
             <button onclick="closeFixtureModal()"
                 style="position: absolute; top: 20px; right: 20px; background: none; border: none; font-size: 1.5rem; color: var(--text-dim); cursor: pointer;">✕</button>
-            <h2 class="gradient-text" style="margin-bottom: 25px;">Add New Match</h2>
+            <h2 id="fixture-modal-title" class="gradient-text" style="margin-bottom: 25px;">Add New Match</h2>
             <form onsubmit="saveFixture(event)">
+                <input type="hidden" id="edit-fixture-id">
                 <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 20px;">
                     <div class="form-group">
                         <label>Match Number</label>
@@ -867,11 +965,15 @@
                     </div>
                     <div class="form-group">
                         <label>Team 1</label>
-                        <input type="text" id="fix-t1" class="table-input" placeholder="Team A" required>
+                        <select id="fix-t1" class="table-input" required>
+                            <option value="">Select Team 1</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label>Team 2</label>
-                        <input type="text" id="fix-t2" class="table-input" placeholder="Team B" required>
+                        <select id="fix-t2" class="table-input" required>
+                            <option value="">Select Team 2</option>
+                        </select>
                     </div>
                 </div>
                 <div class="form-group" style="margin-top: 20px;">
@@ -1045,6 +1147,10 @@
                         <label>Overs Played (e.g. 5.4)</label>
                         <input type="number" step="0.1" id="res-t1-overs" class="table-input" placeholder="6.0">
                     </div>
+                    <div class="form-group">
+                        <label>Wickets Lost</label>
+                        <input type="number" id="res-t1-wkts" class="table-input" value="0">
+                    </div>
                 </div>
 
                 <div class="glass" style="padding: 15px;">
@@ -1056,6 +1162,28 @@
                     <div class="form-group">
                         <label>Overs Played</label>
                         <input type="number" step="0.1" id="res-t2-overs" class="table-input" placeholder="6.0">
+                    </div>
+                    <div class="form-group">
+                        <label>Wickets Lost</label>
+                        <input type="number" id="res-t2-wkts" class="table-input" value="0">
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 25px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px;">
+                <h4 style="color: var(--secondary); margin-bottom: 15px;">🏆 Top Performers (Auto-update Leaders)</h4>
+                <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>Top Batsman Name</label>
+                        <input type="text" id="res-top-bat" class="table-input" placeholder="Name">
+                        <label style="margin-top: 5px;">Runs Scored</label>
+                        <input type="number" id="res-top-bat-runs" class="table-input" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Best Bowler Name</label>
+                        <input type="text" id="res-top-bowl" class="table-input" placeholder="Name">
+                        <label style="margin-top: 5px;">Wickets Taken</label>
+                        <input type="number" id="res-top-bowl-wkts" class="table-input" value="0">
                     </div>
                 </div>
             </div>
@@ -1072,6 +1200,20 @@
                     🏆</button>
                 <button onclick="closeResultModal()" class="btn-secondary" style="flex: 1;">Cancel</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Success Confirmation Modal -->
+    <div id="success-modal" class="modal-backdrop" style="display: none; z-index: 9999;">
+        <div class="glass modal-content animate-slide-up" style="max-width: 400px; text-align: center; padding: 40px;">
+            <div
+                style="width: 80px; height: 80px; background: rgba(0, 242, 255, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
+                <span style="font-size: 3rem;">✅</span>
+            </div>
+            <h2 class="gradient-text" style="font-size: 1.8rem; margin-bottom: 10px;">Success!</h2>
+            <p id="success-message" style="color: var(--text-dim); margin-bottom: 25px;">Live Scorecard Updated
+                Successfully</p>
+            <button onclick="closeSuccessModal()" class="btn" style="width: 100%;">Awesome!</button>
         </div>
     </div>
 
