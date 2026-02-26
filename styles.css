@@ -336,7 +336,62 @@ body.preloader-active {
     overflow: hidden;
 }
 
-.btn,
+/* Developer Credits Styling */
+.dev-credits {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+.dev-label {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.dev-name {
+    font-weight: 700;
+    color: var(--secondary);
+    font-size: 0.95rem;
+}
+
+.dev-socials {
+    display: flex;
+    gap: 15px;
+}
+
+.dev-icon {
+    width: 35px;
+    height: 35px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dev-icon:hover {
+    background: var(--secondary);
+    color: var(--bg-dark);
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(255, 215, 0, 0.3);
+}
+
+.dev-icon img {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+}
+
 .btn-secondary {
     position: relative;
     overflow: hidden;
