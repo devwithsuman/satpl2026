@@ -185,7 +185,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 // 2️⃣ Save as PENDING record first
                 submitBtn.innerText = "⏳ Saving Your Data...";
-                const { data: insertedData, error: insertError } = await supabaseClient
+                const query = () => supabaseClient
                     .from("player_registrations")
                     .insert([{
                         player_name: playerName,
@@ -203,6 +203,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         token: playerToken
                     }])
                     .select();
+
+                const { data: insertedData, error: insertError } = await window.safeSupabaseCall(query);
 
                 if (insertError) throw new Error("Database Save Failed: " + insertError.message);
 
@@ -297,7 +299,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
             } catch (err) {
                 console.error("Submission Error:", err);
-                alert("Error: " + err.message);
+                if (err.message.includes('Failed to fetch')) {
+                    const health = await window.testSupabaseConnection();
+                    alert(health.detailed || "Network Error: Could not connect to Supabase.");
+                } else {
+                    alert("Error: " + err.message);
+                }
                 submitBtn.disabled = false;
                 submitBtn.innerText = "Proceed to Payment (₹105)";
             }
@@ -325,12 +332,14 @@ document.addEventListener("DOMContentLoaded", () => {
             console.log(`Checking status for Mobile: ${mobile}, Aadhar: ${aadhar}`);
 
             try {
-                // We use .select() instead of .maybeSingle() first to see if there are duplicates
-                const { data, error } = await supabaseClient
+                // Wrap the query in a function for safeSupabaseCall
+                const query = () => supabaseClient
                     .from("player_registrations")
                     .select("player_name, registration_no, payment_status, token")
                     .eq("mobile_number", mobile)
                     .eq("aadhar_number", aadhar);
+
+                const { data, error } = await window.safeSupabaseCall(query);
 
                 if (error) {
                     console.error("Supabase Error:", error);
@@ -372,7 +381,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             } catch (err) {
                 console.error("Lookup Failed:", err);
-                alert("Lookup Error: " + err.message + "\n(Check if your live site domain is allowed in Supabase)");
+                // Call connectivity diagnostic if fetch failed
+                if (err.message === 'Failed to fetch') {
+                    const health = await window.testSupabaseConnection();
+                    alert(health.detailed || "Network Error: Could not connect to Supabase. Check your internet or DNS settings.");
+                } else {
+                    alert("Lookup Error: " + err.message);
+                }
             } finally {
                 checkStatusBtn.disabled = false;
                 checkStatusBtn.innerText = "Fetch My Registration Details 🔍";
