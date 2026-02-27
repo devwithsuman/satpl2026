@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Preloader Removal Logic ---
     const preloader = document.getElementById('preloader');
     if (preloader) {
-        // Show for at least 1.8 seconds for the premium feel
+        // Reduced from 1800ms to 300ms for instant loading performance
         setTimeout(() => {
             preloader.classList.add('fade-out');
             document.body.classList.remove('preloader-active');
@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
                 preloader.remove();
             }, 1000);
-        }, 1800);
+        }, 300);
     }
 
     // Page load animation effect
