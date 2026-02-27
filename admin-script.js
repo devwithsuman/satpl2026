@@ -58,11 +58,13 @@ async function loadHero(matchKey = currentMatchIdKey) {
     const dbId = MATCH_MAP[matchKey];
     console.log(`Fetching match data for: ${matchKey} (${dbId})`);
 
-    const { data, error } = await supabaseClient
-        .from("hero_content")
-        .select("*")
-        .eq("id", dbId)
-        .single();
+    const { data, error } = await window.safeSupabaseCall(() =>
+        supabaseClient
+            .from("hero_content")
+            .select("*")
+            .eq("id", dbId)
+            .single()
+    );
 
     if (error && error.code !== 'PGRST116') {
         console.warn("Error loading match:", error.message);
@@ -156,7 +158,9 @@ async function saveHero() {
         team2_balls: document.getElementById("hero-t2-balls") ? (Number(document.getElementById("hero-t2-balls").value) || 0) : 0
     };
 
-    const { error } = await supabaseClient.from("hero_content").upsert([updates]);
+    const { error } = await window.safeSupabaseCall(() =>
+        supabaseClient.from("hero_content").upsert([updates])
+    );
 
     if (error) {
         alert("❌ Error updating: " + error.message);
@@ -211,10 +215,12 @@ function quickBall() {
 // ================= NAVIGATION MENU =================
 async function fetchAdminMenu() {
     const list = document.getElementById("admin-menu-list");
-    const { data } = await supabaseClient
-        .from("nav_menu")
-        .select("*")
-        .order("order_index", { ascending: true });
+    const { data } = await window.safeSupabaseCall(() =>
+        supabaseClient
+            .from("nav_menu")
+            .select("*")
+            .order("order_index", { ascending: true })
+    );
 
     if (data && data.length > 0) {
         list.innerHTML = data.map(item => createMenuRowHtml(item)).join("");
@@ -228,7 +234,9 @@ async function fetchAdminMenu() {
         ];
         list.innerHTML = defaults.map(item => createMenuRowHtml(item)).join("");
         // Auto-save defaults to the DB
-        await supabaseClient.from("nav_menu").insert(defaults);
+        await window.safeSupabaseCall(() =>
+            supabaseClient.from("nav_menu").insert(defaults)
+        );
         console.log("✅ Default nav items seeded to database.");
     }
 }
@@ -267,9 +275,13 @@ async function saveMenu() {
     }));
 
     // Logic: Delete all and re-insert is easier for small lists
-    await supabaseClient.from("nav_menu").delete().not('id', 'is', null);
+    await window.safeSupabaseCall(() =>
+        supabaseClient.from("nav_menu").delete().not('id', 'is', null)
+    );
 
-    const { error } = await supabaseClient.from("nav_menu").insert(menuItems);
+    const { error } = await window.safeSupabaseCall(() =>
+        supabaseClient.from("nav_menu").insert(menuItems)
+    );
 
     if (error) {
         alert("Error saving menu: " + error.message);
@@ -292,7 +304,7 @@ async function fetchRegistrations(statusFilter = 'all') {
         query = query.eq("payment_status", statusFilter);
     }
 
-    const { data, error } = await query;
+    const { data, error } = await window.safeSupabaseCall(() => query);
     if (error) {
         console.error("Fetch error:", error);
         return;
@@ -336,11 +348,13 @@ async function updatePaymentStatus(id, status) {
     if (!confirm(`Update status to ${status}?`)) return;
 
     try {
-        const { data: updated, error } = await supabaseClient
-            .from("player_registrations")
-            .update({ payment_status: status })
-            .eq("id", id)
-            .select();
+        const { data: updated, error } = await window.safeSupabaseCall(() =>
+            supabaseClient
+                .from("player_registrations")
+                .update({ payment_status: status })
+                .eq("id", id)
+                .select()
+        );
 
         if (error) throw error;
 
@@ -352,10 +366,12 @@ async function updatePaymentStatus(id, status) {
                 const registrationNo = `OSATPL01S${(serialNum + 2000).toString().padStart(4, "0")}`;
                 console.log("Confirmed Reg No:", registrationNo, "from Serial:", serialNum);
 
-                const { error: regError } = await supabaseClient
-                    .from("player_registrations")
-                    .update({ registration_no: registrationNo })
-                    .eq("id", id);
+                const { error: regError } = await window.safeSupabaseCall(() =>
+                    supabaseClient
+                        .from("player_registrations")
+                        .update({ registration_no: registrationNo })
+                        .eq("id", id)
+                );
 
                 if (regError) console.warn("Error generating reg_no:", regError.message);
             }
@@ -369,7 +385,9 @@ async function updatePaymentStatus(id, status) {
 
 async function deleteRegistration(id) {
     if (!confirm("Delete this registration?")) return;
-    await supabaseClient.from("player_registrations").delete().eq("id", id);
+    await window.safeSupabaseCall(() =>
+        supabaseClient.from("player_registrations").delete().eq("id", id)
+    );
     fetchRegistrations();
 }
 
@@ -380,11 +398,13 @@ function closeEditModal() {
 
 async function openEditModal(id) {
     console.log("🛠️ Attempting to open edit modal for ID:", id);
-    const { data, error } = await supabaseClient
-        .from("player_registrations")
-        .select("*")
-        .eq("id", id)
-        .single();
+    const { data, error } = await window.safeSupabaseCall(() =>
+        supabaseClient
+            .from("player_registrations")
+            .select("*")
+            .eq("id", id)
+            .single()
+    );
 
     if (error) {
         alert("Error fetching player: " + error.message);
@@ -423,10 +443,12 @@ async function saveRegistrationEdit(e) {
         wicket_keeper: document.getElementById("edit-wk").value
     };
 
-    const { error } = await supabaseClient
-        .from("player_registrations")
-        .update(updates)
-        .eq("id", id);
+    const { error } = await window.safeSupabaseCall(() =>
+        supabaseClient
+            .from("player_registrations")
+            .update(updates)
+            .eq("id", id)
+    );
 
     if (error) {
         alert("Update Failed: " + error.message);
@@ -495,11 +517,13 @@ async function saveNewPlayer(e) {
         const aadhar = document.getElementById("add-aadhar").value;
 
         // 1. Check for duplicates
-        const { data: existing, error: checkError } = await supabaseClient
-            .from("player_registrations")
-            .select("id")
-            .or(`mobile_number.eq.${mobile},aadhar_number.eq.${aadhar}`)
-            .maybeSingle();
+        const { data: existing, error: checkError } = await window.safeSupabaseCall(() =>
+            supabaseClient
+                .from("player_registrations")
+                .select("id")
+                .or(`mobile_number.eq.${mobile},aadhar_number.eq.${aadhar}`)
+                .maybeSingle()
+        );
 
         if (existing) {
             throw new Error("This Mobile or Aadhar is already registered!");
@@ -525,23 +549,25 @@ async function saveNewPlayer(e) {
         const photoUrl = photoData.publicUrl;
 
         // 3. Insert Record
-        const { data: inserted, error: insertError } = await supabaseClient
-            .from("player_registrations")
-            .insert([{
-                player_name: document.getElementById("add-name").value,
-                father_name: document.getElementById("add-father").value,
-                date_of_birth: document.getElementById("add-dob").value,
-                aadhar_number: aadhar,
-                mobile_number: mobile,
-                whatsapp_number: document.getElementById("add-whatsapp").value,
-                batting: document.getElementById("add-batting").value,
-                bowling: document.getElementById("add-bowling").value,
-                wicket_keeper: document.getElementById("add-wk").value,
-                photo_url: photoUrl,
-                payment_status: "paid", // Admin entries are usually paid/confirmed
-                payment_id: "ADMIN_ENTRY"
-            }])
-            .select();
+        const { data: inserted, error: insertError } = await window.safeSupabaseCall(() =>
+            supabaseClient
+                .from("player_registrations")
+                .insert([{
+                    player_name: document.getElementById("add-name").value,
+                    father_name: document.getElementById("add-father").value,
+                    date_of_birth: document.getElementById("add-dob").value,
+                    aadhar_number: aadhar,
+                    mobile_number: mobile,
+                    whatsapp_number: document.getElementById("add-whatsapp").value,
+                    batting: document.getElementById("add-batting").value,
+                    bowling: document.getElementById("add-bowling").value,
+                    wicket_keeper: document.getElementById("add-wk").value,
+                    photo_url: photoUrl,
+                    payment_status: "paid", // Admin entries are usually paid/confirmed
+                    payment_id: "ADMIN_ENTRY"
+                }])
+                .select()
+        );
 
         if (insertError) throw new Error("Database Save Failed: " + insertError.message);
 
@@ -556,10 +582,12 @@ async function saveNewPlayer(e) {
         const registrationNo = `OSATPL01S${(serialNum + 2000).toString().padStart(4, "0")}`;
         console.log("Manual Reg No Generated:", registrationNo, "from Serial:", serialNum);
 
-        const { error: updateError } = await supabaseClient
-            .from("player_registrations")
-            .update({ registration_no: registrationNo })
-            .eq("id", playerRow.id);
+        const { error: updateError } = await window.safeSupabaseCall(() =>
+            supabaseClient
+                .from("player_registrations")
+                .update({ registration_no: registrationNo })
+                .eq("id", playerRow.id)
+        );
 
         if (updateError) throw new Error("Reg No Generation Failed: " + updateError.message);
 
@@ -578,10 +606,12 @@ async function saveNewPlayer(e) {
 // ================= POINTS TABLE =================
 async function fetchAdminPoints() {
     const list = document.getElementById("admin-points-list");
-    const { data, error } = await supabaseClient
-        .from("points_table")
-        .select("*")
-        .order("points", { ascending: false });
+    const { data, error } = await window.safeSupabaseCall(() =>
+        supabaseClient
+            .from("points_table")
+            .select("*")
+            .order("points", { ascending: false })
+    );
 
     if (error) {
         console.error('Error loading points table:', error);
@@ -820,11 +850,13 @@ async function handleRosterRegNoInput(btn) {
     console.log(`🔍 Fetching details for Registration No: ${regNo}...`);
 
     try {
-        const { data, error } = await supabaseClient
-            .from('player_registrations')
-            .select('*')
-            .eq('registration_no', regNo)
-            .single();
+        const { data, error } = await window.safeSupabaseCall(() =>
+            supabaseClient
+                .from('player_registrations')
+                .select('*')
+                .eq('registration_no', regNo)
+                .single()
+        );
 
         if (error || !data) {
             alert("❌ Player not found with this Registration No.");
@@ -1108,12 +1140,27 @@ async function handleSquadRegNoInput(input) {
 
 // ================= ANNOUNCEMENTS (NOTICES) =================
 async function fetchNotices() {
-    const [{ data: notices, error: noticeErr }, { data: settings }] = await Promise.all([
-        supabaseClient.from('notices').select('*').order('created_at', { ascending: false }),
-        supabaseClient.from('site_settings').select('featured_notice_id').eq('id', 'global-settings').single()
+    const [noticesRes, settingsRes] = await Promise.all([
+        window.safeSupabaseCall(() =>
+            supabaseClient.from('notices').select('*').order('created_at', { ascending: false })
+        ),
+        window.safeSupabaseCall(() =>
+            supabaseClient.from('site_settings').select('featured_notice_id').eq('id', 'global-settings').single()
+        )
     ]);
 
-    if (noticeErr) return;
+    if (noticesRes.error) {
+        console.error("Error fetching notices:", noticesRes.error.message);
+        return;
+    }
+    const notices = noticesRes.data;
+
+    if (settingsRes.error) {
+        console.error("Error fetching site settings for featured notice:", settingsRes.error.message);
+        // Continue without featured notice if settings fetch fails
+    }
+    const settings = settingsRes.data;
+
     const list = document.getElementById('admin-notices-list');
     if (!list) return;
 
@@ -1169,11 +1216,13 @@ function closeNoticeModal() {
 }
 
 async function editNotice(id) {
-    const { data, error } = await supabaseClient
-        .from('notices')
-        .select('*')
-        .eq('id', id)
-        .single();
+    const { data, error } = await window.safeSupabaseCall(() =>
+        supabaseClient
+            .from('notices')
+            .select('*')
+            .eq('id', id)
+            .single()
+    );
     if (data) {
         document.getElementById('edit-notice-id').value = data.id;
         document.getElementById('notice-title').value = data.title;
@@ -1191,9 +1240,13 @@ async function saveNotice(event) {
 
     let result;
     if (id) {
-        result = await supabaseClient.from('notices').update(noticeData).eq('id', id);
+        result = await window.safeSupabaseCall(() =>
+            supabaseClient.from('notices').update(noticeData).eq('id', id)
+        );
     } else {
-        result = await supabaseClient.from('notices').insert([noticeData]);
+        result = await window.safeSupabaseCall(() =>
+            supabaseClient.from('notices').insert([noticeData])
+        );
     }
 
     if (result.error) alert(result.error.message);
@@ -1206,10 +1259,12 @@ async function saveNotice(event) {
 
 async function setFeaturedNotice(id, isUnpin) {
     const newId = isUnpin ? null : id;
-    const { error } = await supabaseClient
-        .from('site_settings')
-        .update({ featured_notice_id: newId })
-        .eq('id', 'global-settings');
+    const { error } = await window.safeSupabaseCall(() =>
+        supabaseClient
+            .from('site_settings')
+            .update({ featured_notice_id: newId })
+            .eq('id', 'global-settings')
+    );
 
     if (error) alert("Error pinning notice: " + error.message);
     else {
@@ -1219,19 +1274,25 @@ async function setFeaturedNotice(id, isUnpin) {
 }
 
 async function toggleNoticeStatus(id, current) {
-    await supabaseClient.from('notices').update({ is_active: !current }).eq('id', id);
+    await window.safeSupabaseCall(() =>
+        supabaseClient.from('notices').update({ is_active: !current }).eq('id', id)
+    );
     fetchNotices();
 }
 
 async function deleteNotice(id) {
     if (!confirm("Are you sure?")) return;
-    await supabaseClient.from('notices').delete().eq('id', id);
+    await window.safeSupabaseCall(() =>
+        supabaseClient.from('notices').delete().eq('id', id)
+    );
     fetchNotices();
 }
 
 // ================= FIXTURES (SCHEDULE) =================
 async function fetchFixtures() {
-    const { data, error } = await supabaseClient.from('fixtures').select('*').order('match_no', { ascending: true });
+    const { data, error } = await window.safeSupabaseCall(() =>
+        supabaseClient.from('fixtures').select('*').order('match_no', { ascending: true })
+    );
     if (error) return;
     const list = document.getElementById('admin-fixtures-list');
     if (!list) return;
@@ -1267,7 +1328,9 @@ async function openFixtureModal(isEdit = false) {
     const t1Select = document.getElementById('fix-t1');
     const t2Select = document.getElementById('fix-t2');
 
-    const { data: teams } = await supabaseClient.from('points_table').select('team_name').order('team_name');
+    const { data: teams } = await window.safeSupabaseCall(() =>
+        supabaseClient.from('points_table').select('team_name').order('team_name')
+    );
     if (teams) {
         const options = '<option value="">Select Team</option>' +
             teams.map(t => `<option value="${t.team_name}">${t.team_name}</option>`).join('');
@@ -1320,14 +1383,17 @@ async function saveFixture(event) {
         status: document.getElementById('fix-status').value
     };
 
-    let error;
+    let res;
     if (id) {
-        const res = await supabaseClient.from('fixtures').update(updates).eq('id', id);
-        error = res.error;
+        res = await window.safeSupabaseCall(() =>
+            supabaseClient.from('fixtures').update(updates).eq('id', id)
+        );
     } else {
-        const res = await supabaseClient.from('fixtures').insert([updates]);
-        error = res.error;
+        res = await window.safeSupabaseCall(() =>
+            supabaseClient.from('fixtures').insert([updates])
+        );
     }
+    const { error } = res;
 
     if (error) {
         alert("Error: " + error.message);
@@ -1340,7 +1406,9 @@ async function saveFixture(event) {
 
 async function toggleFixtureStatus(id, current) {
     if (current === 'upcoming') {
-        const { data: match } = await supabaseClient.from('fixtures').select('*').eq('id', id).single();
+        const { data: match } = await window.safeSupabaseCall(() =>
+            supabaseClient.from('fixtures').select('*').eq('id', id).single()
+        );
         if (match) {
             openResultModal(id, match.team1, match.team2);
         }
@@ -1460,11 +1528,13 @@ async function lookupPlayerForStat() {
 
     try {
         // 1. First search in player_registrations to get the official name
-        const { data: regData, error: regErr } = await supabaseClient
-            .from('player_registrations')
-            .select('player_name')
-            .eq('registration_no', regNo)
-            .single();
+        const { data: regData, error: regErr } = await window.safeSupabaseCall(() =>
+            supabaseClient
+                .from('player_registrations')
+                .select('player_name')
+                .eq('registration_no', regNo)
+                .single()
+        );
 
         if (regErr || !regData) {
             alert("No player found with this Registration ID!");
@@ -1474,18 +1544,22 @@ async function lookupPlayerForStat() {
         document.getElementById('stat-name').value = regData.player_name;
 
         // 2. Search in team_players to get their Team Name
-        const { data: teamPlayerData, error: teamErr } = await supabaseClient
-            .from('team_players')
-            .select('team_id')
-            .eq('reg_no', regNo)
-            .single();
+        const { data: teamPlayerData, error: teamErr } = await window.safeSupabaseCall(() =>
+            supabaseClient
+                .from('team_players')
+                .select('team_id')
+                .eq('reg_no', regNo)
+                .single()
+        );
 
         if (teamPlayerData && teamPlayerData.team_id) {
-            const { data: teamData } = await supabaseClient
-                .from('points_table')
-                .select('team_name')
-                .eq('id', teamPlayerData.team_id)
-                .single();
+            const { data: teamData } = await window.safeSupabaseCall(() =>
+                supabaseClient
+                    .from('points_table')
+                    .select('team_name')
+                    .eq('id', teamPlayerData.team_id)
+                    .single()
+            );
 
             if (teamData) {
                 document.getElementById('stat-team').value = teamData.team_name;
@@ -1518,10 +1592,14 @@ async function saveLeaderboard(event) {
 
     let error;
     if (id) {
-        const res = await supabaseClient.from('top_performers').update(updates).eq('id', id);
+        const res = await window.safeSupabaseCall(() =>
+            supabaseClient.from('top_performers').update(updates).eq('id', id)
+        );
         error = res.error;
     } else {
-        const res = await supabaseClient.from('top_performers').insert([updates]);
+        const res = await window.safeSupabaseCall(() =>
+            supabaseClient.from('top_performers').insert([updates])
+        );
         error = res.error;
     }
 
@@ -1536,8 +1614,15 @@ async function saveLeaderboard(event) {
 
 async function deleteLeaderboard(id) {
     if (!confirm("Are you sure?")) return;
-    await supabaseClient.from('top_performers').delete().eq('id', id);
-    fetchLeaderboard();
+    const { error } = await window.safeSupabaseCall(() =>
+        supabaseClient.from('top_performers').delete().eq('id', id)
+    );
+    if (error) {
+        console.error("Error deleting leaderboard entry:", error);
+        alert("Error deleting leaderboard entry: " + error.message);
+    } else {
+        fetchLeaderboard();
+    }
 }
 
 // ================= GALLERY MANAGER =================
@@ -1546,10 +1631,12 @@ async function fetchGallery() {
     const list = document.getElementById('admin-gallery-list');
     if (!list) return;
 
-    const { data, error } = await supabaseClient
-        .from('gallery')
-        .select('*')
-        .order('created_at', { ascending: false });
+    const { data, error } = await window.safeSupabaseCall(() =>
+        supabaseClient
+            .from('gallery')
+            .select('*')
+            .order('created_at', { ascending: false })
+    );
 
     if (error) {
         console.error("Gallery Fetch Error:", error.message);
@@ -1695,12 +1782,14 @@ async function saveGalleryPhoto(event) {
                 imageUrl = publicUrlData.publicUrl;
             }
 
-            const { error: dbError } = await supabaseClient
-                .from('gallery')
-                .insert([{
-                    image_url: imageUrl,
-                    orientation: orientation
-                }]);
+            const { error: dbError } = await window.safeSupabaseCall(() =>
+                supabaseClient
+                    .from('gallery')
+                    .insert([{
+                        image_url: imageUrl,
+                        orientation: orientation
+                    }])
+            );
 
             if (dbError) throw dbError;
             alert("✅ Photo added to gallery!");
@@ -1729,10 +1818,12 @@ async function saveGalleryPhoto(event) {
                 updates.image_url = document.getElementById('gallery-link-input').value.trim();
             }
 
-            const { error: dbError } = await supabaseClient
-                .from('gallery')
-                .update(updates)
-                .eq('id', editId);
+            const { error: dbError } = await window.safeSupabaseCall(() =>
+                supabaseClient
+                    .from('gallery')
+                    .update(updates)
+                    .eq('id', editId)
+            );
 
             if (dbError) throw dbError;
             alert("✅ Gallery item updated successfully!");
