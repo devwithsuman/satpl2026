@@ -7,7 +7,9 @@ async function loadRosterFilters() {
     const filterContainer = document.getElementById('roster-team-filters');
     if (!filterContainer) return;
 
-    const { data, error } = await supabaseClient.from('points_table').select('id, team_name').order('team_name');
+    const { data, error } = await window.safeSupabaseCall(() =>
+        supabaseClient.from('points_table').select('id, team_name').order('team_name')
+    );
 
     if (error) {
         console.error("Error loading teams:", error);
@@ -46,11 +48,13 @@ async function loadTeamRoster(teamId, btn) {
         </div>
     `;
 
-    const { data, error } = await supabaseClient
-        .from('team_players')
-        .select('*')
-        .eq('team_id', teamId)
-        .order('id');
+    const { data, error } = await window.safeSupabaseCall(() =>
+        supabaseClient
+            .from('team_players')
+            .select('*')
+            .eq('team_id', teamId)
+            .order('id')
+    );
 
     if (error) {
         console.error('Squad Load Error:', error);
@@ -150,11 +154,13 @@ window.openPlayerStarCard = async function (regNo, name, format, batting, bowlin
 
     if (regNo) {
         try {
-            const { data, error } = await supabaseClient
-                .from('player_registrations')
-                .select('photo_url')
-                .eq('registration_no', regNo.trim())
-                .maybeSingle();
+            const { data, error } = await window.safeSupabaseCall(() =>
+                supabaseClient
+                    .from('player_registrations')
+                    .select('photo_url')
+                    .eq('registration_no', regNo.trim())
+                    .maybeSingle()
+            );
 
             if (data && data.photo_url) {
                 photoUrl = data.photo_url;
