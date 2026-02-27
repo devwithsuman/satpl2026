@@ -99,11 +99,13 @@ async function loadNavbar() {
     if (typeof supabaseClient === 'undefined') return;
 
     try {
-        const { data, error } = await supabaseClient
-            .from('nav_menu')
-            .select('*')
-            .eq('is_active', true)
-            .order('order_index', { ascending: true });
+        const { data, error } = await window.safeSupabaseCall(() =>
+            supabaseClient
+                .from('nav_menu')
+                .select('*')
+                .eq('is_active', true)
+                .order('order_index', { ascending: true })
+        );
 
         if (error) throw error;
 
@@ -124,11 +126,13 @@ async function loadDevCredits() {
     if (!container || typeof supabaseClient === 'undefined') return;
 
     try {
-        const { data, error } = await supabaseClient
-            .from('site_settings')
-            .select('*')
-            .eq('id', 'global-settings')
-            .single();
+        const { data, error } = await window.safeSupabaseCall(() =>
+            supabaseClient
+                .from('site_settings')
+                .select('*')
+                .eq('id', 'global-settings')
+                .single()
+        );
 
         if (error || !data || !data.dev_name) {
             container.style.display = 'none';
