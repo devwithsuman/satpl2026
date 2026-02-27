@@ -24,6 +24,64 @@ window.supabaseClient = supabaseClient;
 
 console.log("💎 Supabase Client Initialized [" + (isAdminPage ? "ADMIN MODE" : "PUBLIC MODE") + "]");
 
+// --- Connectivity Diagnostics & Resiliency ---
+
+/**
+ * Helper: Automatically retries a fetch/supabase call if it fails due to network (DNS/CORS)
+ */
+window.safeSupabaseCall = async function (callFn, maxRetries = 2) {
+    let lastError;
+    for (let i = 0; i <= maxRetries; i++) {
+        try {
+            const { data, error } = await callFn();
+            if (error && error.message === 'Failed to fetch') {
+                throw error;
+            }
+            return { data, error };
+        } catch (err) {
+            lastError = err;
+            if (err.message === 'Failed to fetch' && i < maxRetries) {
+                console.warn(`⚠️ Connection attempt ${i + 1} failed. Retrying in 1s...`);
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                continue;
+            }
+            break;
+        }
+    }
+    return { data: null, error: lastError };
+};
+
+window.testSupabaseConnection = async function () {
+    console.log("🔍 Probing Supabase Connectivity...");
+    const probe = () => window.supabaseClient.from('site_settings').select('id').limit(1);
+
+    const start = Date.now();
+    const { data, error } = await window.safeSupabaseCall(probe, 2);
+    const duration = Date.now() - start;
+
+    if (!error) {
+        console.log(`✅ Supabase Connection Healthy (${duration}ms)`);
+        return { success: true, duration };
+    }
+
+    console.error("❌ Supabase Connection Failed:", error.message);
+    let diagnosticMsg = "Supabase Connection Error: ";
+    if (error.message === 'Failed to fetch') {
+        diagnosticMsg += "Network Unreachable or DNS Blocked. \n\nTroubleshooting:\n1. Check if your internet is working.\n2. Disable any Ad-blockers or Firewalls.\n3. Try changing your DNS (Google: 8.8.8.8 or Cloudflare: 1.1.1.1).\n4. IMPORTANT: Ensure 'Allowed Origins' is set in Supabase Dashboard.";
+    } else {
+        diagnosticMsg += error.message;
+    }
+
+    return { success: false, error: error.message, detailed: diagnosticMsg };
+};
+
+// Auto-check on load (silent for users, helpful for dev console)
+testSupabaseConnection().then(res => {
+    if (!res.success && !isAdminPage) {
+        console.warn("⚠️ Initial connection check failed. Users might see errors.");
+    }
+});
+
 // Helper: Ensure external links have a protocol
 window.ensureAbsoluteUrl = function (url) {
     if (!url) return "";
