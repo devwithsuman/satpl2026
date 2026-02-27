@@ -64,6 +64,89 @@
                 zoom: 0.8;
             }
         }
+
+        /* Welcome Flyer Template Styles (Hidden from view) */
+        #welcome-flyer-template {
+            position: absolute;
+            left: -9999px;
+            top: -9999px;
+            width: 500px;
+            height: 888px;
+            /* 9:16 Aspect Ratio */
+            background: linear-gradient(135deg, #001A33 0%, #002D52 50%, #FF0055 100%);
+            color: white;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 60px 40px;
+        }
+
+        .flyer-logo {
+            width: 120px;
+            height: auto;
+            margin-bottom: 20px;
+        }
+
+        .flyer-badge {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 8px 16px;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 40px;
+        }
+
+        .flyer-main-title {
+            font-size: 2.5rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            line-height: 1;
+            text-align: center;
+            margin-bottom: 10px;
+            letter-spacing: -1px;
+        }
+
+        .flyer-subtitle {
+            font-size: 1.2rem;
+            opacity: 0.8;
+            margin-bottom: 60px;
+        }
+
+        .flyer-player-name {
+            font-size: 3.5rem;
+            font-weight: 900;
+            text-align: center;
+            margin-bottom: 10px;
+            color: #FFD700;
+            /* Gold */
+            text-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .flyer-player-role {
+            font-size: 1.5rem;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px 30px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .flyer-footer {
+            margin-top: auto;
+            text-align: center;
+            width: 100%;
+        }
+
+        .flyer-footer-text {
+            font-size: 0.9rem;
+            opacity: 0.6;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
     </style>
 </head>
 
@@ -168,60 +251,79 @@
                                 </div>
                             </div>
                         </div>
+                        <!-- Hidden Welcome Flyer Template -->
+                        <div id="welcome-flyer-template">
+                            <div class="flyer-badge">Official Signing</div>
+                            <img class="flyer-logo" id="flyer-logo-img" src="IMG.svg" alt="SATPL">
+
+                            <div
+                                style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                                <p class="flyer-subtitle">Welcome to the Family</p>
+                                <h1 class="flyer-main-title">SATPL 2026</h1>
+                                <h2 class="flyer-player-name" id="flyer-player-name">PLAYER NAME</h2>
+                                <div class="flyer-player-role" id="flyer-player-role">ALLROUNDER</div>
+                            </div>
+
+                            <div class="flyer-footer">
+                                <div style="height: 1px; background: rgba(255,255,255,0.2); margin-bottom: 20px;"></div>
+                                <p class="flyer-footer-text">www.satpl.in | Season 1</p>
+                            </div>
+                        </div>
+
+                        <div id="particles-bg"></div>
+                        <button id="downloadBtn" class="btn btn-red-blink" onclick="downloadIDCard()"
+                            style="display: none;">Download Digital ID Card 📥</button>
+
+                        <button id="downloadFlyerBtn" class="btn gold-glow" onclick="downloadWelcomeFlyer()"
+                            style="display: none; background: linear-gradient(135deg, #FFD700, #FFA500); color: #000; border: none;">Download
+                            Welcome Flyer 🏆</button>
+
+                        <a href="index.html" class="btn">Back to Home</a>
+                        <p style="font-size: 0.8rem; color: var(--text-dim);">A copy of this registration has been sent
+                            to our
+                            admin team.</p>
                     </div>
                 </div>
             </div>
 
-            <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 15px;">
-                <button id="downloadBtn" class="btn btn-red-blink" onclick="downloadIDCard()"
-                    style="display: none;">Download Digital ID Card 📥</button>
+            <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+            <script src="supabase-config.js"></script>
+            <script src="assets-base64.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+            <script>
+                // Configure PDF.js worker
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 
+                const params = new URLSearchParams(window.location.search);
+                const playerToken = params.get("id");
+                const errorParam = params.get("error");
 
-                <a href="index.html" class="btn">Back to Home</a>
-                <p style="font-size: 0.8rem; color: var(--text-dim);">A copy of this registration has been sent to our
-                    admin team.</p>
-            </div>
-        </div>
-    </div>
+                // Safe Base64 placeholder (transparent 1x1 pixel)
+                const placeholder = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js"></script>
-    <script src="assets-base64.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
-    <script>
-        // Configure PDF.js worker
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
-
-        const params = new URLSearchParams(window.location.search);
-        const playerToken = params.get("id");
-        const errorParam = params.get("error");
-
-        // Safe Base64 placeholder (transparent 1x1 pixel)
-        const placeholder = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
-
-        // Helper to convert URL to Base64 Data URL to bypass html2canvas CORS issues
-        async function toBase64(url) {
-            if (!url || url === placeholder || url.startsWith('data:')) return url || placeholder;
-            try {
-                console.log("Converting to Base64:", url);
-                const response = await fetch(url, { mode: 'cors' });
-                if (!response.ok) throw new Error('Fetch failed');
-                const blob = await response.blob();
-                return new Promise((resolve) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => resolve(reader.result);
-                    reader.readAsDataURL(blob);
-                });
-            } catch (e) {
-                console.warn("Direct fetch failed for:", url, e.message);
-                // DO NOT use canvas fallback here as it taints the main canvas later
-                return placeholder;
-            }
-        }
-        if (errorParam === 'sync_failed') {
-            document.getElementById('formMessage').innerHTML = `
+                // Helper to convert URL to Base64 Data URL to bypass html2canvas CORS issues
+                async function toBase64(url) {
+                    if (!url || url === placeholder || url.startsWith('data:')) return url || placeholder;
+                    try {
+                        console.log("Converting to Base64:", url);
+                        const response = await fetch(url, { mode: 'cors' });
+                        if (!response.ok) throw new Error('Fetch failed');
+                        const blob = await response.blob();
+                        return new Promise((resolve) => {
+                            const reader = new FileReader();
+                            reader.onloadend = () => resolve(reader.result);
+                            reader.readAsDataURL(blob);
+                        });
+                    } catch (e) {
+                        console.warn("Direct fetch failed for:", url, e.message);
+                        // DO NOT use canvas fallback here as it taints the main canvas later
+                        return placeholder;
+                    }
+                }
+                if (errorParam === 'sync_failed') {
+                    document.getElementById('formMessage').innerHTML = `
                 <div class="glass" style="padding: 15px; border-left: 4px solid #eab308; margin-bottom: 20px;">
                     <p style="color: #eab308; margin: 0; font-size: 0.9rem;">
                         ⚠️ <strong>Sync Pending:</strong> Your payment was successful, but our system is still generating your ID card. 
@@ -229,196 +331,264 @@
                     </p>
                 </div>
             `;
-        }
+                }
 
-        let playerData = null;
+                let playerData = null;
 
-        async function initSuccess() {
-            if (!playerToken) {
-                document.getElementById("regNo").innerText = "Not Found";
-                return;
-            }
+                async function initSuccess() {
+                    if (params.get("demo") === "true") {
+                        console.log("🛠️ Loading Demo Mode...");
+                        const demoData = {
+                            registration_no: "SATPL-DEMO",
+                            player_name: "SUMAN MANDAL",
+                            mobile_number: "+91 9876543210",
+                            photo_url: "https://via.placeholder.com/150",
+                            batting: 'yes',
+                            bowling: 'yes',
+                            wicket_keeper: 'no',
+                            token: 'demo-token'
+                        };
+                        populateUIData(demoData);
+                        return;
+                    }
 
-            // Fetch player details using TOKEN
-            const { data, error } = await supabaseClient
-                .from('player_registrations')
-                .select('*')
-                .eq('token', playerToken)
-                .single();
+                    if (!playerToken) {
+                        document.getElementById("regNo").innerText = "Not Found";
+                        return;
+                    }
 
-            playerData = data;
+                    // Fetch player details using TOKEN
+                    const { data, error } = await supabaseClient
+                        .from('player_registrations')
+                        .select('*')
+                        .eq('token', playerToken)
+                        .single();
 
-            if (data) {
-                document.getElementById("regNo").innerText = data.registration_no;
-                document.getElementById('card-name').innerText = data.player_name;
-                document.getElementById('card-reg-no').innerText = data.registration_no;
-                document.getElementById('card-mobile').innerText = data.mobile_number || 'N/A';
+                    if (data) {
+                        populateUIData(data);
+                    } else if (error) {
+                        console.error("Fetch Error:", error);
+                        document.getElementById("regNo").innerText = "Error Loading";
+                    }
+                }
 
-                // QR Code - Points to this page with TOKEN and auto-download flag
-                const currentOrigin = window.location.origin;
-                const verifyUrl = `${currentOrigin}/success.html?id=${data.token}&auto_download=true`;
-                const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(verifyUrl)}&bgcolor=ffffff&color=002D52`;
-                document.getElementById('qr-code').src = qrUrl;
+                async function populateUIData(data) {
+                    playerData = data;
 
-                const photoImg = document.getElementById('card-photo');
-                const photoUrl = data.photo_url || placeholder;
+                    document.getElementById("regNo").innerText = data.registration_no;
+                    document.getElementById('card-name').innerText = data.player_name;
+                    document.getElementById('card-reg-no').innerText = data.registration_no;
+                    document.getElementById('card-mobile').innerText = data.mobile_number || 'N/A';
 
-                // Handle PDF rendering or direct Image loading
-                if (photoUrl.toLowerCase().endsWith('.pdf')) {
-                    (async () => {
-                        try {
+                    // QR Code - Points to this page with TOKEN and auto-download flag
+                    const currentOrigin = window.location.origin;
+                    const verifyUrl = `${currentOrigin}/success.html?id=${data.token}&auto_download=true`;
+                    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(verifyUrl)}&bgcolor=ffffff&color=002D52`;
+                    document.getElementById('qr-code').src = qrUrl;
+
+                    const photoImg = document.getElementById('card-photo');
+                    const photoUrl = data.photo_url || placeholder;
+
+                    // Handle PDF rendering or direct Image loading
+                    if (photoUrl.toLowerCase().endsWith('.pdf')) {
+                        (async () => {
+                            try {
+                                const loadingTask = pdfjsLib.getDocument(photoUrl);
+                                const pdf = await loadingTask.promise;
+                                const page = await pdf.getPage(1);
+                                const viewport = page.getViewport({ scale: 1.5 });
+                                const canvas = document.createElement('canvas');
+                                const context = canvas.getContext('2d');
+                                canvas.height = viewport.height;
+                                canvas.width = viewport.width;
+                                await page.render({ canvasContext: context, viewport: viewport }).promise;
+                                photoImg.src = canvas.toDataURL('image/jpeg', 0.8);
+                            } catch (err) {
+                                photoImg.src = placeholder;
+                            }
+                        })();
+                    } else {
+                        photoImg.src = photoUrl;
+                    }
+
+                    // Set Logo from Base64 constant if available
+                    if (typeof LOGO_BASE64 !== 'undefined' && LOGO_BASE64) {
+                        document.querySelectorAll('.id-logo-wrap img').forEach(img => {
+                            img.src = LOGO_BASE64;
+                        });
+                        document.getElementById('flyer-logo-img').src = LOGO_BASE64;
+                    }
+
+                    let role = "Allrounder";
+                    if (data.batting !== 'no' && data.bowling === 'no') role = "Batsman";
+                    else if (data.batting === 'no' && data.bowling !== 'no') role = "Bowler";
+                    if (data.wicket_keeper === 'yes' || data.wicket_keeper === true) role += " & WK";
+
+                    document.getElementById('card-role').innerText = role;
+
+                    // SHOW EVERYTHING INSTANTLY
+                    document.getElementById('downloadBtn').style.display = 'block';
+                    document.getElementById('downloadFlyerBtn').style.display = 'block';
+                    document.getElementById('id-card-wrap').style.display = 'block';
+
+                    // Populate Flyer Details
+                    document.getElementById('flyer-player-name').innerText = data.player_name;
+                    document.getElementById('flyer-player-role').innerText = role;
+
+                    // AUTO DOWNLOAD if coming from QR scan
+                    if (params.get("auto_download") === "true") {
+                        console.log("Auto-download triggered from QR scan...");
+                        setTimeout(() => {
+                            downloadIDCard();
+                        }, 2500);
+                    }
+                }
+
+                async function downloadWelcomeFlyer() {
+                    if (!playerData) return;
+                    const btn = document.getElementById('downloadFlyerBtn');
+                    const flyer = document.getElementById('welcome-flyer-template');
+
+                    btn.innerText = "⏳ Preparing Your Flyer...";
+                    btn.disabled = true;
+
+                    try {
+                        // Ensure logo is base64
+                        if (typeof LOGO_BASE64 !== 'undefined' && LOGO_BASE64) {
+                            document.getElementById('flyer-logo-img').src = LOGO_BASE64;
+                        }
+
+                        await new Promise(r => setTimeout(r, 500)); // Short wait for layout
+
+                        const canvas = await html2canvas(flyer, {
+                            scale: 2, // High resolution
+                            useCORS: true,
+                            backgroundColor: null,
+                            logging: false
+                        });
+
+                        const link = document.createElement('a');
+                        link.download = `SATPL_Welcome_${playerData.player_name.replace(/\s+/g, '_')}.png`;
+                        link.href = canvas.toDataURL('image/png');
+                        link.click();
+
+                        btn.innerText = "Download Welcome Flyer 🏆";
+                        btn.disabled = false;
+                        console.log("Flyer Downloaded Successfully!");
+                    } catch (err) {
+                        console.error("Flyer error:", err);
+                        alert("Flyer Generation Error: " + err.message);
+                        btn.innerText = "Download Error";
+                        btn.disabled = false;
+                    }
+                }
+
+                async function downloadIDCard() {
+                    const btn = document.getElementById('downloadBtn');
+                    const front = document.getElementById('id-front');
+                    const back = document.getElementById('id-back');
+
+                    btn.innerText = "⏳ Preparing high-res assets...";
+                    btn.disabled = true;
+
+                    try {
+                        // High-res Heavy Asset Conversion ON DEMAND
+                        console.log("Executing on-demand high-res conversion...");
+
+                        // 1. Logo Handling - CRITICAL
+                        const logos = document.querySelectorAll('.id-logo-wrap img');
+                        if (typeof LOGO_BASE64 !== 'undefined' && LOGO_BASE64) {
+                            logos.forEach(img => { img.src = LOGO_BASE64; });
+                        } else {
+                            console.warn("LOGO_BASE64 missing in downloadIDCard");
+                        }
+
+                        // 2. QR Code -> Base64
+                        const qrImg = document.getElementById('qr-code');
+                        if (qrImg && !qrImg.src.startsWith('data:')) {
+                            qrImg.src = await toBase64(qrImg.src);
+                        }
+
+                        // 3. Profile Photo -> Base64
+                        const photoImg = document.getElementById('card-photo');
+                        const photoUrl = (playerData && playerData.photo_url) || placeholder;
+
+                        const photoContainer = document.querySelector('.id-photo-container');
+                        if (photoContainer) {
+                            photoContainer.style.background = 'transparent';
+                            photoContainer.style.border = '6px solid white';
+                        }
+
+                        if (photoUrl.toLowerCase().endsWith('.pdf')) {
                             const loadingTask = pdfjsLib.getDocument(photoUrl);
                             const pdf = await loadingTask.promise;
                             const page = await pdf.getPage(1);
-                            const viewport = page.getViewport({ scale: 1.5 });
+                            const viewport = page.getViewport({ scale: 4.0 });
                             const canvas = document.createElement('canvas');
                             const context = canvas.getContext('2d');
                             canvas.height = viewport.height;
                             canvas.width = viewport.width;
                             await page.render({ canvasContext: context, viewport: viewport }).promise;
-                            photoImg.src = canvas.toDataURL('image/jpeg', 0.8);
-                        } catch (err) {
-                            photoImg.src = placeholder;
+                            photoImg.src = canvas.toDataURL('image/png');
+                        } else if (!photoImg.src.startsWith('data:')) {
+                            photoImg.src = await toBase64(photoImg.src);
                         }
-                    })();
-                } else {
-                    photoImg.src = photoUrl;
-                }
 
-                // Set Logo from Base64 constant if available
-                if (typeof LOGO_BASE64 !== 'undefined' && LOGO_BASE64) {
-                    document.querySelectorAll('.id-logo-wrap img').forEach(img => {
-                        img.src = LOGO_BASE64;
-                    });
-                }
+                        // 4. FINAL SAFETY: ENSURE NO EXTERNAL ASSETS (bypass SecurityError)
+                        document.querySelectorAll('.id-card-container img').forEach(img => {
+                            if (img.src && !img.src.startsWith('data:') && !img.src.startsWith('blob:')) {
+                                console.warn("Removing non-data image to prevent SecurityError:", img.src);
+                                img.src = placeholder;
+                            }
+                        });
 
-                let role = "Allrounder";
-                if (data.batting !== 'no' && data.bowling === 'no') role = "Batsman";
-                else if (data.batting === 'no' && data.bowling !== 'no') role = "Bowler";
-                if (data.wicket_keeper === 'yes' || data.wicket_keeper === true) role += " & WK";
-                document.getElementById('card-role').innerText = role;
+                        await new Promise(r => setTimeout(r, 1500));
 
-                // SHOW EVERYTHING INSTANTLY
-                document.getElementById('downloadBtn').style.display = 'block';
-                document.getElementById('id-card-wrap').style.display = 'block';
+                        btn.innerText = "⏳ Generating Professional PDF...";
 
+                        const { jsPDF } = window.jspdf;
+                        const pdf = new jsPDF({
+                            orientation: 'portrait',
+                            unit: 'px',
+                            format: [350, 550],
+                            compress: true
+                        });
 
-                // AUTO DOWNLOAD if coming from QR scan
-                if (params.get("auto_download") === "true") {
-                    console.log("Auto-download triggered from QR scan...");
-                    setTimeout(() => {
-                        downloadIDCard();
-                    }, 2500);
-                }
-            }
-        }
+                        const capOpts = {
+                            scale: 2,
+                            useCORS: true,
+                            allowTaint: false,
+                            scrollX: 0,
+                            scrollY: -window.scrollY,
+                            backgroundColor: null,
+                            logging: true
+                        };
 
-        async function downloadIDCard() {
-            const btn = document.getElementById('downloadBtn');
-            const front = document.getElementById('id-front');
-            const back = document.getElementById('id-back');
+                        console.log("Capturing Side 1...");
+                        const canvasF = await html2canvas(front, capOpts);
+                        pdf.addImage(canvasF.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 350, 550);
 
-            btn.innerText = "⏳ Preparing high-res assets...";
-            btn.disabled = true;
+                        pdf.addPage([350, 550], 'portrait');
 
-            try {
-                // High-res Heavy Asset Conversion ON DEMAND
-                console.log("Executing on-demand high-res conversion...");
+                        console.log("Capturing Side 2...");
+                        const canvasB = await html2canvas(back, capOpts);
+                        pdf.addImage(canvasB.toDataURL('image/jpeg', 0.9), 'JPEG', 0, 0, 350, 550);
 
-                // 1. Logo Handling - CRITICAL
-                const logos = document.querySelectorAll('.id-logo-wrap img');
-                if (typeof LOGO_BASE64 !== 'undefined' && LOGO_BASE64) {
-                    logos.forEach(img => { img.src = LOGO_BASE64; });
-                } else {
-                    console.warn("LOGO_BASE64 missing in downloadIDCard");
-                }
+                        pdf.save(`SATPL_ID_Card_${playerData.registration_no}.pdf`);
 
-                // 2. QR Code -> Base64
-                const qrImg = document.getElementById('qr-code');
-                if (qrImg && !qrImg.src.startsWith('data:')) {
-                    qrImg.src = await toBase64(qrImg.src);
-                }
-
-                // 3. Profile Photo -> Base64
-                const photoImg = document.getElementById('card-photo');
-                const photoUrl = (playerData && playerData.photo_url) || placeholder;
-
-                const photoContainer = document.querySelector('.id-photo-container');
-                if (photoContainer) {
-                    photoContainer.style.background = 'transparent';
-                    photoContainer.style.border = '6px solid white';
-                }
-
-                if (photoUrl.toLowerCase().endsWith('.pdf')) {
-                    const loadingTask = pdfjsLib.getDocument(photoUrl);
-                    const pdf = await loadingTask.promise;
-                    const page = await pdf.getPage(1);
-                    const viewport = page.getViewport({ scale: 4.0 });
-                    const canvas = document.createElement('canvas');
-                    const context = canvas.getContext('2d');
-                    canvas.height = viewport.height;
-                    canvas.width = viewport.width;
-                    await page.render({ canvasContext: context, viewport: viewport }).promise;
-                    photoImg.src = canvas.toDataURL('image/png');
-                } else if (!photoImg.src.startsWith('data:')) {
-                    photoImg.src = await toBase64(photoImg.src);
-                }
-
-                // 4. FINAL SAFETY: ENSURE NO EXTERNAL ASSETS (bypass SecurityError)
-                document.querySelectorAll('.id-card-container img').forEach(img => {
-                    if (img.src && !img.src.startsWith('data:') && !img.src.startsWith('blob:')) {
-                        console.warn("Removing non-data image to prevent SecurityError:", img.src);
-                        img.src = placeholder;
+                        btn.innerText = "Download Digital ID Card (PDF) 📥";
+                        btn.disabled = false;
+                        console.log("PDF Downloaded Successfully!");
+                    } catch (err) {
+                        console.error("Generation detailed error:", err);
+                        alert("Generation Error: " + err.message);
+                        btn.innerText = "Download Error";
+                        btn.disabled = false;
                     }
-                });
+                }
 
-                await new Promise(r => setTimeout(r, 1500));
-
-                btn.innerText = "⏳ Generating Professional PDF...";
-
-                const { jsPDF } = window.jspdf;
-                const pdf = new jsPDF({
-                    orientation: 'portrait',
-                    unit: 'px',
-                    format: [350, 550],
-                    compress: true
-                });
-
-                const capOpts = {
-                    scale: 2,
-                    useCORS: true,
-                    allowTaint: false,
-                    scrollX: 0,
-                    scrollY: -window.scrollY,
-                    backgroundColor: null,
-                    logging: true
-                };
-
-                console.log("Capturing Side 1...");
-                const canvasF = await html2canvas(front, capOpts);
-                pdf.addImage(canvasF.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 350, 550);
-
-                pdf.addPage([350, 550], 'portrait');
-
-                console.log("Capturing Side 2...");
-                const canvasB = await html2canvas(back, capOpts);
-                pdf.addImage(canvasB.toDataURL('image/jpeg', 0.9), 'JPEG', 0, 0, 350, 550);
-
-                pdf.save(`SATPL_ID_Card_${playerData.registration_no}.pdf`);
-
-                btn.innerText = "Download Digital ID Card (PDF) 📥";
-                btn.disabled = false;
-                console.log("PDF Downloaded Successfully!");
-            } catch (err) {
-                console.error("Generation detailed error:", err);
-                alert("Generation Error: " + err.message);
-                btn.innerText = "Download Error";
-                btn.disabled = false;
-            }
-        }
-
-        initSuccess();
-    </script>
+                initSuccess();
+            </script>
 
 </body>
 
