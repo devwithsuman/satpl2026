@@ -379,7 +379,12 @@ async function updatePaymentStatus(id, status) {
 
         fetchRegistrations();
     } catch (err) {
-        alert("Error: " + err.message);
+        if (window.isNetworkError(err)) {
+            const health = await window.testSupabaseConnection();
+            alert(health.detailed);
+        } else {
+            alert("Error: " + (err.message || err));
+        }
     }
 }
 
@@ -1552,14 +1557,32 @@ async function lookupPlayerForStat() {
                 .single()
         );
 
+        if (teamErr) {
+            console.error("Lookup team player error:", teamErr);
+            if (window.isNetworkError(teamErr)) {
+                const health = await window.testSupabaseConnection();
+                alert(health.detailed);
+            }
+            // Don't return, as team info is optional, just log error
+        }
+
         if (teamPlayerData && teamPlayerData.team_id) {
-            const { data: teamData } = await window.safeSupabaseCall(() =>
+            const { data: teamData, error: teamNameErr } = await window.safeSupabaseCall(() =>
                 supabaseClient
                     .from('points_table')
                     .select('team_name')
                     .eq('id', teamPlayerData.team_id)
                     .single()
             );
+
+            if (teamNameErr) {
+                console.error("Lookup team name error:", teamNameErr);
+                if (window.isNetworkError(teamNameErr)) {
+                    const health = await window.testSupabaseConnection();
+                    alert(health.detailed);
+                }
+                // Don't return, as team info is optional, just log error
+            }
 
             if (teamData) {
                 document.getElementById('stat-team').value = teamData.team_name;
