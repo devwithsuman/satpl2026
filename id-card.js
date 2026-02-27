@@ -76,18 +76,29 @@ if (cardToken && typeof supabaseClient !== 'undefined') {
                 .single()
         );
 
+        if (error) {
+            console.error("ID Card Fetch Error:", error);
+            if (window.isNetworkError(error)) {
+                const health = await window.testSupabaseConnection();
+                alert(health.detailed);
+            }
+        }
         if (data) populateCardData(data);
         else {
             // Fallback: try by reg_no if it's old link
             const oldRegNo = cardParams.get('reg_no');
             if (oldRegNo) {
-                const { data: oldData } = await window.safeSupabaseCall(() =>
+                const { data: oldData, error: oldError } = await window.safeSupabaseCall(() =>
                     supabaseClient
                         .from('player_registrations')
                         .select('*')
                         .eq('registration_no', oldRegNo)
                         .single()
                 );
+                if (oldError && window.isNetworkError(oldError)) {
+                    const health = await window.testSupabaseConnection();
+                    alert(health.detailed);
+                }
                 if (oldData) populateCardData(oldData);
             }
         }
