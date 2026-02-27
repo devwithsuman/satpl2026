@@ -26,10 +26,29 @@ console.log("💎 Supabase Client Initialized [" + (isAdminPage ? "ADMIN MODE" :
 // --- Connectivity Diagnostics & Resiliency ---
 
 /**
- * Helper: Automatically retries a fetch/supabase call if it fails due to network (DNS/CORS)
- * Optimized for GitHub Pages where PHP/Proxy is not possible.
+ * Guerilla DNS Warmup: Probes public DNS-over-HTTPS (DoH) APIs to bypass ISP DNS hijacking.
+ * This helps the browser resolve and "unblock" the Supabase domain on blocked mobile networks.
  */
-window.safeSupabaseCall = async function (callFn, maxRetries = 3, metadata = {}) {
+async function warmupDNS() {
+    console.log("📡 Pre-warming DNS via Cloudflare DoH...");
+    const supabaseDomain = new URL(SUPABASE_URL).hostname;
+    const dohUrl = `https://cloudflare-dns.com/dns-query?name=${supabaseDomain}&type=A`;
+
+    try {
+        await fetch(dohUrl, {
+            headers: { 'accept': 'application/dns-json' },
+            mode: 'cors'
+        });
+        console.log("✅ DNS Warmup probe sent successfully.");
+    } catch (e) {
+        console.warn("⚠️ DNS Warmup probe skipped or failed.");
+    }
+}
+
+/**
+ * Helper: Automatically retries a fetch/supabase call if it fails due to network (DNS/CORS)
+ */
+window.safeSupabaseCall = async function (callFn, maxRetries = 5, metadata = {}) {
     let lastError;
 
     for (let i = 0; i <= maxRetries; i++) {
@@ -41,9 +60,10 @@ window.safeSupabaseCall = async function (callFn, maxRetries = 3, metadata = {})
             return { data, error };
         } catch (err) {
             lastError = err;
+
             if (window.isNetworkError(err) && i < maxRetries) {
-                const waitTime = (i + 1) * 1000;
-                console.warn(`⚠️ Connection attempt ${i + 1} failed (${err.message || err}). Retrying in ${waitTime}ms...`);
+                const waitTime = Math.pow(2, i) * 500; // Exponential backoff: 0.5s, 1s, 2s, 4s...
+                console.warn(`⚠️ Connection attempt ${i + 1} failed. Retrying in ${waitTime}ms...`);
                 await new Promise(resolve => setTimeout(resolve, waitTime));
                 continue;
             }
@@ -55,15 +75,10 @@ window.safeSupabaseCall = async function (callFn, maxRetries = 3, metadata = {})
 };
 
 window.testSupabaseConnection = async function () {
-    console.log("🔍 Probing Supabase Connectivity...");
-    const probeUrl = `${SUPABASE_URL}/rest/v1/site_settings?select=id&limit=1`;
+    console.log("🔍 Checking Supabase Connectivity...");
 
-    let dnsPass = false;
-    try {
-        // Raw probe to see if server is reached
-        await fetch(probeUrl, { mode: 'no-cors', method: 'GET' });
-        dnsPass = true;
-    } catch (e) { }
+    // First, try a warmup
+    await warmupDNS();
 
     const start = Date.now();
     const probe = () => window.supabaseClient.from('site_settings').select('id').limit(1);
@@ -77,31 +92,22 @@ window.testSupabaseConnection = async function () {
 
     console.error("❌ Supabase Connection Failed:", error.message);
 
-    let diagnosticMsg = "Supabase Connection Error: ";
-    const msg = (error.message || "").toLowerCase();
-    const isFetchError = msg.includes('fetch') || msg.includes('load failed') || msg.includes('networkerror');
-
-    if (isFetchError) {
-        if (dnsPass) {
-            diagnosticMsg += "CORS Blocked. \n\nTroubleshooting:\n1. Your DNS is working, but project settings need update.\n2. Ensure 'Allowed Origins' in Supabase Dashboard includes your domain.";
-        } else {
-            diagnosticMsg += "ISP/DNS Blocked. \n\nTroubleshooting:\n1. Your Mobile ISP is blocking connection.\n2. Try changing DNS to Google (8.8.8.8).\n3. Use a different SIM card or WiFi.";
-        }
-    } else {
-        diagnosticMsg += error.message;
+    // Silent logging for network errors instead of intrusive alerts
+    if (window.isNetworkError(error)) {
+        console.warn("💡 TIP: If you are on Jio/Airtel and seeing failures, changing phone DNS to 8.8.8.8 often fixes this permanently.");
     }
 
-    return { success: false, error: error.message, detailed: diagnosticMsg };
+    return { success: false, error: error.message };
 };
 
 // Helper: Check if an error is network/ISP related
 window.isNetworkError = function (err) {
     if (!err) return false;
     const msg = (err.message || String(err)).toLowerCase();
-    return msg.includes('fetch') || msg.includes('load failed') || msg.includes('networkerror') || msg.includes('dns');
+    return msg.includes('fetch') || msg.includes('load failed') || msg.includes('networkerror') || msg.includes('dns') || msg.includes('connection');
 };
 
-// Start connection warmup
+// Start connection warmup and probe
 testSupabaseConnection();
 
 // Helper: Ensure external links have a protocol
