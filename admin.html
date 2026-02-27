@@ -138,6 +138,9 @@
                         </select>
                         <button class="btn btn-red-blink" onclick="saveHero()" style="padding: 15px 30px;">Update Live
                             Feed 🚀</button>
+                        <button id="finalize-match-btn" class="btn" onclick="finalizeLiveMatch()"
+                            style="padding: 15px 25px; background: var(--secondary); display: none;">Finalize Result
+                            🏁</button>
                     </div>
                 </header>
 
@@ -175,9 +178,10 @@
                             <div class="team-panel">
                                 <label style="display: block; margin-bottom: 10px; color: var(--secondary);">HOME
                                     TEAM</label>
-                                <input type="text" id="hero-team1-name" class="table-input"
-                                    style="text-align: center; font-size: 1.2rem; font-weight: 700;"
-                                    placeholder="Team Name">
+                                <select id="hero-team1-name" class="table-input team-selector-sync"
+                                    style="text-align: center; font-size: 1.1rem; font-weight: 700;">
+                                    <option value="">Select Team</option>
+                                </select>
                                 <input type="number" id="hero-team1-score" class="score-input" placeholder="0">
                             </div>
 
@@ -186,9 +190,10 @@
                             <div class="team-panel">
                                 <label style="display: block; margin-bottom: 10px; color: var(--secondary);">AWAY
                                     TEAM</label>
-                                <input type="text" id="hero-team2-name" class="table-input"
-                                    style="text-align: center; font-size: 1.2rem; font-weight: 700;"
-                                    placeholder="Team Name">
+                                <select id="hero-team2-name" class="table-input team-selector-sync"
+                                    style="text-align: center; font-size: 1.1rem; font-weight: 700;">
+                                    <option value="">Select Team</option>
+                                </select>
                                 <input type="number" id="hero-team2-score" class="score-input" placeholder="0">
                             </div>
                         </div>
@@ -236,6 +241,8 @@
                             <div class="form-group">
                                 <label>Batsman (Live/Highlights)</label>
                                 <div style="display: flex; gap: 8px;">
+                                    <input type="text" id="hero-batsman1-reg" class="table-input" placeholder="Reg No"
+                                        style="width: 120px;" onblur="lookupHeroPlayer('bat')">
                                     <input type="text" id="hero-batsman1" class="table-input" placeholder="Name"
                                         style="flex: 2;">
                                     <input type="number" id="hero-batsman1-runs" class="table-input" placeholder="R"
@@ -1176,17 +1183,19 @@
             </div>
 
             <div style="margin-top: 25px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px;">
-                <h4 style="color: var(--secondary); margin-bottom: 15px;">🏆 Top Performers (Auto-update Leaders)</h4>
+                <h4 style="color: var(--secondary); margin-bottom: 5px;">🏆 Top Performers (Auto-update Leaders)</h4>
+                <p style="font-size: 0.75rem; color: var(--text-dim); margin-bottom: 15px;">Input Player Registration
+                    Number (e.g. OSATPL01S...)</p>
                 <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 15px;">
                     <div class="form-group">
-                        <label>Top Batsman Name</label>
-                        <input type="text" id="res-top-bat" class="table-input" placeholder="Name">
+                        <label>Top Batsman Reg No</label>
+                        <input type="text" id="res-top-bat" class="table-input" placeholder="OSATPL01S...">
                         <label style="margin-top: 5px;">Runs Scored</label>
                         <input type="number" id="res-top-bat-runs" class="table-input" value="0">
                     </div>
                     <div class="form-group">
-                        <label>Best Bowler Name</label>
-                        <input type="text" id="res-top-bowl" class="table-input" placeholder="Name">
+                        <label>Best Bowler Reg No</label>
+                        <input type="text" id="res-top-bowl" class="table-input" placeholder="OSATPL01S...">
                         <label style="margin-top: 5px;">Wickets Taken</label>
                         <input type="number" id="res-top-bowl-wkts" class="table-input" value="0">
                     </div>
