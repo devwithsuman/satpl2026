@@ -35,13 +35,15 @@ window.safeSupabaseCall = async function (callFn, maxRetries = 3, metadata = {})
     for (let i = 0; i <= maxRetries; i++) {
         try {
             const { data, error } = await callFn();
-            if (error && error.message === 'Failed to fetch') throw error;
+            if (error && window.isNetworkError(error)) {
+                throw error;
+            }
             return { data, error };
         } catch (err) {
             lastError = err;
-            if (err.message === 'Failed to fetch' && i < maxRetries) {
+            if (window.isNetworkError(err) && i < maxRetries) {
                 const waitTime = (i + 1) * 1000;
-                console.warn(`⚠️ Connection attempt ${i + 1} failed. Retrying in ${waitTime}ms...`);
+                console.warn(`⚠️ Connection attempt ${i + 1} failed (${err.message || err}). Retrying in ${waitTime}ms...`);
                 await new Promise(resolve => setTimeout(resolve, waitTime));
                 continue;
             }
@@ -76,7 +78,10 @@ window.testSupabaseConnection = async function () {
     console.error("❌ Supabase Connection Failed:", error.message);
 
     let diagnosticMsg = "Supabase Connection Error: ";
-    if (error.message === 'Failed to fetch') {
+    const msg = (error.message || "").toLowerCase();
+    const isFetchError = msg.includes('fetch') || msg.includes('load failed') || msg.includes('networkerror');
+
+    if (isFetchError) {
         if (dnsPass) {
             diagnosticMsg += "CORS Blocked. \n\nTroubleshooting:\n1. Your DNS is working, but project settings need update.\n2. Ensure 'Allowed Origins' in Supabase Dashboard includes your domain.";
         } else {
@@ -87,6 +92,13 @@ window.testSupabaseConnection = async function () {
     }
 
     return { success: false, error: error.message, detailed: diagnosticMsg };
+};
+
+// Helper: Check if an error is network/ISP related
+window.isNetworkError = function (err) {
+    if (!err) return false;
+    const msg = (err.message || String(err)).toLowerCase();
+    return msg.includes('fetch') || msg.includes('load failed') || msg.includes('networkerror') || msg.includes('dns');
 };
 
 // Start connection warmup
