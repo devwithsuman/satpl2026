@@ -53,10 +53,21 @@ window.safeSupabaseCall = async function (callFn, maxRetries = 2) {
 
 window.testSupabaseConnection = async function () {
     console.log("🔍 Probing Supabase Connectivity...");
-    const probe = () => window.supabaseClient.from('site_settings').select('id').limit(1);
+    const probeUrl = `${SUPABASE_URL}/rest/v1/site_settings?select=id&limit=1`;
+
+    let dnsPass = false;
+    try {
+        // Step 1: Raw DNS/Network probe (ignores CORS)
+        await fetch(probeUrl, { mode: 'no-cors', method: 'GET' });
+        dnsPass = true;
+        console.log("📡 DNS/Network Probe: OK (Server reached)");
+    } catch (e) {
+        console.warn("📡 DNS/Network Probe: FAILED (Server unreachable)");
+    }
 
     const start = Date.now();
-    const { data, error } = await window.safeSupabaseCall(probe, 2);
+    const probe = () => window.supabaseClient.from('site_settings').select('id').limit(1);
+    const { error } = await window.safeSupabaseCall(probe, 2);
     const duration = Date.now() - start;
 
     if (!error) {
@@ -65,9 +76,14 @@ window.testSupabaseConnection = async function () {
     }
 
     console.error("❌ Supabase Connection Failed:", error.message);
+
     let diagnosticMsg = "Supabase Connection Error: ";
     if (error.message === 'Failed to fetch') {
-        diagnosticMsg += "Network Unreachable or DNS Blocked. \n\nTroubleshooting:\n1. Check if your internet is working.\n2. Disable any Ad-blockers or Firewalls.\n3. Try changing your DNS (Google: 8.8.8.8 or Cloudflare: 1.1.1.1).\n4. IMPORTANT: Ensure 'Allowed Origins' is set in Supabase Dashboard.";
+        if (dnsPass) {
+            diagnosticMsg += "CORS Blocked. \n\nTroubleshooting:\n1. Your DNS is working fine, but Supabase is rejecting the request.\n2. Go to Supabase Dashboard -> Authentication -> URL Configuration.\n3. Add 'https://inkvibe.in' and 'https://devwithsuman.in' to 'Allowed Origins'.\n4. Make sure you use HTTPS and not HTTP.";
+        } else {
+            diagnosticMsg += "Network/DNS Blocked. \n\nTroubleshooting:\n1. Your mobile network cannot find the Supabase server.\n2. Try changing your DNS (Google: 8.8.8.8 or Cloudflare: 1.1.1.1).\n3. Try switching to a different SIM card or WiFi.\n4. Ensure you don't have an Ad-blocker active.";
+        }
     } else {
         diagnosticMsg += error.message;
     }
