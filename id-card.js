@@ -68,22 +68,26 @@ const cardToken = cardParams.get('id'); // Use 'id' for token
 
 if (cardToken && typeof supabaseClient !== 'undefined') {
     (async () => {
-        const { data, error } = await supabaseClient
-            .from('player_registrations')
-            .select('*')
-            .eq('token', cardToken) // Fetch by Token
-            .single();
+        const { data, error } = await window.safeSupabaseCall(() =>
+            supabaseClient
+                .from('player_registrations')
+                .select('*')
+                .eq('token', cardToken)
+                .single()
+        );
 
         if (data) populateCardData(data);
         else {
             // Fallback: try by reg_no if it's old link
             const oldRegNo = cardParams.get('reg_no');
             if (oldRegNo) {
-                const { data: oldData } = await supabaseClient
-                    .from('player_registrations')
-                    .select('*')
-                    .eq('registration_no', oldRegNo)
-                    .single();
+                const { data: oldData } = await window.safeSupabaseCall(() =>
+                    supabaseClient
+                        .from('player_registrations')
+                        .select('*')
+                        .eq('registration_no', oldRegNo)
+                        .single()
+                );
                 if (oldData) populateCardData(oldData);
             }
         }
