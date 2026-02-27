@@ -149,10 +149,11 @@
                         <div
                             style="display: flex; justify-content: center; align-items: center; gap: 40px; flex-wrap: wrap;">
                             <div style="text-align: right; flex: 1; min-width: 150px;">
-                                <h3 id="display-live-team1" style="font-size: 1.5rem; margin-bottom: 10px;">TEAM A</h3>
+                                <h3 id="display-live-team1" class="tv-score-team" style="margin-bottom: 10px;">TEAM A
+                                </h3>
                                 <div style="display: flex; align-items: baseline; justify-content: flex-end; gap: 5px;">
-                                    <div class="gradient-text" style="font-size: 3.5rem; font-weight: 900;"
-                                        id="display-live-score1">0</div>
+                                    <div class="gradient-text tv-score-main"
+                                        style="font-size: 3.5rem; font-weight: 900;" id="display-live-score1">0</div>
                                     <div style="font-size: 2rem; color: var(--text-dim);">/</div>
                                     <div id="display-live-wickets"
                                         style="font-size: 2.5rem; font-weight: 800; color: var(--secondary);">0</div>
@@ -165,8 +166,9 @@
                             <div style="font-size: 2rem; font-weight: 900; color: var(--text-dim); opacity: 0.5;">VS
                             </div>
                             <div style="text-align: left; flex: 1; min-width: 150px;">
-                                <h3 id="display-live-team2" style="font-size: 1.5rem; margin-bottom: 10px;">TEAM B</h3>
-                                <div class="gradient-text" style="font-size: 3.5rem; font-weight: 900;"
+                                <h3 id="display-live-team2" class="tv-score-team" style="margin-bottom: 10px;">TEAM B
+                                </h3>
+                                <div class="gradient-text tv-score-main" style="font-size: 3.5rem; font-weight: 900;"
                                     id="display-live-score2">0</div>
                                 <div id="display-live-target-wrap"
                                     style="font-size: 0.9rem; color: var(--primary); margin-top: 5px; display: none;">
@@ -245,8 +247,8 @@
                 </div>
 
                 <!-- Announcements Section -->
-                <section id="announcements" style="margin-top: 60px;">
-                    <div class="section-title animate-fade">
+                <section id="announcements" class="reveal" style="margin-top: 60px;">
+                    <div class="section-title">
                         <span class="badge">Updates</span>
                         <h2 class="gradient-text">News & Official Notices</h2>
                     </div>
@@ -262,8 +264,8 @@
                 </section>
 
                 <!-- Top Performers Section -->
-                <section id="leaderboard" style="margin-top: 60px;">
-                    <div class="section-title animate-fade">
+                <section id="leaderboard" class="reveal" style="margin-top: 60px;">
+                    <div class="section-title">
                         <span class="badge">Performance</span>
                         <h2 class="gradient-text">Top Performers</h2>
                         <p>Leading scorers and wicket takers of SATPL 2026</p>
@@ -295,7 +297,7 @@
                 </section>
 
                 <!-- Points Table Component -->
-                <div id="points-table" class="glass animate-fade" style="margin-top: 40px; padding: 30px;">
+                <div id="points-table" class="glass reveal" style="margin-top: 40px; padding: 30px;">
                     <h3 class="gradient-text" style="font-size: 2rem; margin-bottom: 25px; text-align: center;">League
                         Standings</h3>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px;">
@@ -474,12 +476,18 @@
         </section>
     </main>
 
-    <footer class="animate-fade">
+    <footer class="reveal">
         <div class="container">
             <p>© 2026 SATPL Premium Experience. All rights reserved.</p>
             <div id="dev-credits-container"></div>
         </div>
     </footer>
+
+    <!-- Premium FAB -->
+    <div class="fab-container">
+        <a href="registration.html" class="fab-btn" title="Register Now">📝</a>
+        <button class="fab-btn" onclick="window.scrollTo({top: 0, behavior: 'smooth'})" title="Go to Top">⬆️</button>
+    </div>
 
     <!-- Image Lightbox Modal -->
     <div id="image-lightbox" class="modal-backdrop" style="display: none; background: rgba(0,0,0,0.95);">
@@ -489,6 +497,36 @@
             style="width: 95%; max-width: 1200px; height: 90%; display: flex; align-items: center; justify-content: center;">
             <img id="lightbox-img" src=""
                 style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 10px; box-shadow: 0 0 50px rgba(0,0,0,0.5);">
+        </div>
+    </div>
+
+    <!-- Team Profile Modal -->
+    <div id="team-modal" class="modal-backdrop" style="display: none;">
+        <div class="glass"
+            style="width: 95%; max-width: 450px; padding: 40px; text-align: center; border-radius: 30px; position: relative; animation: modal-zoom 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+            <button onclick="closeTeamProfile()"
+                style="position: absolute; top: 20px; right: 20px; background: none; border: none; color: var(--text-dim); font-size: 1.5rem; cursor: pointer;">✕</button>
+
+            <div id="team-modal-logo-wrap" class="gold-glow"
+                style="width: 120px; height: 120px; margin: 0 auto 20px; border-radius: 50%; padding: 5px; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center;">
+                <img id="team-modal-logo" src=""
+                    style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
+            </div>
+
+            <h2 id="team-modal-name" class="gradient-text"
+                style="font-size: 2.2rem; margin-bottom: 10px; font-weight: 900;">Team Name</h2>
+            <div
+                style="width: 50px; height: 3px; background: var(--primary); margin: 0 auto 20px; border-radius: 10px;">
+            </div>
+
+            <p
+                style="color: var(--text-dim); text-transform: uppercase; font-size: 0.8rem; letter-spacing: 2px; margin-bottom: 5px;">
+                Team Owner</p>
+            <h3 id="team-modal-owner" style="font-size: 1.5rem; color: #fff; font-weight: 600;">Owner Name</h3>
+
+            <div style="margin-top: 30px;">
+                <button class="btn" style="width: 100%;" onclick="closeTeamProfile()">Close Profile</button>
+            </div>
         </div>
     </div>
 
