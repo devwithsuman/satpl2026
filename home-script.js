@@ -1,6 +1,8 @@
 async function loadHomepageContent() {
     console.log("🚀 Initializing SATPL Homepage...");
     initParticles();
+    initScrollReveal(); // Initialize scroll animations
+
     // 1. Initial Load
     await Promise.all([
         loadHeroAndScores(),
@@ -14,6 +16,24 @@ async function loadHomepageContent() {
 
     // 2. Setup Real-time Sync (The "Bulletproof" Flow)
     setupRealtimeSync();
+}
+
+
+// --- SCROLL REVEAL LOGIC ---
+function initScrollReveal() {
+    const observerOptions = {
+        threshold: 0.15
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('active');
+            }
+        });
+    }, observerOptions);
+
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 }
 
 async function loadNotices() {
@@ -254,11 +274,19 @@ async function loadHeroAndScores() {
         badge.className = "live-indicator";
         badge.style.animation = "none"; // Remove blink animation in favor of pulse-dot
 
+        document.getElementById('display-live-team1').className = "tv-score-team";
         document.getElementById('display-live-team1').innerText = live.team1_name;
+        document.getElementById('display-live-score1').className = "gradient-text tv-score-main";
         document.getElementById('display-live-score1').innerText = live.team1_score || 0;
+
+        document.getElementById('display-live-team2').className = "tv-score-team";
         document.getElementById('display-live-team2').innerText = live.team2_name;
+        document.getElementById('display-live-score2').className = "gradient-text tv-score-main";
         document.getElementById('display-live-score2').innerText = live.team2_score || 0;
-        document.getElementById('display-live-status').innerText = live.match_status || "";
+
+        const statusEl = document.getElementById('display-live-status');
+        statusEl.innerText = live.match_status || "";
+        statusEl.style.textShadow = "0 0 10px rgba(0, 255, 163, 0.3)";
 
         // Detailed Score
         if (document.getElementById('display-live-wickets')) {
@@ -336,6 +364,8 @@ async function loadHeroAndScores() {
     // Global Map Link is handled in loadSiteSettings
 }
 
+window.allTeamsData = []; // Global store for team details
+
 async function loadPointsTable() {
     const listA = document.getElementById('points-group-a');
     const listB = document.getElementById('points-group-b');
@@ -357,6 +387,7 @@ async function loadPointsTable() {
     }
 
     if (!data || data.length === 0) return;
+    window.allTeamsData = data; // Store globally
 
     const groupA = data.filter(t => (t.group_name || 'A').toUpperCase() === 'A');
     const groupB = data.filter(t => (t.group_name || '').toUpperCase() === 'B');
@@ -365,10 +396,12 @@ async function loadPointsTable() {
         if (teams.length === 0) return '<tr><td colspan="6" style="padding:20px; color:var(--text-dim);">No teams assigned.</td></tr>';
         return teams.map((team, index) => {
             const logo = team.logo_url ? `<img src="${team.logo_url}" style="width: 25px; height: 25px; border-radius: 50%; object-fit: cover;">` : '🛡️';
+            // Find global index
+            const globalIndex = window.allTeamsData.findIndex(t => t.id === team.id);
             return `
                 <tr>
                     <td>${index + 1}</td>
-                    <td style="text-align: left; font-weight: 600;">
+                    <td style="text-align: left; font-weight: 600; cursor: pointer;" onclick="showTeamProfileByIndex(${globalIndex})">
                         <div style="display: flex; align-items: center; gap: 8px;">
                             ${logo}
                             <div style="font-size: 0.9rem;">${team.team_name}</div>
@@ -387,6 +420,35 @@ async function loadPointsTable() {
 
     if (listA) listA.innerHTML = renderRows(groupA);
     if (listB) listB.innerHTML = renderRows(groupB);
+}
+
+// --- TEAM PROFILE MODAL LOGIC ---
+function showTeamProfileByIndex(index) {
+    const team = window.allTeamsData[index];
+    if (!team) return;
+
+    console.log("🏆 Opening Profile for:", team.team_name);
+    const modal = document.getElementById('team-modal');
+
+    document.getElementById('team-modal-name').innerText = team.team_name;
+    document.getElementById('team-modal-owner').innerText = team.owner_name || "TBD";
+
+    const logoImg = document.getElementById('team-modal-logo');
+    if (team.logo_url) {
+        logoImg.src = team.logo_url;
+        logoImg.style.display = 'block';
+    } else {
+        logoImg.src = 'IMG.svg'; // Fallback
+    }
+
+    modal.style.display = 'flex';
+    document.body.classList.add('modal-open');
+}
+
+function closeTeamProfile() {
+    const modal = document.getElementById('team-modal');
+    modal.style.display = 'none';
+    document.body.classList.remove('modal-open');
 }
 
 async function loadLeaderboard() {
@@ -410,13 +472,14 @@ async function loadLeaderboard() {
 
         const renderItems = (items, type) => {
             if (items.length === 0) return '<p style="text-align: center; color: var(--text-dim); padding: 20px;">Results pending...</p>';
-            return items.map(p => `
-                <div class="leaderboard-item">
-                    <div class="player-info">
+            return items.map((p, i) => `
+                <div class="leader-item animate-fade ${i === 0 ? 'gold-glow' : ''}">
+                    <div class="leader-rank">${i + 1}</div>
+                    <div class="leader-name">
                         <h4>${p.player_name}</h4>
                         <p>${p.team_name || ''}</p>
                     </div>
-                    <div class="stat-value">${type === 'runs' ? p.runs : p.wickets}</div>
+                    <div class="leader-stat">${type === 'runs' ? p.runs : p.wickets}</div>
                 </div>
             `).join('');
         };
