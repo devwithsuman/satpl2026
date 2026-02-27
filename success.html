@@ -357,11 +357,11 @@
                         return;
                     }
 
-                    // Fetch player details using TOKEN
+                    // Fetch player details using TOKEN or Registration No (for backward compatibility)
                     const { data, error } = await supabaseClient
                         .from('player_registrations')
                         .select('*')
-                        .eq('token', playerToken)
+                        .or(`token.eq.${playerToken},registration_no.eq.${playerToken}`)
                         .single();
 
                     if (data) {
