@@ -3,21 +3,40 @@
 /* Custom Components */
 .btn {
     display: inline-block;
-    padding: 12px 28px;
-    background: linear-gradient(135deg, var(--primary), #ff4d8d);
+    padding: 14px 32px;
+    background: linear-gradient(135deg, #ff0055, #ff4d8d, #ff8c00);
+    background-size: 200% 200%;
+    animation: gradient-shift 5s ease infinite;
     color: white;
     text-decoration: none;
-    font-weight: 600;
-    border-radius: 12px;
-    transition: all 0.3s ease;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-radius: 14px;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     border: none;
     cursor: pointer;
-    box-shadow: 0 4px 15px var(--primary-glow);
+    box-shadow: 0 10px 20px rgba(255, 0, 85, 0.3);
+}
+
+@keyframes gradient-shift {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
 }
 
 .btn:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 25px var(--primary-glow);
+    transform: translateY(-5px) scale(1.05);
+    box-shadow: 0 15px 30px rgba(255, 0, 85, 0.4);
+    filter: brightness(1.1);
 }
 
 html {
@@ -246,10 +265,120 @@ body {
     transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
+.glass {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
 .glass:hover {
-    transform: translateY(-5px) scale(1.01);
-    border-color: rgba(255, 255, 255, 0.3);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    transform: translateY(-5px);
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+}
+
+/* Gold Glow & Shine Effect */
+.gold-glow {
+    position: relative;
+    border: 1px solid rgba(255, 215, 0, 0.3) !important;
+    overflow: hidden;
+}
+
+.gold-glow::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(255, 215, 0, 0.1), transparent);
+    transform: rotate(45deg);
+    animation: gold-shine 3s infinite;
+}
+
+@keyframes gold-shine {
+    0% {
+        transform: translateX(-100%) rotate(45deg);
+    }
+
+    100% {
+        transform: translateX(100%) rotate(45deg);
+    }
+}
+
+.stat-card.orange-glow {
+    border-bottom: 3px solid #ff8c00;
+}
+
+.stat-card.purple-glow {
+    border-bottom: 3px solid #8a2be2;
+}
+
+/* TV Broadcast Style Scoreboard */
+#live-score-container {
+    background: linear-gradient(135deg, rgba(10, 10, 10, 0.95), rgba(30, 30, 30, 0.95)) !important;
+    border-radius: 0 0 30px 30px !important;
+    border-top: 4px solid var(--primary) !important;
+    padding: 30px !important;
+}
+
+.tv-score-team {
+    font-size: 1.8rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.tv-score-main {
+    font-family: 'monospace';
+    letter-spacing: -2px;
+    text-shadow: 0 0 20px rgba(255, 77, 141, 0.5);
+}
+
+/* Floating Action Button (FAB) */
+.fab-container {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.fab-btn {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 10px 25px rgba(255, 77, 141, 0.4);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    border: none;
+    font-size: 1.5rem;
+}
+
+.fab-btn:hover {
+    transform: scale(1.1) rotate(5deg);
+    background: #ff4d8d;
+}
+
+/* Scroll Reveal Classes */
+.reveal {
+    opacity: 0;
+    transform: translateY(40px);
+    transition: all 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.reveal.active {
+    opacity: 1;
+    transform: translateY(0);
 }
 
 /* Preloader Intro Animation Styles */
@@ -1065,5 +1194,17 @@ footer {
 @media (max-width: 768px) {
     .leaderboard-grid {
         grid-template-columns: 1fr;
+    }
+}
+
+@keyframes modal-zoom {
+    0% {
+        transform: scale(0.5) translateY(100px);
+        opacity: 0;
+    }
+
+    100% {
+        transform: scale(1) translateY(0);
+        opacity: 1;
     }
 }
