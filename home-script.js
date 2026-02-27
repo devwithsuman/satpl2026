@@ -161,6 +161,15 @@ function setupRealtimeSync() {
             loadLeaderboard();
         })
         .subscribe();
+
+    // Sync Fixtures (Recent Result / Next Match)
+    supabaseClient
+        .channel('public:fixtures_home_sync')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, () => {
+            console.log("🔄 Fixture Data Changed! Refreshing Match Center...");
+            loadHeroAndScores();
+        })
+        .subscribe();
 }
 
 
@@ -346,6 +355,7 @@ async function loadHeroAndScores() {
 
     const recentContainer = document.getElementById('recent-container');
     if (lastMatch && recentContainer) {
+        console.log("Rendering Latest Result:", lastMatch.team1, "vs", lastMatch.team2);
         recentContainer.style.display = 'block';
         document.getElementById('display-recent-team1').innerText = lastMatch.team1;
         document.getElementById('display-recent-score1').innerText = lastMatch.t1_score || 0;
@@ -355,9 +365,11 @@ async function loadHeroAndScores() {
         document.getElementById('display-recent-score2').innerText = lastMatch.t2_score || 0;
         document.getElementById('display-recent-detail2').innerText = `(${lastMatch.t2_wickets || 0}/6.0)`;
 
-        const winnerText = lastMatch.winner === 'Draw' ? "MATCH TIED" : `${lastMatch.winner.toUpperCase()} WON`;
+        const winnerStr = lastMatch.winner || "Match Completed";
+        const winnerText = winnerStr === 'Draw' ? "MATCH TIED" : `${winnerStr.toUpperCase()} WON`;
         document.getElementById('display-recent-status').innerText = winnerText;
     } else {
+        console.log("No completed matches found for homepage 'Latest Result' section.");
         if (recentContainer) recentContainer.style.display = 'none';
     }
 
@@ -467,19 +479,28 @@ async function loadLeaderboard() {
 
         if (error) throw error;
 
-        const orangeData = data.filter(p => p.category === 'batsman').slice(0, 5);
-        const purpleData = data.filter(p => p.category === 'bowler').slice(0, 5);
+        const orangeData = data
+            .filter(p => p.category === 'batsman')
+            .sort((a, b) => (b.runs || 0) - (a.runs || 0))
+            .slice(0, 5);
+        const purpleData = data
+            .filter(p => p.category === 'bowler')
+            .sort((a, b) => (b.wickets || 0) - (a.wickets || 0))
+            .slice(0, 5);
 
         const renderItems = (items, type) => {
             if (items.length === 0) return '<p style="text-align: center; color: var(--text-dim); padding: 20px;">Results pending...</p>';
             return items.map((p, i) => `
-                <div class="leader-item animate-fade ${i === 0 ? 'gold-glow' : ''}">
+                <div class="leaderboard-item animate-fade ${i === 0 ? 'gold-glow' : ''}">
                     <div class="leader-rank">${i + 1}</div>
-                    <div class="leader-name">
-                        <h4>${p.player_name}</h4>
-                        <p>${p.team_name || ''}</p>
+                    <div class="player-info">
+                        <h4 style="font-weight: 700; color: white;">${p.player_name}</h4>
+                        <p style="font-size: 0.75rem; color: var(--secondary); opacity: 0.8;">${p.team_name || 'Individual'}</p>
                     </div>
-                    <div class="leader-stat">${type === 'runs' ? p.runs : p.wickets}</div>
+                    <div class="stat-value" style="color: var(--secondary); font-size: 1.2rem; font-weight: 900;">
+                        ${type === 'runs' ? p.runs : p.wickets}
+                        <span style="font-size: 0.7rem; color: var(--text-dim); font-weight: 400; margin-left: 4px;">${type === 'runs' ? 'RUNS' : 'WKTS'}</span>
+                    </div>
                 </div>
             `).join('');
         };
