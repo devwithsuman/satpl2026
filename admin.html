@@ -4,7 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard | SATPL 2026</title>
+    <title>SATPL Admin Dashboard</title>
+
+    <!-- DNS Pre-connect for Supabase (Speeds up connection on mobile ISPs) -->
+    <link rel="dns-prefetch" href="https://lsikcaybolgsfimwtkdv.supabase.co">
+    <link rel="preconnect" href="https://lsikcaybolgsfimwtkdv.supabase.co" crossorigin>
+
     <link rel="stylesheet" href="admin-styles.css">
 </head>
 
@@ -1203,17 +1208,35 @@
         </div>
     </div>
 
-    <!-- Success Confirmation Modal -->
-    <div id="success-modal" class="modal-backdrop" style="display: none; z-index: 9999;">
-        <div class="glass modal-content animate-slide-up" style="max-width: 400px; text-align: center; padding: 40px;">
-            <div
-                style="width: 80px; height: 80px; background: rgba(0, 242, 255, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
-                <span style="font-size: 3rem;">✅</span>
+    <!-- Team Details Preview Modal -->
+    <div id="team-details-modal" class="modal-backdrop" style="display: none; z-index: 3000;">
+        <div class="glass modal-content animate-fade"
+            style="max-width: 450px; width: 90%; margin: 100px auto; padding: 40px; position: relative; text-align: center; border: 2px solid var(--secondary);">
+            <button onclick="document.getElementById('team-details-modal').style.display='none'"
+                style="position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.05); border: none; width: 35px; height: 35px; border-radius: 50%; color: var(--text-dim); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.3s;">✕</button>
+
+            <div id="team-preview-content">
+                <div id="preview-logo-wrap"
+                    style="width: 120px; height: 120px; margin: 0 auto 25px; border-radius: 50%; padding: 5px; background: linear-gradient(135deg, var(--primary), var(--secondary)); box-shadow: 0 0 30px var(--secondary-glow);">
+                    <img id="preview-team-logo" src=""
+                        style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 4px solid var(--bg-dark);">
+                </div>
+
+                <h2 id="preview-team-name" class="gradient-text" style="font-size: 2.2rem; margin-bottom: 5px;">Team
+                    Name
+                </h2>
+                <div style="height: 2px; width: 60px; background: var(--secondary); margin: 15px auto;"></div>
+
+                <div style="margin-top: 25px;">
+                    <p
+                        style="color: var(--text-dim); font-size: 0.9rem; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 2px;">
+                        Team Owner</p>
+                    <h3 id="preview-owner-name" style="font-size: 1.5rem; color: white;">Owner Name</h3>
+                </div>
             </div>
-            <h2 class="gradient-text" style="font-size: 1.8rem; margin-bottom: 10px;">Success!</h2>
-            <p id="success-message" style="color: var(--text-dim); margin-bottom: 25px;">Live Scorecard Updated
-                Successfully</p>
-            <button onclick="closeSuccessModal()" class="btn" style="width: 100%;">Awesome!</button>
+
+            <button onclick="document.getElementById('team-details-modal').style.display='none'" class="btn-secondary"
+                style="margin-top: 40px; width: 100%; border-color: var(--glass-border);">Close Preview</button>
         </div>
     </div>
 
