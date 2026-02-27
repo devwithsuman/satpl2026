@@ -299,11 +299,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
             } catch (err) {
                 console.error("Submission Error:", err);
-                if (err.message.includes('Failed to fetch')) {
+                if (window.isNetworkError(err)) {
                     const health = await window.testSupabaseConnection();
                     alert(health.detailed || "Network Error: Could not connect to Supabase.");
                 } else {
-                    alert("Error: " + err.message);
+                    alert("Error: " + (err.message || err));
                 }
                 submitBtn.disabled = false;
                 submitBtn.innerText = "Proceed to Payment (₹105)";
@@ -344,12 +344,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (error) {
                     console.error("Supabase Error:", error);
-                    // If it still failed after 3 retries, show diagnostic
-                    if (error.message === 'Failed to fetch') {
+                    // If it still failed after all retries, show diagnostic
+                    if (window.isNetworkError(error)) {
                         const health = await window.testSupabaseConnection();
                         alert(health.detailed || "ISP Block Detected. Please try with Google DNS (8.8.8.8) or a different network.");
                     } else {
-                        throw new Error(error.message);
+                        throw new Error(error.message || error);
                     }
                     return;
                 }
@@ -389,12 +389,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             } catch (err) {
                 console.error("Lookup Failed:", err);
-                // Call connectivity diagnostic if fetch failed
-                if (err.message === 'Failed to fetch') {
+                if (window.isNetworkError(err)) {
                     const health = await window.testSupabaseConnection();
                     alert(health.detailed || "Network Error: Could not connect to Supabase. Check your internet or DNS settings.");
                 } else {
-                    alert("Lookup Error: " + err.message);
+                    alert("Lookup Error: " + (err.message || err));
                 }
             } finally {
                 checkStatusBtn.disabled = false;
