@@ -23,17 +23,21 @@ async function loadNotices() {
     try {
         // 1. Fetch notices and site settings in parallel
         const [noticesRes, settingsRes] = await Promise.all([
-            supabaseClient
-                .from('notices')
-                .select('*')
-                .eq('is_active', true)
-                .order('created_at', { ascending: false })
-                .limit(5),
-            supabaseClient
-                .from('site_settings')
-                .select('is_popup_enabled, featured_notice_id')
-                .eq('id', 'global-settings')
-                .single()
+            window.safeSupabaseCall(() =>
+                supabaseClient
+                    .from('notices')
+                    .select('*')
+                    .eq('is_active', true)
+                    .order('created_at', { ascending: false })
+                    .limit(5)
+            ),
+            window.safeSupabaseCall(() =>
+                supabaseClient
+                    .from('site_settings')
+                    .select('is_popup_enabled, featured_notice_id')
+                    .eq('id', 'global-settings')
+                    .single()
+            )
         ]);
 
         if (noticesRes.error) throw noticesRes.error;
@@ -56,11 +60,13 @@ async function loadNotices() {
                 popupNotice = featured;
             } else {
                 // If featured notice not in the 5 active ones, fetch it specifically
-                const { data: specificNotice } = await supabaseClient
-                    .from('notices')
-                    .select('*')
-                    .eq('id', featuredNoticeId)
-                    .single();
+                const { data: specificNotice } = await window.safeSupabaseCall(() =>
+                    supabaseClient
+                        .from('notices')
+                        .select('*')
+                        .eq('id', featuredNoticeId)
+                        .single()
+                );
                 if (specificNotice && specificNotice.is_active) {
                     popupNotice = specificNotice;
                 }
@@ -139,11 +145,13 @@ function setupRealtimeSync() {
 
 
 async function loadSiteSettings() {
-    const { data } = await supabaseClient
-        .from('site_settings')
-        .select('*')
-        .eq('id', 'global-settings')
-        .single();
+    const { data } = await window.safeSupabaseCall(() =>
+        supabaseClient
+            .from('site_settings')
+            .select('*')
+            .eq('id', 'global-settings')
+            .single()
+    );
 
     if (data) {
         console.log("Site Settings Loaded:", data);
@@ -217,7 +225,9 @@ async function loadHeroAndScores() {
     // 1. Fetch all match types in parallel using valid UUIDs
     const matchKeys = Object.keys(MATCH_MAP);
     const results = await Promise.all(matchKeys.map(key =>
-        supabaseClient.from('hero_content').select('*').eq('id', MATCH_MAP[key]).single()
+        window.safeSupabaseCall(() =>
+            supabaseClient.from('hero_content').select('*').eq('id', MATCH_MAP[key]).single()
+        )
     ));
 
     const matches = {};
@@ -296,13 +306,15 @@ async function loadHeroAndScores() {
     }
 
     // 5. Render Recent Match (Fetch ACTUAL last result from Fixtures)
-    const { data: lastMatch } = await supabaseClient
-        .from('fixtures')
-        .select('*')
-        .eq('status', 'completed')
-        .order('match_no', { ascending: false })
-        .limit(1)
-        .single();
+    const { data: lastMatch } = await window.safeSupabaseCall(() =>
+        supabaseClient
+            .from('fixtures')
+            .select('*')
+            .eq('status', 'completed')
+            .order('match_no', { ascending: false })
+            .limit(1)
+            .single()
+    );
 
     const recentContainer = document.getElementById('recent-container');
     if (lastMatch && recentContainer) {
@@ -330,12 +342,14 @@ async function loadPointsTable() {
     if (!listA && !listB) return;
 
     console.log("Fetching Group Standings...");
-    const { data, error } = await supabaseClient
-        .from('points_table')
-        .select('*')
-        .order('points', { ascending: false })
-        .order('won', { ascending: false })
-        .order('nrr', { ascending: false });
+    const { data, error } = await window.safeSupabaseCall(() =>
+        supabaseClient
+            .from('points_table')
+            .select('*')
+            .order('points', { ascending: false })
+            .order('won', { ascending: false })
+            .order('nrr', { ascending: false })
+    );
 
     if (error) {
         console.error('Points Table Error:', error.message);
@@ -381,11 +395,13 @@ async function loadLeaderboard() {
     if (!orangeList || !purpleList) return;
 
     try {
-        const { data, error } = await supabaseClient
-            .from('top_performers')
-            .select('*')
-            .order('runs', { ascending: false })
-            .order('wickets', { ascending: false });
+        const { data, error } = await window.safeSupabaseCall(() =>
+            supabaseClient
+                .from('top_performers')
+                .select('*')
+                .order('runs', { ascending: false })
+                .order('wickets', { ascending: false })
+        );
 
         if (error) throw error;
 
@@ -471,10 +487,12 @@ async function loadGallery() {
     if (!track) return;
 
     try {
-        const { data, error } = await supabaseClient
-            .from('gallery')
-            .select('image_url, orientation')
-            .order('created_at', { ascending: false });
+        const { data, error } = await window.safeSupabaseCall(() =>
+            supabaseClient
+                .from('gallery')
+                .select('image_url, orientation')
+                .order('created_at', { ascending: false })
+        );
 
         if (error) throw error;
 
