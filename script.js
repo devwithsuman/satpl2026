@@ -403,11 +403,27 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // --- REGISTRATION COUNTDOWN ---
-    function startRegistrationCountdown() {
-        const targetDate = new Date("February 27, 2026 18:00:00").getTime();
+    async function startRegistrationCountdown() {
         const marqueeEl = document.getElementById("registrationCountdownMarquee");
-
         if (!marqueeEl) return;
+
+        let dateStr = "February 27, 2026 18:00:00"; // Fallback
+
+        // Fetch dynamic date from admin settings if supabase is available
+        if (typeof supabaseClient !== 'undefined') {
+            try {
+                const { data } = await window.safeSupabaseCall(() =>
+                    supabaseClient.from('site_settings').select('reg_end_date').eq('id', 'global-settings').single()
+                );
+                if (data && data.reg_end_date) {
+                    dateStr = data.reg_end_date;
+                }
+            } catch (err) {
+                console.error("Failed to load registration end date", err);
+            }
+        }
+
+        const targetDate = new Date(dateStr).getTime();
 
         const timer = setInterval(() => {
             const now = new Date().getTime();
