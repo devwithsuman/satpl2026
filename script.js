@@ -339,11 +339,19 @@ document.addEventListener("DOMContentLoaded", () => {
                     .eq("mobile_number", mobile)
                     .eq("aadhar_number", aadhar);
 
-                const { data, error } = await window.safeSupabaseCall(query);
+                // Use the safeSupabaseCall with metadata for potential future diagnostics
+                const { data, error } = await window.safeSupabaseCall(query, 3);
 
                 if (error) {
                     console.error("Supabase Error:", error);
-                    throw new Error(error.message);
+                    // If it still failed after 3 retries, show diagnostic
+                    if (error.message === 'Failed to fetch') {
+                        const health = await window.testSupabaseConnection();
+                        alert(health.detailed || "ISP Block Detected. Please try with Google DNS (8.8.8.8) or a different network.");
+                    } else {
+                        throw new Error(error.message);
+                    }
+                    return;
                 }
 
                 statusResult.style.display = "block";
