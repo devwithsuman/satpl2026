@@ -37,9 +37,14 @@ function showSection(sectionId) {
         if (sectionId === 'leaderboard') fetchLeaderboard();
         if (sectionId === 'points') fetchAdminPoints();
         if (sectionId === 'scoring') loadScoringSection();
+        if (sectionId === 'auction-results') fetchAuctionResults();
         if (sectionId === 'gallery') fetchGallery();
         if (sectionId === 'menu') fetchAdminMenu();
         if (sectionId === 'results') fetchResults();
+        if (sectionId === 'auction') initAdminAuction();
+        if (sectionId === 'analytics-dashboard') {
+            loadAnalytics();
+        }
     }
 }
 
@@ -323,16 +328,22 @@ async function fetchRegistrations(statusFilter = 'all') {
             </td>
             <td>
                 ${player.photo_url ? `
-                    <a href="${encodeURI(player.photo_url)}" target="_blank">
-                        <img src="${encodeURI(player.photo_url)}" style="width: 40px; height: 40px; border-radius: 6px; object-fit: cover; border: 1px solid var(--glass-border); cursor: pointer;" title="Click to view full size">
+                    <a href="${encodeURI(player.photo_url)}" target="_blank" style="text-decoration: none;">
+                        ${player.photo_url.toLowerCase().endsWith('.pdf') ? `
+                            <div style="width: 40px; height: 40px; background: #fee2e2; color: #ef4444; border-radius: 6px; display: flex; align-items: center; justify-content: center; border: 1px solid #fca5a5; font-size: 0.7rem; font-weight: 900;">PDF</div>
+                        ` : `
+                            <img src="${encodeURI(player.photo_url)}" style="width: 40px; height: 40px; border-radius: 6px; object-fit: cover; border: 1px solid var(--glass-border); cursor: pointer;" title="Click to view full size">
+                        `}
                     </a>
                 ` : '<span style="color: var(--text-dim)">No Photo</span>'}
             </td>
             <td>
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                    <button onclick="openEditModal('${player.id}')" class="btn" style="font-size: 0.75rem; padding: 5px 10px; background: #3b82f6;">Edit</button>
+                    <button onclick="openEditModal('${player.id}')" class="btn" style="font-size: 0.75rem; padding: 5px 10px; background: #3b82f6;">Edit Data</button>
+                    <button onclick="triggerDirectUpload('${player.id}')" class="btn" style="font-size: 0.75rem; padding: 5px 10px; background: var(--secondary); color: var(--bg-dark);">Add Photo</button>
+                    <button onclick="openPhotoEditor('${player.id}', '${player.photo_url}')" class="btn" style="font-size: 0.75rem; padding: 5px 10px; background: var(--primary);">Edit Photo</button>
                     ${player.token || player.registration_no ? `
-                        <a href="success.html?id=${player.token || player.registration_no}" target="_blank" class="btn" style="font-size: 0.75rem; padding: 5px 10px; background: var(--secondary); color: var(--bg-dark); text-decoration: none;">View ID</a>
+                        <a href="success.html?id=${player.token || player.registration_no}" target="_blank" class="btn" style="font-size: 0.75rem; padding: 5px 10px; background: #6366f1; color: white; text-decoration: none;">View ID</a>
                     ` : ''}
                     ${player.payment_status !== 'paid' ? `
                         <button onclick="updatePaymentStatus('${player.id}', 'paid')" class="btn" style="font-size: 0.75rem; padding: 5px 10px; background: #22c55e;">Confirm</button>
@@ -435,32 +446,72 @@ async function openEditModal(id) {
 async function saveRegistrationEdit(e) {
     e.preventDefault();
     const id = document.getElementById("edit-player-id").value;
+    const saveBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = saveBtn.innerText;
 
-    const updates = {
-        player_name: document.getElementById("edit-name").value,
-        father_name: document.getElementById("edit-father").value,
-        date_of_birth: document.getElementById("edit-dob").value,
-        aadhar_number: document.getElementById("edit-aadhar").value,
-        mobile_number: document.getElementById("edit-mobile").value,
-        whatsapp_number: document.getElementById("edit-whatsapp").value,
-        batting: document.getElementById("edit-batting").value,
-        bowling: document.getElementById("edit-bowling").value,
-        wicket_keeper: document.getElementById("edit-wk").value
-    };
+    saveBtn.disabled = true;
+    saveBtn.innerText = "Updating... ⏳";
 
-    const { error } = await window.safeSupabaseCall(() =>
-        supabaseClient
-            .from("player_registrations")
-            .update(updates)
-            .eq("id", id)
-    );
+    try {
+        const updates = {
+            player_name: document.getElementById("edit-name").value,
+            father_name: document.getElementById("edit-father").value,
+            date_of_birth: document.getElementById("edit-dob").value,
+            aadhar_number: document.getElementById("edit-aadhar").value,
+            mobile_number: document.getElementById("edit-mobile").value,
+            whatsapp_number: document.getElementById("edit-whatsapp").value,
+            batting: document.getElementById("edit-batting").value,
+            bowling: document.getElementById("edit-bowling").value,
+            wicket_keeper: document.getElementById("edit-wk").value
+        };
 
-    if (error) {
-        alert("Update Failed: " + error.message);
-    } else {
+        // Handle Optional File Upload (Photo or PDF)
+        const fileInput = document.getElementById("edit-file-upload");
+        if (fileInput.files.length > 0) {
+            saveBtn.innerText = "Uploading File... ⏳";
+            const file = fileInput.files[0];
+            const fileExt = file.name.split('.').pop();
+            const fileName = `replaced_${id}_${Date.now()}.${fileExt}`;
+            const filePath = `player_photos/${fileName}`;
+
+            const { data: uploadData, error: uploadError } = await supabaseClient
+                .storage
+                .from('player-photos')
+                .upload(filePath, file, {
+                    contentType: file.type || (fileExt.toLowerCase() === 'pdf' ? 'application/pdf' : 'image/jpeg'),
+                    upsert: true
+                });
+
+            if (uploadError) throw new Error("File Upload Failed: " + uploadError.message);
+
+            const { data: urlData } = supabaseClient.storage.from('player-photos').getPublicUrl(filePath);
+            updates.photo_url = urlData.publicUrl;
+        }
+
+        saveBtn.innerText = "Saving Data... ⏳";
+        const { error: dbError } = await window.safeSupabaseCall(() =>
+            supabaseClient
+                .from("player_registrations")
+                .update(updates)
+                .eq("id", id)
+        );
+
+        if (dbError) throw dbError;
+
         alert("Registration Updated Successfully!");
+
+        // Reset file input for next time
+        fileInput.value = "";
+
         closeEditModal();
         fetchRegistrations();
+
+    } catch (error) {
+        console.error("Save Registration Error:", error);
+        alert("Error updating: " + error.message);
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerText = originalText;
     }
 }
 
@@ -658,8 +709,42 @@ async function fetchAdminPoints() {
             <td><input type="number" value="${team.overs_bowled || 0}" step="0.1" class="table-input ob-input" oninput="calculateStats(this)"></td>
             <td><input type="number" value="${team.nrr || 0}" class="table-input nrr-input" readonly style="background: rgba(0,0,0,0.1);"></td>
             <td><input type="number" value="${team.points}" class="table-input points-input" readonly style="font-weight: bold; color: var(--secondary); background: rgba(0,0,0,0.2); cursor: not-allowed;"></td>
+            <td><input type="number" value="${team.budget || 4000}" class="table-input budget-input" style="font-weight: bold; color: var(--secondary);"></td>
+            <td><input type="text" value="${team.owner_password || '123456'}" class="table-input pass-input" style="font-family: monospace;"></td>
+            <td>
+                <button class="btn" style="background: #ef4444; padding: 5px 10px;" onclick="deleteTeam('${team.id}')">🗑️</button>
+            </td>
         </tr>
     `).join("");
+}
+
+async function addNewTeamRow() {
+    const { data, error } = await supabaseClient.from("points_table").insert([{
+        team_name: "New Team",
+        group_name: "A",
+        budget: 4000,
+        owner_password: "123456"
+    }]).select();
+
+    if (error) {
+        alert("Error adding team: " + error.message);
+    } else {
+        showToast("New team added! Please edit the name and save.", "success");
+        fetchAdminPoints();
+    }
+}
+
+async function deleteTeam(id) {
+    if (!confirm("Are you sure you want to delete this team? This will remove all their stats!")) return;
+
+    const { error } = await supabaseClient.from("points_table").delete().eq("id", id);
+
+    if (error) {
+        alert("Error deleting team: " + error.message);
+    } else {
+        showToast("Team deleted!", "info");
+        fetchAdminPoints();
+    }
 }
 
 // Quick Preview for Team Details
@@ -763,7 +848,9 @@ async function savePointsTable() {
                 runs_conceded: parseInt(row.querySelector(".rc-input").value) || 0,
                 overs_bowled: parseFloat(row.querySelector(".ob-input").value) || 0,
                 nrr: parseFloat(row.querySelector(".nrr-input").value) || 0,
-                points: parseInt(row.querySelector(".points-input").value) || 0
+                points: parseInt(row.querySelector(".points-input").value) || 0,
+                budget: parseInt(row.querySelector(".budget-input").value) || 0,
+                owner_password: row.querySelector(".pass-input").value.trim()
             };
         }));
 
@@ -942,6 +1029,7 @@ async function saveRoster() {
     } else {
         alert("Squad Saved Successfully!");
         fetchAdminRoster();
+        loadAnalytics(); // Refresh analytics after squad change
     }
 }
 
@@ -1100,6 +1188,164 @@ async function init() {
 
 init();
 showSection('registrations');
+
+// ================= ANALYTICS & CHARTS =================
+let regChart = null;
+let budgetChart = null;
+
+async function loadAnalytics() {
+    console.log("📊 Loading Analytics...");
+
+    // 1. Fetch Counts
+    const { data: regs } = await supabaseClient.from('player_registrations').select('id, payment_status, status');
+    const total = regs.length;
+    const paid = regs.filter(r => r.payment_status === 'completed' || r.payment_status === 'paid').length; // Changed 'Paid' to 'paid' for consistency
+    const sold = regs.filter(r => r.status === 'sold').length;
+    const unsold = regs.filter(r => r.status === 'unsold').length;
+
+    document.getElementById('count-total').innerText = total;
+    document.getElementById('count-paid').innerText = paid;
+    document.getElementById('count-sold').innerText = sold;
+    document.getElementById('count-unsold').innerText = unsold;
+
+    // 2. Render Registration Chart
+    renderRegChart(paid, total - paid);
+
+    // 3. Fetch Budget Data
+    const { data: teams } = await supabaseClient.from('points_table').select('team_name, budget, spent_points'); // Changed total_points to budget
+    if (teams) {
+        renderBudgetChart(teams);
+    }
+}
+
+function renderRegChart(paid, unpaid) {
+    const ctx = document.getElementById('regChart').getContext('2d');
+    if (regChart) regChart.destroy();
+
+    regChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Paid', 'Pending'],
+            datasets: [{
+                data: [paid, unpaid],
+                backgroundColor: ['#22c55e', '#ff0055'],
+                borderWidth: 0,
+                hoverOffset: 10
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { color: '#a0a0c0', font: { family: 'Outfit' } } }
+            }
+        }
+    });
+}
+
+function renderBudgetChart(teams) {
+    const ctx = document.getElementById('budgetChart').getContext('2d');
+    if (budgetChart) budgetChart.destroy();
+
+    budgetChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: teams.map(t => t.team_name),
+            datasets: [
+                {
+                    label: 'Spent',
+                    data: teams.map(t => t.spent_points),
+                    backgroundColor: '#ff0055',
+                    borderRadius: 5
+                },
+                {
+                    label: 'Remaining',
+                    data: teams.map(t => t.budget - t.spent_points), // Changed total_points to budget
+                    backgroundColor: '#00f2ff',
+                    borderRadius: 5
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { stacked: true, grid: { display: false }, ticks: { color: '#a0a0c0' } },
+                y: { stacked: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#a0a0c0' } }
+            },
+            plugins: {
+                legend: { position: 'bottom', labels: { color: '#a0a0c0', font: { family: 'Outfit' } } }
+            }
+        }
+    });
+}
+
+// ================= PDF EXPORT =================
+async function exportResultsPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    // 1. Fetch Data
+    const { data: soldPlayers } = await supabaseClient
+        .from('team_players')
+        .select('*')
+        .order('team_name', { ascending: true });
+
+    const { data: teams } = await supabaseClient
+        .from('points_table')
+        .select('*')
+        .order('budget', { ascending: false });
+
+    // 2. Title & Header
+    doc.setFontSize(22);
+    doc.setTextColor(255, 0, 85); // Primary Pink
+    doc.text("SATPL 2026 AUCTION REPORT", 14, 20);
+
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 28);
+
+    // 3. Team Summary Table
+    doc.setFontSize(14);
+    doc.setTextColor(0);
+    doc.text("Team Budget Summary", 14, 40);
+
+    const teamRows = (teams || []).map(t => [
+        t.team_name,
+        `₹${t.budget.toLocaleString()}`,
+        `₹${t.spent_points.toLocaleString()}`,
+        `₹${(t.budget - t.spent_points).toLocaleString()}`
+    ]);
+
+    doc.autoTable({
+        startY: 45,
+        head: [['Team Name', 'Total Budget', 'Spent', 'Remaining']],
+        body: teamRows,
+        theme: 'striped',
+        headStyles: { fillColor: [0, 242, 255], textColor: [0, 0, 0] }
+    });
+
+    // 4. Sold Players Table
+    const finalY = doc.lastAutoTable.finalY + 15;
+    doc.text("Sold Players List", 14, finalY);
+
+    const playerRows = (soldPlayers || []).map(p => [
+        p.player_name,
+        p.team_name,
+        `₹${(p.bid_amount || 0).toLocaleString()}`
+    ]);
+
+    doc.autoTable({
+        startY: finalY + 5,
+        head: [['Player Name', 'Sold To Team', 'Final Price']],
+        body: playerRows,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 0, 85] }
+    });
+
+    // 5. Save
+    doc.save(`SATPL_Auction_Report_${Date.now()}.pdf`);
+}
 
 // ================= SMART SQUAD (FUTURE USE) =================
 /* ... remaining functions ... */
@@ -1326,6 +1572,71 @@ async function fetchFixtures() {
             </tr>
         `;
     }).join('');
+}
+
+async function autoGenerateFixtures() {
+    try {
+        if (!confirm("Are you sure you want to auto-generate 10 league matches for 5 teams?")) return;
+
+        // 1. Fetch Teams
+        const { data: teams, error } = await supabaseClient
+            .from('points_table')
+            .select('team_name')
+            .order('id');
+
+        if (error || !teams || teams.length < 5) {
+            alert("Found teams: " + (teams ? teams.length : 0));
+            return alert("Error: Please make sure you have at least 5 teams in the Points Table first.");
+        }
+
+        const T = teams.map(t => t.team_name);
+
+        // 5 Teams Round Robin with Byes (Standard Schedule)
+        const matches = [
+            { no: 1, t1: T[0], t2: T[1], venue: 'Sonaijuri Ground' }, // Bye T5
+            { no: 2, t1: T[2], t2: T[3], venue: 'Sonaijuri Ground' },
+
+            { no: 3, t1: T[0], t2: T[2], venue: 'Sonaijuri Ground' }, // Bye T4
+            { no: 4, t1: T[1], t2: T[4], venue: 'Sonaijuri Ground' },
+
+            { no: 5, t1: T[0], t2: T[3], venue: 'Sonaijuri Ground' }, // Bye T2
+            { no: 6, t1: T[2], t2: T[4], venue: 'Sonaijuri Ground' },
+
+            { no: 7, t1: T[0], t2: T[4], venue: 'Sonaijuri Ground' }, // Bye T3
+            { no: 8, t1: T[1], t2: T[3], venue: 'Sonaijuri Ground' },
+
+            { no: 9, t1: T[1], t2: T[2], venue: 'Sonaijuri Ground' }, // Bye T1
+            { no: 10, t1: T[3], t2: T[4], venue: 'Sonaijuri Ground' }
+        ];
+
+        // 2. Insert into Fixtures
+        const fixtureInserts = matches.map(m => ({
+            match_no: m.no,
+            team1: m.t1,
+            team2: m.t2,
+            venue: m.venue,
+            status: 'upcoming',
+            match_date: new Date().toISOString().split('T')[0], // Default today
+            match_time: '10:00 AM'
+        }));
+
+        const { error: insertError } = await supabaseClient.from('fixtures').insert(fixtureInserts);
+
+        if (insertError) {
+            alert("Error generating fixtures: " + insertError.message);
+        } else {
+            console.log("Fixtures generated successfully!");
+            if (window.showToast) {
+                window.showToast("✅ 10 League Matches Generated!", "success");
+            } else {
+                alert("✅ 10 League Matches Generated!");
+            }
+            fetchFixtures();
+        }
+    } catch (err) {
+        console.error("CRITICAL FIXTURE ERROR:", err);
+        alert("CRITICAL ERROR: " + err.message + "\nStack: " + err.stack);
+    }
 }
 
 async function openFixtureModal(isEdit = false) {
@@ -2806,9 +3117,604 @@ window.lookupHeroPlayer = async function (type) {
         document.getElementById(`${fieldId}`).value = tp.player_name;
         return;
     }
-
-    const { data: pr } = await supabaseClient.from('player_registrations').select('player_name').eq('registration_no', regNo).maybeSingle();
     if (pr) {
         document.getElementById(`${fieldId}`).value = pr.player_name;
     }
+}
+
+// ================= AUCTION CONTROL =================
+let adminAuctionTimerInterval = null;
+let currentAuctionPlayer = null;
+
+async function initAdminAuction() {
+    console.log("🔨 Initializing Admin Auction Control...");
+
+    // Initial State Fetch
+    const { data, error } = await supabaseClient
+        .from('auction_settings')
+        .select('*')
+        .eq('id', 'global')
+        .single();
+
+    if (data) {
+        updateAdminAuctionUI(data);
+    }
+
+    // Subscribe to Bids
+    supabaseClient
+        .channel('admin_auction_bids')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'auction_bids' }, payload => {
+            console.log("🚀 Bid activity in Admin Panel:", payload.eventType);
+            fetchAdminAuctionState();
+            fetchAdminBidHistory();
+        })
+        .subscribe();
+
+    fetchAdminBidHistory();
+}
+
+async function fetchAdminAuctionState() {
+    const { data } = await supabaseClient.from('auction_settings').select('*').eq('id', 'global').single();
+    if (data) updateAdminAuctionUI(data);
+}
+
+async function fetchAdminBidHistory() {
+    const list = document.getElementById('admin-bid-history');
+    if (!list) return;
+
+    // Fetch latest 10 bids
+    const { data, error } = await supabaseClient
+        .from('auction_bids')
+        .select('*, points_table(team_name)')
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+    if (error) return console.error("History fetch error:", error);
+
+    if (!data || data.length === 0) {
+        list.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-dim);">No bids yet</td></tr>';
+        return;
+    }
+
+    list.innerHTML = data.map(bid => `
+        <tr>
+            <td style="font-size: 0.75rem;">${new Date(bid.created_at).toLocaleTimeString()}</td>
+            <td style="font-weight: 700;">${bid.points_table ? bid.points_table.team_name : '---'}</td>
+            <td style="color: var(--secondary); font-weight: 800;">₹${bid.bid_amount.toLocaleString()}</td>
+            <td>
+                <button class="btn" style="background: #ef4444; font-size: 0.7rem; padding: 4px 8px;" 
+                    onclick="deleteBid('${bid.id}')">Delete</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+async function deleteBid(bidId) {
+    if (!confirm("Are you sure you want to delete this bid? It will rollback the auction state.")) return;
+
+    // 1. Delete the bid
+    const { error: delError } = await supabaseClient.from('auction_bids').delete().eq('id', bidId);
+    if (delError) return alert("Delete failed: " + delError.message);
+
+    // 2. Fetch latest bid for the current player to rollback settings
+    const { data: settings } = await supabaseClient.from('auction_settings').select('current_player_id').eq('id', 'global').single();
+
+    const { data: latestBids } = await supabaseClient
+        .from('auction_bids')
+        .select('*')
+        .eq('player_id', settings.current_player_id)
+        .order('bid_amount', { ascending: false })
+        .limit(1);
+
+    if (latestBids && latestBids.length > 0) {
+        // Rollback to previous bid
+        await supabaseClient.from('auction_settings').update({
+            current_bid: latestBids[0].bid_amount,
+            highest_bidder_id: latestBids[0].team_id
+        }).eq('id', 'global');
+    } else {
+        // No bids left, wait for admin to re-set (or we could try to find the base price, 
+        // but it's safer to just set highest_bidder_id to null and let admin decide)
+        await supabaseClient.from('auction_settings').update({
+            highest_bidder_id: null
+        }).eq('id', 'global');
+        alert("All bids for this player deleted. Please re-set base price if needed by putting player on board again.");
+    }
+
+    showToast("Bid deleted and state rolled back!", "info");
+}
+
+async function updateAdminAuctionUI(settings) {
+    const statusLabel = document.getElementById('admin-auction-status');
+    statusLabel.innerText = settings.status.toUpperCase();
+    statusLabel.className = `status-badge ${settings.status === 'bidding' ? 'paid' : 'pending'}`;
+
+    document.getElementById('admin-current-bid').innerText = `₹${settings.current_bid.toLocaleString()}`;
+    document.getElementById('admin-auction-timer').innerText = `${settings.timer_seconds}s`;
+
+    if (settings.highest_bidder_id) {
+        const { data: team } = await supabaseClient.from('points_table').select('team_name').eq('id', settings.highest_bidder_id).single();
+        document.getElementById('admin-highest-bidder').innerText = team ? team.team_name : '---';
+    } else {
+        document.getElementById('admin-highest-bidder').innerText = '---';
+    }
+}
+
+async function lookupAuctionPlayer() {
+    const regNo = document.getElementById('auction-search-reg').value.trim().toUpperCase();
+    if (!regNo) return alert("Enter Reg No");
+
+    const { data, error } = await supabaseClient
+        .from('player_registrations')
+        .select('*')
+        .eq('registration_no', regNo)
+        .single();
+
+    if (error || !data) return alert("Player not found!");
+
+    currentAuctionPlayer = data;
+    document.getElementById('auction-p-photo').src = data.photo_url || 'img.jpg';
+    document.getElementById('auction-p-name').innerText = data.player_name;
+    document.getElementById('auction-p-reg').innerText = data.registration_no;
+    document.getElementById('auction-p-role').innerText = `${data.batting || 'Right'} Bat | ${data.bowling || 'Right'} Bowl`;
+    document.getElementById('auction-player-preview').style.display = 'block';
+
+    // Status Check
+    const putOnBtn = document.querySelector('button[onclick="putPlayerOnAuction()"]');
+    if (data.status === 'sold' || data.status === 'unsold') {
+        putOnBtn.disabled = true;
+        putOnBtn.style.opacity = '0.5';
+        putOnBtn.innerText = `Player Already ${data.status.toUpperCase()}`;
+    } else {
+        putOnBtn.disabled = false;
+        putOnBtn.style.opacity = '1';
+        putOnBtn.innerText = 'Put on Auction Board';
+    }
+}
+
+async function putPlayerOnAuction() {
+    if (!currentAuctionPlayer) return;
+    const basePrice = parseInt(document.getElementById('auction-base-price').value) || 150;
+
+    const { error } = await supabaseClient
+        .from('auction_settings')
+        .update({
+            current_player_id: currentAuctionPlayer.id,
+            current_bid: basePrice,
+            highest_bidder_id: null,
+            status: 'idle',
+            timer_seconds: 30
+        })
+        .eq('id', 'global');
+
+    if (error) alert("Error: " + error.message);
+    else {
+        alert("Player placed on auction board!");
+        fetchAdminAuctionState();
+    }
+}
+
+async function startAuctionTimer() {
+    await supabaseClient.from('auction_settings').update({ status: 'bidding' }).eq('id', 'global');
+
+    if (adminAuctionTimerInterval) clearInterval(adminAuctionTimerInterval);
+
+    adminAuctionTimerInterval = setInterval(async () => {
+        const { data } = await supabaseClient.from('auction_settings').select('timer_seconds, status').eq('id', 'global').single();
+        if (data && data.status === 'bidding' && data.timer_seconds > 0) {
+            await supabaseClient.from('auction_settings').update({ timer_seconds: data.timer_seconds - 1 }).eq('id', 'global');
+            document.getElementById('admin-auction-timer').innerText = `${data.timer_seconds - 1}s`;
+        } else if (data && data.timer_seconds === 0) {
+            clearInterval(adminAuctionTimerInterval);
+        }
+    }, 1000);
+}
+
+async function pauseAuctionTimer() {
+    clearInterval(adminAuctionTimerInterval);
+    await supabaseClient.from('auction_settings').update({ status: 'idle' }).eq('id', 'global');
+}
+
+async function resetAuctionTimer() {
+    clearInterval(adminAuctionTimerInterval);
+    await supabaseClient.from('auction_settings').update({ timer_seconds: 30 }).eq('id', 'global');
+    document.getElementById('admin-auction-timer').innerText = `30s`;
+}
+
+async function markAsUnsold() {
+    const { data: settings } = await supabaseClient.from('auction_settings').select('current_player_id').eq('id', 'global').single();
+    if (!settings || !settings.current_player_id) return alert("No active player!");
+
+    if (!confirm("Are you sure you want to mark this player as UNSOLD?")) return;
+
+    clearInterval(adminAuctionTimerInterval);
+
+    // 1. Update registrations
+    await supabaseClient.from('player_registrations').update({ status: 'unsold' }).eq('id', settings.current_player_id);
+
+    // 2. Update auction settings
+    await supabaseClient.from('auction_settings').update({ status: 'unsold' }).eq('id', 'global');
+
+    alert("Player marked as UNSOLD");
+    fetchAdminAuctionState();
+}
+
+async function finalizeSale() {
+    const { data: settings } = await supabaseClient.from('auction_settings').select('*').eq('id', 'global').single();
+    if (!settings || !settings.current_player_id || !settings.highest_bidder_id) {
+        return alert("No active bid to finalize!");
+    }
+
+    if (!confirm("Are you sure you want to finalize this sale?")) return;
+
+    // 1. Get Team Name
+    const { data: team } = await supabaseClient.from('points_table').select('*').eq('id', settings.highest_bidder_id).single();
+    // 2. Get Player Name
+    const { data: player } = await supabaseClient.from('player_registrations').select('*').eq('id', settings.current_player_id).single();
+
+    // 2.5 Check if already in squad
+    const { data: existing } = await supabaseClient.from('team_players').select('id').eq('reg_no', player.registration_no).maybeSingle();
+    if (existing) {
+        return alert("Error: This player is already assigned to a team!");
+    }
+
+    // 3. Insert into team_players
+    const { error: squadError } = await supabaseClient.from('team_players').insert([{
+        team_id: team.id,
+        team_name: team.team_name,
+        player_name: player.player_name,
+        reg_no: player.registration_no,
+        bid_amount: settings.current_bid,
+        playing_format: (player.batting !== 'no' && player.bowling !== 'no') ? 'Allrounder' : (player.batting !== 'no' ? 'Batting' : 'Bowling'),
+        is_wicket_keeper: player.wicket_keeper === 'yes',
+        batting_style: player.batting + ' Hand',
+        bowling_style: player.bowling + ' Bowl'
+    }]);
+
+    if (squadError) return alert("Squad Error: " + squadError.message);
+
+    // 4. Update Team Spent Points (Increment)
+    const newSpent = (team.spent_points || 0) + settings.current_bid;
+    await supabaseClient.from('points_table').update({ spent_points: newSpent }).eq('id', team.id);
+
+    // 5. Update Player Status & Price
+    await supabaseClient.from('player_registrations')
+        .update({ status: 'sold', auction_price: settings.current_bid })
+        .eq('id', settings.current_player_id);
+
+    // 6. Update Auction Status
+    await supabaseClient.from('auction_settings').update({ status: 'sold' }).eq('id', 'global');
+
+    alert(`✅ ${player.player_name} SOLD to ${team.team_name} for ₹${settings.current_bid.toLocaleString()}!`);
+    fetchAdminAuctionState();
+}
+// ================= AUCTION RESULTS MANAGEMENT =================
+
+async function fetchAuctionResults() {
+    const list = document.getElementById('admin-auction-results-list');
+    if (!list) return;
+
+    list.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-dim); padding: 20px;">Fetching results...</td></tr>';
+
+    try {
+        const { data: players, error } = await supabaseClient
+            .from('player_registrations')
+            .select('*')
+            .or('status.eq.sold,status.eq.unsold')
+            .order('player_name');
+
+        if (error) throw error;
+
+        if (!players || players.length === 0) {
+            list.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-dim); padding: 20px;">No sold/unsold players found</td></tr>';
+            return;
+        }
+
+        // Also fetch team assignments for sold players
+        const { data: squad } = await supabaseClient.from('team_players').select('reg_no, team_name, bid_amount');
+
+        list.innerHTML = players.map(p => {
+            const assignment = squad ? squad.find(s => s.reg_no === p.registration_no) : null;
+            const statusColor = p.status === 'sold' ? '#22c55e' : '#ef4444';
+            const salePrice = assignment ? (assignment.bid_amount || p.auction_price) : (p.auction_price || '---');
+            const teamDisplay = assignment ? assignment.team_name : (p.status === 'unsold' ? '---' : 'Checking...');
+
+            return `
+                <tr>
+                    <td style="font-size: 0.8rem; font-family: monospace;">${p.registration_no}</td>
+                    <td style="font-weight: 700;">${p.player_name}</td>
+                    <td style="color: ${statusColor}; font-weight: 800;">${p.status.toUpperCase()}</td>
+                    <td>${p.status === 'sold' ? '₹' + (salePrice ? salePrice.toLocaleString() : '---') : '---'}</td>
+                    <td style="color: var(--secondary); font-weight: 600;">${teamDisplay}</td>
+                    <td>
+                        <button class="btn" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; font-size: 0.7rem; padding: 5px 10px; border: 1px solid #ef4444;" 
+                            onclick="releasePlayer('${p.id}', '${p.registration_no}')">RELEASE / RESET</button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch (err) {
+        console.error("Results fetch error:", err);
+        list.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #ef4444; padding: 20px;">Error loading results: ${err.message}</td></tr>`;
+    }
+}
+
+async function releasePlayer(playerId, regNo) {
+    if (!confirm(`Are you sure you want to release ${regNo}? \nThis will reset their status and remove them from any assigned squad.`)) return;
+
+    try {
+        // 1. Get current assignment details for refund
+        const { data: assignment } = await supabaseClient
+            .from('team_players')
+            .select('team_id, bid_amount')
+            .eq('reg_no', regNo)
+            .maybeSingle();
+
+        // 2. Reset Status in registrations
+        const { error: regErr } = await supabaseClient
+            .from('player_registrations')
+            .update({ status: 'paid', auction_price: null }) // Back to paid pool
+            .eq('id', playerId);
+
+        if (regErr) throw regErr;
+
+        // 3. Remove from team_players
+        await supabaseClient.from('team_players').delete().eq('reg_no', regNo);
+
+        // 4. Handle Refund
+        if (assignment && assignment.team_id) {
+            const { data: team } = await supabaseClient
+                .from('points_table')
+                .select('spent_points')
+                .eq('id', assignment.team_id)
+                .single();
+
+            if (team) {
+                const newSpent = Math.max(0, (team.spent_points || 0) - (assignment.bid_amount || 0));
+                await supabaseClient.from('points_table').update({ spent_points: newSpent }).eq('id', assignment.team_id);
+            }
+        }
+
+        alert("✅ Player released and budget refunded successfully!");
+        fetchAuctionResults();
+        fetchAdminPoints();
+        if (typeof loadDashboard === 'function') loadDashboard();
+    } catch (err) {
+        alert("Release Error: " + err.message);
+    }
+}
+
+async function syncAllTeamBudgets() {
+    if (!confirm("Are you sure you want to recalculate all team budgets based on current squads?")) return;
+
+    try {
+        // 1. Get all teams
+        const { data: teams } = await supabaseClient.from('points_table').select('id, team_name');
+        // 2. Get all assigned players
+        const { data: squadPlayers } = await supabaseClient.from('team_players').select('team_id, bid_amount');
+
+        if (!teams) return;
+
+        console.log("Recalculating budgets...");
+
+        for (const team of teams) {
+            const teamSpent = squadPlayers
+                ? squadPlayers
+                    .filter(p => p.team_id === team.id)
+                    .reduce((sum, p) => sum + (p.bid_amount || 0), 0)
+                : 0;
+
+            await supabaseClient.from('points_table').update({ spent_points: teamSpent }).eq('id', team.id);
+        }
+
+        alert("✅ All team budgets synchronized successfully!");
+        fetchAdminPoints();
+        if (typeof loadDashboard === 'function') loadDashboard();
+    } catch (err) {
+        alert("Sync Error: " + err.message);
+    }
+}
+
+// ================= DIRECT FILE UPLOAD LOGIC =================
+let directUploadPlayerId = null;
+
+function triggerDirectUpload(playerId) {
+    directUploadPlayerId = playerId;
+    document.getElementById('direct-file-upload').click();
+}
+
+async function processDirectUpload(input) {
+    if (!input.files || input.files.length === 0 || !directUploadPlayerId) return;
+
+    const file = input.files[0];
+    const playerId = directUploadPlayerId;
+
+    // Reset for next time
+    directUploadPlayerId = null;
+    input.value = '';
+
+    const originalText = "Uploading...";
+    console.log(`Starting direct upload for player ${playerId}...`);
+
+    try {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const filePath = `${fileName}`;
+
+        const { data, error: uploadError } = await supabaseClient.storage
+            .from('player-photos')
+            .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabaseClient.storage
+            .from('player-photos')
+            .getPublicUrl(filePath);
+
+        const { error: updateError } = await supabaseClient
+            .from('player_registrations')
+            .update({ photo_url: publicUrl })
+            .eq('id', playerId);
+
+        if (updateError) throw updateError;
+
+        alert("✅ File uploaded and updated successfully!");
+        fetchRegistrations(); // Refresh the list
+    } catch (err) {
+        alert("Upload Error: " + err.message);
+        console.error(err);
+    }
+}
+let cropper = null;
+let currentEditingId = null;
+
+async function openPhotoEditor(id, photoUrl) {
+    if (!photoUrl || photoUrl === 'null' || photoUrl === 'undefined') return alert("This player has no photo to edit.");
+
+    currentEditingId = id;
+    const modal = document.getElementById('photo-editor-modal');
+    const image = document.getElementById('editor-image');
+
+    // Set crossOrigin to avoid Tainted Canvas errors when cropping
+    image.crossOrigin = 'anonymous';
+    image.src = photoUrl + '?t=' + new Date().getTime(); // Cache busting
+
+    modal.style.display = 'block';
+
+    // Wait for image to load before initializing cropper
+    image.onload = () => {
+        if (cropper) {
+            cropper.destroy();
+        }
+
+        cropper = new Cropper(image, {
+            viewMode: 1,
+            dragMode: 'move',
+            autoCropArea: 0.8,
+            restore: false,
+            guides: true,
+            center: true,
+            highlight: false,
+            cropBoxMovable: true,
+            cropBoxResizable: true,
+            toggleDragModeOnDblclick: false,
+        });
+    };
+}
+
+function rotateImage(deg) {
+    if (cropper) cropper.rotate(deg);
+}
+
+function flipImage(dir) {
+    if (!cropper) return;
+    const data = cropper.getData();
+    if (dir === 'h') cropper.scaleX(data.scaleX * -1);
+    else cropper.scaleY(data.scaleY * -1);
+}
+
+function resetEditor() {
+    if (cropper) cropper.reset();
+}
+
+function closePhotoEditor() {
+    if (cropper) {
+        cropper.destroy();
+        cropper = null;
+    }
+    document.getElementById('photo-editor-modal').style.display = 'none';
+    currentEditingId = null;
+}
+
+async function saveEditedPhoto() {
+    if (!cropper || !currentEditingId) return;
+
+    const saveBtn = document.getElementById('save-photo-btn');
+    const originalText = saveBtn.innerText;
+    saveBtn.disabled = true;
+    saveBtn.innerText = "Processing... ⏳";
+
+    try {
+        // 1. Get cropped canvas
+        const canvas = cropper.getCroppedCanvas({
+            maxWidth: 1024,
+            maxHeight: 1024,
+            imageSmoothingQuality: 'high'
+        });
+
+        // 2. Convert to Blob
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+
+        // 3. Generate filename
+        const fileName = `edited_${currentEditingId}_${Date.now()}.jpg`;
+        const filePath = `player_photos/${fileName}`;
+
+        // 4. Upload to Supabase Storage
+        const { data: uploadData, error: uploadError } = await supabaseClient
+            .storage
+            .from('player-photos')
+            .upload(filePath, blob, { contentType: 'image/jpeg', upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        // 5. Get Public URL
+        const { data: urlData } = supabaseClient.storage.from('player-photos').getPublicUrl(filePath);
+        const newUrl = urlData.publicUrl;
+
+        // 6. Update Database
+        const { error: dbError } = await supabaseClient
+            .from('player_registrations')
+            .update({ photo_url: newUrl })
+            .eq('id', currentEditingId);
+
+        if (dbError) throw dbError;
+
+        alert("✅ Photo updated successfully!");
+        closePhotoEditor();
+        if (typeof fetchRegistrations === 'function') fetchRegistrations();
+
+    } catch (err) {
+        console.error("Save Error:", err);
+        alert("Error saving photo: " + (err.message || "Unknown error"));
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerText = originalText;
+    }
+}
+
+async function syncTeamBudgetsFromSquads() {
+    console.log("🔄 Reconciling Team Budgets from Squads...");
+
+    // 1. Fetch squads and teams
+    const { data: squadPlayers } = await supabaseClient.from('team_players').select('team_id, bid_amount');
+    const { data: teams } = await supabaseClient.from('points_table').select('id, team_name, budget');
+
+    if (!teams) return;
+
+    // 2. Sum up bids for each team
+    const spentMap = {};
+    teams.forEach(t => spentMap[t.id] = 0);
+
+    if (squadPlayers) {
+        squadPlayers.forEach(p => {
+            if (spentMap[p.team_id] !== undefined) {
+                spentMap[p.team_id] += (p.bid_amount || 0);
+            }
+        });
+    }
+
+    // 3. Update each team in Supabase
+    for (const teamId of Object.keys(spentMap)) {
+        const currentTeam = teams.find(t => t.id == teamId);
+        const updates = { spent_points: spentMap[teamId] };
+
+        // If budget is weird (like 3660), reset it to 4000
+        if (currentTeam && currentTeam.budget < 1000) {
+            updates.budget = 4000;
+        }
+
+        await supabaseClient.from('points_table').update(updates).eq('id', teamId);
+    }
+
+    if (typeof fetchAdminPoints === 'function') fetchAdminPoints();
 }
