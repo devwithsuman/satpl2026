@@ -11,6 +11,9 @@
     <link rel="preconnect" href="https://lsikcaybolgsfimwtkdv.supabase.co" crossorigin>
 
     <link rel="stylesheet" href="admin-styles.css">
+    <!-- Cropper.js for image editing -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
 </head>
 
 <body>
@@ -23,8 +26,11 @@
                 <h2 class="gradient-text" style="font-size: 1.2rem; margin: 0;">SATPL Admin</h2>
             </div>
             <nav class="sidebar-nav">
-                <button onclick="showSection('dashboard')" class="active">🏠 Dashboard</button>
-                <button onclick="showSection('registrations')">👥 Registrations</button>
+                <button onclick="showSection('analytics-dashboard')" class="active" id="nav-analytics-dashboard">📊
+                    Analytics Dashboard</button>
+                <button onclick="showSection('overview-dashboard')" id="nav-overview-dashboard">🏠 Overview
+                    Dashboard</button>
+                <button onclick="showSection('registrations')" id="nav-registrations">📝 Registrations</button>
                 <button onclick="showSection('hero')">📡 Match Center</button>
                 <button onclick="showSection('scoring')">🏏 Live Scoring</button>
                 <button onclick="showSection('announcements')">📢 News Manager</button>
@@ -33,6 +39,8 @@
                 <button onclick="showSection('leaderboard')">🏆 Leaderboard</button>
                 <button onclick="showSection('points')">📊 Points Table</button>
                 <button onclick="showSection('rosters')">🏏 Squads</button>
+                <button onclick="showSection('auction')">🔨 Auction Control</button>
+                <button onclick="showSection('auction-results')">📋 Auction Results</button>
                 <button onclick="showSection('gallery')">🖼️ Gallery</button>
                 <button onclick="showSection('menu')">🔗 Menu Manager</button>
                 <button onclick="showSection('settings')">⚙️ Settings</button>
@@ -42,10 +50,78 @@
 
         <main class="main-content">
 
-            <div id="dashboard-section" class="admin-section active animate-fade">
+            <!-- Analytics Dashboard Section (New) -->
+            <div id="analytics-dashboard-section" class="admin-section active animate-fade">
                 <header class="section-header">
                     <div>
-                        <h2 class="gradient-text">Admin Dashboard</h2>
+                        <h2 class="gradient-text">Analytics Dashboard</h2>
+                        <p style="color: var(--text-dim); font-size: 0.9rem;">Real-time insights into registrations and
+                            auction stats</p>
+                    </div>
+                </header>
+
+                <div
+                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 30px; margin-top: 30px;">
+                    <!-- Registration Stats -->
+                    <div class="glass" style="padding: 25px; border-radius: 20px;">
+                        <h3
+                            style="margin-bottom: 20px; font-size: 1rem; color: var(--secondary); display: flex; align-items: center; gap: 10px;">
+                            📊 Registration Breakdown
+                        </h3>
+                        <div style="height: 300px; position: relative;">
+                            <canvas id="regChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Budget Distribution -->
+                    <div class="glass" style="padding: 25px; border-radius: 20px;">
+                        <h3
+                            style="margin-bottom: 20px; font-size: 1rem; color: var(--primary); display: flex; align-items: center; gap: 10px;">
+                            💰 Budget Utilization
+                        </h3>
+                        <div style="height: 300px; position: relative;">
+                            <canvas id="budgetChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Counter Cards -->
+                <div
+                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 30px;">
+                    <div class="glass"
+                        style="padding: 20px; text-align: center; border-left: 4px solid var(--secondary);">
+                        <span style="color: var(--text-dim); font-size: 0.8rem; text-transform: uppercase;">Total
+                            Registered</span>
+                        <div id="count-total" style="font-size: 2rem; font-weight: 900; color: #fff; margin-top: 5px;">0
+                        </div>
+                    </div>
+                    <div class="glass" style="padding: 20px; text-align: center; border-left: 4px solid #22c55e;">
+                        <span style="color: var(--text-dim); font-size: 0.8rem; text-transform: uppercase;">Paid
+                            Players</span>
+                        <div id="count-paid" style="font-size: 2rem; font-weight: 900; color: #fff; margin-top: 5px;">0
+                        </div>
+                    </div>
+                    <div class="glass"
+                        style="padding: 20px; text-align: center; border-left: 4px solid var(--primary);">
+                        <span style="color: var(--text-dim); font-size: 0.8rem; text-transform: uppercase;">Sold
+                            Players</span>
+                        <div id="count-sold" style="font-size: 2rem; font-weight: 900; color: #fff; margin-top: 5px;">0
+                        </div>
+                    </div>
+                    <div class="glass" style="padding: 20px; text-align: center; border-left: 4px solid #eab308;">
+                        <span style="color: var(--text-dim); font-size: 0.8rem; text-transform: uppercase;">Unsold
+                            Players</span>
+                        <div id="count-unsold" style="font-size: 2rem; font-weight: 900; color: #fff; margin-top: 5px;">
+                            0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Original Dashboard Section (Renamed) -->
+            <div id="overview-dashboard-section" class="admin-section animate-fade">
+                <header class="section-header">
+                    <div>
+                        <h2 class="gradient-text">Admin Dashboard Overview</h2>
                         <p style="color: var(--text-dim); font-size: 0.9rem;">Overview of tournament activity</p>
                     </div>
                 </header>
@@ -71,7 +147,11 @@
                         <button
                             onclick="syncPointsTableFromFixtures().then(() => alert('✅ Points Table Recalculated!'))"
                             class="btn-secondary" style="width: 100%; margin-top: 15px; font-size: 0.8rem;">🔄
-                            Recalculate All Points</button>
+                            Recalculate All Match Points</button>
+                        <button onclick="syncTeamBudgetsFromSquads().then(() => alert('✅ Team Budgets Resynced!'))"
+                            class="btn-secondary"
+                            style="width: 100%; margin-top: 10px; font-size: 0.8rem; border-color: var(--secondary); color: var(--secondary);">💰
+                            Reconcile Team Budgets</button>
                     </div>
 
                     <div class="glass dashboard-card" style="grid-column: span 2;">
@@ -339,7 +419,13 @@
                         <h2 class="gradient-text">Points Table Management</h2>
                         <p style="color: var(--text-dim); font-size: 0.9rem;">Update match stats for all 8 teams</p>
                     </div>
-                    <button class="btn" onclick="savePointsTable()">Save All Changes</button>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn-secondary" onclick="syncAllTeamBudgets()"
+                            style="background: rgba(0, 242, 255, 0.1); border-color: var(--secondary);">Sync Auction
+                            Budgets</button>
+                        <button class="btn-secondary" onclick="addNewTeamRow()">+ Add New Team</button>
+                        <button class="btn" onclick="savePointsTable()">Save All Changes</button>
+                    </div>
                 </header>
 
                 <div class="table-wrapper">
@@ -359,6 +445,9 @@
                                 <th title="Overs Bowled">OB</th>
                                 <th>NRR</th>
                                 <th>Points</th>
+                                <th style="width: 100px;">Budget</th>
+                                <th style="width: 120px;">Owner Pass</th>
+                                <th style="width: 80px;">Action</th>
                             </tr>
                         </thead>
                         <tbody id="admin-points-list">
@@ -413,7 +502,11 @@
                         <h2 class="gradient-text">Match Schedule (Fixtures)</h2>
                         <p style="color: var(--text-dim); font-size: 0.9rem;">Manage all league matches and results</p>
                     </div>
-                    <button class="btn" onclick="openFixtureModal()">+ Add New Match</button>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn-secondary" onclick="autoGenerateFixtures()">⚡ Auto-Generate 5-Team
+                            Fixtures</button>
+                        <button class="btn" onclick="openFixtureModal()">+ Add New Match</button>
+                    </div>
                 </header>
 
                 <div class="table-wrapper">
@@ -496,6 +589,157 @@
                 </div>
             </div>
 
+            <!-- Auction Control Section -->
+            <div id="auction-section" class="admin-section animate-fade">
+                <header class="section-header">
+                    <div>
+                        <h2 class="gradient-text">🔨 Auction Control Room</h2>
+                        <p style="color: var(--text-dim); font-size: 0.9rem;">Manage live player auction and bidding</p>
+                    </div>
+                    <div style="display: flex; gap: 15px; align-items: center;">
+                        <span id="admin-auction-status" class="status-badge pending"
+                            style="padding: 10px 20px;">IDLE</span>
+                        <button class="btn" style="background: var(--secondary); color: var(--bg-dark);"
+                            onclick="window.open('auction.html', '_blank')">View Public Page 👁️</button>
+                    </div>
+                </header>
+
+                <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 30px;">
+                    <!-- Step 1: Select Player -->
+                    <div class="glass dashboard-card">
+                        <h3 class="card-title">1. Select Player to Auction</h3>
+                        <div class="form-group">
+                            <label>Search Paid Player (Reg No)</label>
+                            <div style="display: flex; gap: 10px;">
+                                <input type="text" id="auction-search-reg" class="table-input"
+                                    placeholder="e.g. OSATPL01S2001">
+                                <button class="btn" onclick="lookupAuctionPlayer()">Search</button>
+                            </div>
+                        </div>
+                        <div id="auction-player-preview" style="margin-top: 20px; display: none;">
+                            <div
+                                style="display: flex; gap: 15px; align-items: center; background: rgba(255,255,255,0.03); padding: 15px; border-radius: 12px;">
+                                <img id="auction-p-photo" src=""
+                                    style="width: 80px; height: 80px; border-radius: 12px; object-fit: cover;">
+                                <div>
+                                    <div id="auction-p-name" style="font-weight: 800; font-size: 1.2rem;">Player Name
+                                    </div>
+                                    <div id="auction-p-reg" style="color: var(--secondary); font-size: 0.8rem;">REG NO
+                                    </div>
+                                    <div id="auction-p-role" style="color: var(--text-dim); font-size: 0.8rem;">Batsman
+                                        / Bowler</div>
+                                </div>
+                            </div>
+                            <button class="btn" style="width: 100%; margin-top: 15px;"
+                                onclick="putPlayerOnAuction()">Put on Auction Board</button>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Live Control -->
+                    <div class="glass dashboard-card">
+                        <h3 class="card-title">2. Live Board Control</h3>
+                        <div class="form-group">
+                            <label>Base Price (₹)</label>
+                            <input type="number" id="auction-base-price" class="table-input" value="150">
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px;">
+                            <button class="btn" style="background: #22c55e;" onclick="startAuctionTimer()">Start Timer
+                                ▶️</button>
+                            <button class="btn" style="background: #eab308;" onclick="pauseAuctionTimer()">Pause Timer
+                                ⏸️</button>
+                            <button class="btn" style="background: #ef4444;" onclick="resetAuctionTimer()">Reset Timer
+                                🔄</button>
+                            <button class="btn" style="background: var(--primary);" onclick="markAsUnsold()">Mark UNSOLD
+                                ❌</button>
+                        </div>
+                        <div style="margin-top: 20px; border-top: 1px solid var(--glass-border); padding-top: 20px;">
+                            <button class="btn"
+                                style="width: 100%; background: var(--secondary); color: var(--bg-dark); font-weight: 900; font-size: 1.1rem;"
+                                onclick="finalizeSale()">🔨 SOLD / FINALIZE SALE</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass dashboard-card"
+                    style="margin-top: 30px; display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px;">
+                    <div>
+                        <h3 class="card-title">Live Bid Management</h3>
+                        <div style="max-height: 400px; overflow-y: auto;">
+                            <table class="table" style="width: 100%;">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Team</th>
+                                        <th>Amount</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-bid-history">
+                                    <tr>
+                                        <td colspan="4" style="text-align: center; color: var(--text-dim);">No bids yet
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="card-title">Auction Summary</h3>
+                        <div style="display: flex; flex-direction: column; gap: 15px; padding: 10px;">
+                            <div class="glass" style="padding: 15px; border-radius: 12px; text-align: center;">
+                                <div style="color: var(--text-dim); font-size: 0.8rem;">CURRENT BID</div>
+                                <div id="admin-current-bid"
+                                    style="font-size: 2.5rem; font-weight: 900; color: var(--secondary);">₹0</div>
+                            </div>
+                            <div class="glass" style="padding: 15px; border-radius: 12px; text-align: center;">
+                                <div style="color: var(--text-dim); font-size: 0.8rem;">HIGHEST BIDDER</div>
+                                <div id="admin-highest-bidder" style="font-size: 1.2rem; font-weight: 800;">---</div>
+                            </div>
+                            <div class="glass" style="padding: 15px; border-radius: 12px; text-align: center;">
+                                <div style="color: var(--text-dim); font-size: 0.8rem;">TIME LEFT</div>
+                                <div id="admin-auction-timer"
+                                    style="font-size: 2.5rem; font-weight: 900; color: var(--primary);">30s</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Auction Results Section -->
+            <div id="auction-results-section" class="admin-section animate-fade">
+                <header class="section-header"
+                    style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h2 class="gradient-text">Auction Results</h2>
+                        <p style="color: var(--text-dim); font-size: 0.9rem;">Manage sold/unsold players and team squads
+                        </p>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn" style="padding: 8px 15px; font-size: 0.8rem;"
+                            onclick="exportResultsPDF()">📄 Export PDF Report</button>
+                        <button class="btn-secondary" style="padding: 8px 15px; font-size: 0.8rem;"
+                            onclick="fetchAuctionResults()">🔄 Refresh</button>
+                    </div>
+                </header>
+
+                <div class="table-wrapper">
+                    <table class="premium-table" style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>Reg No</th>
+                                <th>Player Name</th>
+                                <th>Status</th>
+                                <th>Sale Price</th>
+                                <th>Team</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-auction-results-list">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
             <div id="gallery-section" class="admin-section animate-fade">
                 <header class="section-header">
                     <div>
@@ -851,6 +1095,15 @@
                             <option value="yes">Yes</option>
                             <option value="no">No</option>
                         </select>
+                    </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label style="color: var(--secondary);"><i class="fas fa-file-upload"></i> Replace Photo /
+                            Document (Optional)</label>
+                        <input type="file" id="edit-file-upload" class="table-input" accept="image/*,application/pdf"
+                            style="padding: 10px;">
+                        <small style="color: var(--text-dim); display: block; margin-top: 5px;">Leave this blank unless
+                            you want to completely replace the player's uploaded file. Useful for fixing broken
+                            PDFs.</small>
                     </div>
                 </div>
 
@@ -1249,11 +1502,53 @@
         </div>
     </div>
 
+    <!-- Photo Editor Modal -->
+    <div id="photo-editor-modal" class="modal-backdrop" style="display: none; padding-top: 50px;">
+        <div class="modal-content" style="max-width: 800px; background: #111; border: 1px solid var(--secondary);">
+            <div class="modal-header">
+                <h3 class="gradient-text">📸 Professional Photo Editor</h3>
+                <span class="close" onclick="closePhotoEditor()">&times;</span>
+            </div>
+            <div style="padding: 20px;">
+                <div id="cropper-container"
+                    style="height: 450px; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 20px;">
+                    <img id="editor-image" style="max-width: 100%;">
+                </div>
+
+                <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                    <button type="button" class="btn-scoring" onclick="rotateImage(-90)">↺ Rotate Left</button>
+                    <button type="button" class="btn-scoring" onclick="rotateImage(90)">↻ Rotate Right</button>
+                    <button type="button" class="btn-scoring" onclick="flipImage('h')">↔️ Flip H</button>
+                    <button type="button" class="btn-scoring" onclick="flipImage('v')">↕️ Flip V</button>
+                    <button type="button" class="btn-scoring" onclick="resetEditor()">🔄 Reset</button>
+                </div>
+
+                <div
+                    style="margin-top: 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+                    <p style="color: var(--text-dim); font-size: 0.8rem; max-width: 400px;">Note: Saving will update the
+                        photo across the entire platform. Please wait for the "Successful" message.</p>
+                    <div style="display: flex; gap: 15px;">
+                        <button type="button" class="btn-secondary" onclick="closePhotoEditor()">Cancel</button>
+                        <button type="button" class="btn" id="save-photo-btn" onclick="saveEditedPhoto()">Save Changes
+                            ✨</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
     <script src="supabase-config.js"></script>
     <script src="nav-loader.js"></script>
     <script src="admin-script.js"></script>
 
+    <!-- Hidden File Input for Direct Uploads -->
+    <input type="file" id="direct-file-upload" style="display: none;" accept="image/*,application/pdf"
+        onchange="processDirectUpload(this)">
 </body>
 
 </html>
