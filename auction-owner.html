@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Owner Bidding Panel | SATPL Auction</title>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&display=swap" rel="stylesheet">
+
+    <!-- Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            background: #0f172a;
+            color: white;
+            padding-top: 80px;
+        }
+
+        .owner-header {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+
+        .bidding-card {
+            max-width: 1100px;
+            margin: 40px auto;
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 32px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Smaller login card */
+        #login-overlay {
+            max-width: 500px;
+        }
+
+        .team-selector-panel {
+            margin-bottom: 30px;
+            padding: 24px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .current-player-mini {
+            display: flex;
+            align-items: center;
+            gap: 25px;
+            background: linear-gradient(to right, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.1));
+            padding: 20px;
+            border-radius: 24px;
+            margin-bottom: 35px;
+            text-align: left;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .current-player-mini img {
+            width: 180px;
+            height: 180px;
+            border-radius: 24px;
+            object-fit: cover;
+            border: 4px solid rgba(0, 242, 255, 0.3);
+            box-shadow: 0 0 30px rgba(0, 242, 255, 0.3);
+        }
+
+        .player-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .p-stat-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 8px 12px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+        }
+
+        .p-stat-item small {
+            display: block;
+            color: #94a3b8;
+            text-transform: uppercase;
+            font-size: 0.6rem;
+            margin-bottom: 2px;
+        }
+
+        .p-stat-item strong {
+            color: #00f2ff;
+            font-weight: 800;
+        }
+
+        .player-reg-pill {
+            display: inline-block;
+            background: rgba(0, 242, 255, 0.1);
+            color: #00f2ff;
+            padding: 4px 12px;
+            border-radius: 100px;
+            font-size: 0.75rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            border: 1px solid rgba(0, 242, 255, 0.2);
+            text-transform: uppercase;
+            margin-top: 5px;
+            box-shadow: 0 0 15px rgba(0, 242, 255, 0.1);
+        }
+
+        /* Mobile View Improvements */
+        @media (max-width: 600px) {
+            .bidding-card {
+                padding: 20px;
+                margin: 20px 10px;
+                border-radius: 20px;
+            }
+
+            .current-player-mini {
+                flex-direction: column;
+                text-align: center;
+                gap: 15px;
+                padding: 25px 15px;
+            }
+
+            .current-player-mini img {
+                width: 15rem;
+                height: 15rem;
+            }
+
+            .player-stats-grid {
+                width: 100%;
+            }
+
+            .bid-increment {
+                gap: 10px;
+            }
+
+            .inc-btn {
+                padding: 15px 5px;
+                font-size: 1.1rem;
+            }
+
+            .bid-button {
+                padding: 20px;
+                font-size: 1.5rem;
+            }
+
+            #next-bid-amount {
+                font-size: 2.5rem !important;
+            }
+        }
+
+        .bid-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .bid-button {
+            background: linear-gradient(135deg, #00f2ff, #0066ff);
+            color: white;
+            padding: 28px;
+            border-radius: 24px;
+            font-size: 2rem;
+            font-weight: 900;
+            border: none;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 15px 40px rgba(0, 102, 255, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .bid-button::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: 0.5s;
+        }
+
+        .bid-button:hover::after {
+            left: 100%;
+        }
+
+        .bid-button:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 50px rgba(0, 102, 255, 0.6);
+        }
+
+        .bid-button:active {
+            transform: scale(0.95);
+        }
+
+        .bid-button:disabled {
+            background: #1e293b;
+            color: #475569;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        .budget-badge {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            background: rgba(34, 197, 94, 0.05);
+            color: #4ade80;
+            padding: 15px 24px;
+            border-radius: 20px;
+            font-weight: 800;
+            margin-bottom: 25px;
+            font-size: 1rem;
+            border: 1px solid rgba(74, 222, 128, 0.1);
+            letter-spacing: 1px;
+            text-align: center;
+        }
+
+        .budget-badge span {
+            font-size: 0.7rem;
+            opacity: 0.7;
+            text-transform: uppercase;
+        }
+
+        .bid-increment {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .price-box {
+            flex: 1;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 25px 20px;
+            border-radius: 24px;
+            text-align: left;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .price-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .inc-btn {
+            background: rgba(255, 255, 255, 0.03);
+            border: 2px solid rgba(255, 255, 255, 0.05);
+            color: #94a3b8;
+            padding: 20px 10px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 800;
+            font-size: 1.3rem;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .inc-btn span {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            opacity: 0.6;
+            letter-spacing: 1px;
+        }
+
+        .inc-btn:hover {
+            background: rgba(255, 255, 255, 0.07);
+            border-color: rgba(255, 255, 255, 0.1);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .inc-btn.active {
+            border-color: #00f2ff;
+            background: rgba(0, 242, 255, 0.1);
+            color: #00f2ff;
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.2);
+        }
+
+        /* Dual Price Layout */
+        .dual-price-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .price-box.preview {
+            background: rgba(0, 242, 255, 0.03);
+            border: 1px solid rgba(0, 242, 255, 0.2);
+            box-shadow: 0 10px 30px rgba(0, 242, 255, 0.05);
+        }
+
+        .price-box.preview::before {
+            background: #00f2ff;
+        }
+
+        .price-label {
+            color: #94a3b8;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+            font-weight: 700;
+        }
+
+        .price-value {
+            font-size: 2.2rem;
+            font-weight: 950;
+            color: white;
+            line-height: 1;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .preview .price-value {
+            color: #00f2ff;
+            text-shadow: 0 0 20px rgba(0, 242, 255, 0.3);
+        }
+
+        @media (max-width: 480px) {
+            .dual-price-container {
+                flex-direction: column;
+            }
+
+            .price-value {
+                font-size: 2.2rem;
+            }
+        }
+
+        /* History Section */
+        .history-section {
+            margin-top: 35px;
+            text-align: left;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .history-title {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .history-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            font-size: 0.9rem;
+            border: 1px solid rgba(255, 255, 255, 0.02);
+        }
+
+        .history-team {
+            font-weight: 800;
+            color: #00f2ff;
+        }
+
+        .history-amount {
+            color: white;
+            font-weight: 900;
+        }
+    </style>
+</head>
+
+<body>
+    <header class="owner-header">
+        <div class="container" style="display: flex; justify-content: space-between; align-items: center;">
+            <h2 style="font-size: 1.2rem; margin: 0;">🔨 TEAM OWNER PANEL</h2>
+            <div id="selected-team-display" style="font-weight: 800; color: #00f2ff;">SELECT YOUR TEAM</div>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Step 1: Login / Select Team -->
+        <div id="login-overlay" class="bidding-card">
+            <h3>Welcome, Team Owner</h3>
+            <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 20px;">Please select your team to enter the
+                bidding room.</p>
+            <select id="team-selector" class="table-input" style="height: 50px; font-size: 1rem; margin-bottom: 15px;">
+                <option value="">-- Choose Your Team --</option>
+            </select>
+            <input type="password" id="owner-password" class="table-input" placeholder="Enter Team Password"
+                style="height: 50px; font-size: 1rem; margin-bottom: 20px;">
+            <button class="btn" style="width: 100%;" onclick="loginAsTeam()">Enter Auction Board</button>
+        </div>
+
+        <!-- Step 2: Bidding Interface -->
+        <div id="bidding-room" class="bidding-card" style="display: none;">
+            <!-- New Team Info Card -->
+            <div id="team-info-card"
+                style="margin-bottom: 25px; padding: 20px; background: rgba(0, 242, 255, 0.05); border: 1px solid rgba(0, 242, 255, 0.2); border-radius: 24px; text-align: left; display: flex; align-items: center; gap: 20px;">
+                <div style="font-size: 2.5rem;">🏟️</div>
+                <div>
+                    <div style="color: #94a3b8; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 2px;">Your
+                        Team</div>
+                    <div id="team-display-name"
+                        style="font-size: 1.4rem; font-weight: 900; color: #00f2ff; line-height: 1.2;">TEAM NAME</div>
+                    <div id="team-owner-name" style="font-size: 0.9rem; color: #fff; opacity: 0.8; margin-top: 5px;">
+                        Owner: Name</div>
+                </div>
+            </div>
+
+            <div id="budget-info-container" class="budget-badge">
+                <div id="budget-total"><span>Total Budget:</span> ₹0</div>
+                <div id="budget-spent"><span>Spent:</span> ₹0</div>
+                <div id="budget-remaining" style="color: #fff; font-size: 1.4rem; margin-top: 5px;">
+                    <span>Remaining:</span> ₹0
+                </div>
+            </div>
+
+            <div class="grid"
+                style="grid-template-columns: 1.2fr 1fr; gap: 30px; align-items: start; margin-top: 30px;">
+
+                <!-- LEFT COLUMN: Auction State (Idle or Bidding) -->
+                <div>
+                    <!-- Idle Message -->
+                    <div id="auction-idle-msg"
+                        style="padding: 40px; color: #94a3b8; background: rgba(0,0,0,0.2); border-radius: 20px; border: 1px dashed rgba(255, 255, 255, 0.1);">
+                        Waiting for the auctioneer to start...
+                    </div>
+
+                    <!-- Active Bidding Controls -->
+                    <div id="auction-active-controls" style="display: none;">
+                        <div class="current-player-mini">
+                            <img id="p-photo" src="img.jpg">
+                            <div style="flex: 1;">
+                                <div id="p-name" style="font-weight: 800; font-size: 1.3rem; color: white;">PLAYER NAME
+                                </div>
+                                <div id="p-reg" class="player-reg-pill">OSATPL01S...
+                                </div>
+
+                                <div class="player-stats-grid">
+                                    <div class="p-stat-item">
+                                        <small>Format</small>
+                                        <strong id="p-format">BATTING</strong>
+                                    </div>
+                                    <div class="p-stat-item">
+                                        <small>Age</small>
+                                        <strong id="p-age">--</strong>
+                                    </div>
+                                    <div class="p-stat-item">
+                                        <small>Bowling</small>
+                                        <strong id="p-bowling">RIGHT ARM</strong>
+                                    </div>
+                                    <div class="p-stat-item">
+                                        <small>WICKET KEEPER</small>
+                                        <strong id="p-wk">NO</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bid-controls">
+                            <!-- Dual Price Display -->
+                            <div class="dual-price-container">
+                                <!-- Current Price -->
+                                <div class="price-box">
+                                    <div class="price-label">Current Price</div>
+                                    <div id="next-bid-amount" class="price-value">₹0</div>
+                                </div>
+
+                                <!-- Your Next Bid -->
+                                <div class="price-box preview">
+                                    <div class="price-label" style="color: #00f2ff;">Your Next Bid</div>
+                                    <div id="your-next-bid-preview" class="price-value" style="color: #00f2ff;">₹0</div>
+                                </div>
+                            </div>
+                            <div class="bid-increment">
+                                <button class="inc-btn active"
+                                    onclick="setIncrement(20)"><span>Small</span>+₹20</button>
+                                <button class="inc-btn" onclick="setIncrement(50)"><span>Medium</span>+₹50</button>
+                                <button class="inc-btn" onclick="setIncrement(100)"><span>Large</span>+₹100</button>
+                            </div>
+
+                            <button id="bid-btn" class="bid-button" onclick="placeBid()">PLACE BID 🚀</button>
+
+                            <div id="bid-status" style="margin-top: 15px; font-weight: 700;"></div>
+                        </div>
+
+                        <!-- Bid History -->
+                        <div class="history-section" style="margin-top: 25px;">
+                            <div class="history-title">
+                                <span>🕒 RECENT BIDS (THIS PLAYER)</span>
+                            </div>
+                            <ul id="owner-bid-history" class="history-list">
+                                <li style="color: #475569; text-align: center; padding: 10px;">No bids yet...</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT COLUMN: Shared Team Dashboard (Always Visible) -->
+                <div style="display: flex; flex-direction: column; gap: 20px;">
+
+                    <!-- My Squad Section -->
+                    <div class="history-section"
+                        style="margin-top: 0; background: rgba(0, 242, 255, 0.03); border: 1px solid rgba(0, 242, 255, 0.1); flex: 1;">
+                        <div class="history-title" style="color: #00f2ff;">
+                            <span>🏏 MY CURRENT SQUAD</span>
+                            <span id="my-squad-count"
+                                style="margin-left: auto; background: rgba(0, 242, 255, 0.2); padding: 2px 8px; border-radius: 10px; font-size: 0.7rem;">0
+                                Players</span>
+                        </div>
+                        <div id="my-squad-list"
+                            style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px; max-height: 250px; overflow-y: auto; padding-right: 5px;">
+                            <div style="text-align: center; color: #64748b; font-size: 0.8rem; padding: 20px;">No
+                                players bought yet.</div>
+                        </div>
+                    </div>
+
+                    <!-- Team Budgets Section -->
+                    <div class="history-section" style="margin-top: 0; flex: 1;">
+                        <div class="history-title" style="color: var(--secondary);">
+                            <span>💰 ALL TEAM BUDGETS</span>
+                        </div>
+                        <div id="team-budget-list"
+                            style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px; max-height: 250px; overflow-y: auto; padding-right: 5px;">
+                            <div style="text-align: center; color: #64748b; font-size: 0.8rem;">Loading budgets...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn-secondary" style="margin-top: 40px; font-size: 0.8rem;" onclick="logoutTeam()">Switch
+                Team</button>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="supabase-config.js"></script>
+    <script>
+        let myTeamId = null;
+        let myBudget = 0;
+        let mySpent = 0;
+        let myTotalBudget = 0;
+        let bidIncrement = 20;
+        let currentBid = 0;
+        let currentPlayerId = null;
+        let highestBidderId = null;
+        let currentAuctionStatus = 'idle';
+
+        async function initOwnerPanel() {
+            // Load Teams
+            const { data: teams } = await supabaseClient.from('points_table').select('id, team_name').order('team_name');
+            const selector = document.getElementById('team-selector');
+            if (teams) {
+                teams.forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t.id;
+                    opt.textContent = t.team_name;
+                    selector.appendChild(opt);
+                });
+            }
+
+            // Check session
+            const savedTeamId = localStorage.getItem('satpl_team_id');
+            if (savedTeamId) {
+                myTeamId = savedTeamId;
+                enterRoom();
+            }
+
+            // Realtime Sync
+            subscribeToAuction();
+        }
+
+        async function loginAsTeam() {
+            const id = document.getElementById('team-selector').value;
+            const password = document.getElementById('owner-password').value.trim();
+            if (!id || !password) return alert("Select team and enter password");
+
+            const { data: team, error } = await supabaseClient
+                .from('points_table')
+                .select('owner_password')
+                .eq('id', id)
+                .single();
+
+            if (error || !team || team.owner_password !== password) {
+                return alert("Invalid Password!");
+            }
+
+            myTeamId = id;
+            localStorage.setItem('satpl_team_id', id);
+            enterRoom();
+        }
+
+        function logoutTeam() {
+            localStorage.removeItem('satpl_team_id');
+            window.location.reload();
+        }
+
+        async function enterRoom() {
+            document.getElementById('login-overlay').style.display = 'none';
+            document.getElementById('bidding-room').style.display = 'block';
+
+            const { data: team } = await supabaseClient.from('points_table').select('*').eq('id', myTeamId).single();
+            if (team) {
+                document.getElementById('selected-team-display').innerText = team.team_name.toUpperCase();
+                document.getElementById('team-display-name').innerText = team.team_name.toUpperCase();
+                document.getElementById('team-owner-name').innerText = `Owner: ${team.owner_name || 'Not Set'}`;
+
+                myTotalBudget = team.budget || 0;
+                mySpent = team.spent_points || 0;
+                myBudget = myTotalBudget - mySpent;
+                updateBudgetUI();
+            }
+
+            fetchAuctionState();
+            // Always refresh sold list and budgets on status/bid change
+            fetchRecentlySold();
+            fetchTeamBudgets();
+        }
+        function updateBudgetUI() {
+            let displaySpent = mySpent;
+            let displayRemaining = myBudget;
+
+            // If we are currently the highest bidder, illustrate that money as "Committed"
+            if (highestBidderId == myTeamId && currentAuctionStatus === 'bidding') {
+                displaySpent += currentBid;
+                displayRemaining -= currentBid;
+            }
+
+            document.getElementById('budget-total').innerHTML = `<span>Total Budget:</span> ₹${myTotalBudget.toLocaleString()}`;
+            document.getElementById('budget-spent').innerHTML = `<span>Spent:</span> ₹${displaySpent.toLocaleString()}`;
+            document.getElementById('budget-remaining').innerHTML = `<span>Remaining:</span> ₹${displayRemaining.toLocaleString()}`;
+
+            // Visual warning if very low
+            if (displayRemaining < 200) {
+                document.getElementById('budget-remaining').style.color = '#ef4444';
+                document.getElementById('budget-remaining').style.fontWeight = '900';
+            } else {
+                document.getElementById('budget-remaining').style.color = '#fff';
+                document.getElementById('budget-remaining').style.fontWeight = '400';
+            }
+        }
+
+        function setIncrement(val) {
+            bidIncrement = val;
+            document.querySelectorAll('.inc-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.innerText.includes(val)) btn.classList.add('active');
+            });
+            updateNextBidUI();
+        }
+
+        async function fetchTeamBudgets() {
+            try {
+                // 1. Fetch Teams
+                const { data: teams, error: teamsErr } = await window.supabaseClient
+                    .from('points_table')
+                    .select('id, team_name, budget')
+                    .order('team_name', { ascending: true });
+
+                // 2. Fetch All Squads
+                const { data: squads, error: squadsErr } = await window.supabaseClient
+                    .from('team_players')
+                    .select('team_id, bid_amount');
+
+                const list = document.getElementById('team-budget-list');
+                if (teamsErr || squadsErr) {
+                    const err = teamsErr || squadsErr;
+                    if (list) list.innerHTML = `<div style="color:red; font-size: 0.7rem;">ERR: ${err.message}</div>`;
+                    return;
+                }
+
+                if (teams) {
+                    const enrichedTeams = teams.map(team => {
+                        const spent = squads
+                            ? squads.filter(p => p.team_id === team.id).reduce((sum, p) => sum + (p.bid_amount || 0), 0)
+                            : 0;
+                        return { ...team, spent_points: spent };
+                    });
+                    renderTeamBudgets(enrichedTeams);
+                }
+            } catch (err) {
+                const list = document.getElementById('team-budget-list');
+                if (list) list.innerHTML = `<div style="color:red; font-size: 0.7rem;">CATCH: ${err.message}</div>`;
+            }
+        }
+
+        function renderTeamBudgets(teams) {
+            const list = document.getElementById('team-budget-list');
+            if (!list) return;
+
+            if (!teams || teams.length === 0) {
+                list.innerHTML = '<div style="text-align: center; color: #64748b; font-size: 0.8rem;">No teams found in DB.</div>';
+                return;
+            }
+
+            list.innerHTML = teams.map(t => {
+                let b = typeof t.budget === 'number' ? t.budget : 0;
+                let s = typeof t.spent_points === 'number' ? t.spent_points : 0;
+
+                // Live Commitment Deduction
+                if (highestBidderId === t.id && currentAuctionStatus === 'bidding') {
+                    s += currentBid;
+                }
+
+                const remaining = b - s;
+                return `
+                    <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); padding: 10px 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+                        <div style="text-align: left;">
+                            <div style="color: #fff; font-weight: 700; font-size: 0.8rem;">${t.team_name || 'Unknown Team'}</div>
+                            <div style="color: #00f2ff; font-size: 0.6rem; font-weight: 600;">₹${s.toLocaleString()} USED</div>
+                        </div>
+                        <div style="text-align: right;">
+                             <span style="color: #64748b; font-size: 0.55rem; display: block;">REMAINING</span>
+                             <span style="color: #22c55e; font-weight: 800; font-size: 0.75rem; font-family: monospace;">₹${remaining.toLocaleString()}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function fetchMySquad() {
+            if (!myTeamId) return;
+            const { data: squad } = await supabaseClient
+                .from('team_players')
+                .select('*')
+                .eq('team_id', myTeamId)
+                .order('created_at', { ascending: false });
+
+            if (squad) renderMySquad(squad);
+        }
+
+        function renderMySquad(players) {
+            const list = document.getElementById('my-squad-list');
+            const count = document.getElementById('my-squad-count');
+            if (!list) return;
+
+            if (count) count.innerText = `${players.length} Players`;
+
+            if (players.length === 0) {
+                list.innerHTML = '<div style="text-align: center; color: #64748b; font-size: 0.8rem; padding: 20px;">No players bought yet.</div>';
+                return;
+            }
+
+            list.innerHTML = players.map(p => `
+                <div style="background: rgba(0, 242, 255, 0.05); border: 1px solid rgba(0, 242, 255, 0.1); padding: 10px 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="text-align: left;">
+                        <div style="color: #fff; font-weight: 700; font-size: 0.85rem;">${p.player_name}</div>
+                        <div style="color: #00f2ff; font-size: 0.65rem; font-weight: 600;">${p.reg_no}</div>
+                    </div>
+                    <div style="text-align: right;">
+                         <span style="color: #64748b; font-size: 0.55rem; display: block;">PRICE</span>
+                         <span style="color: #fff; font-weight: 800; font-size: 0.8rem; font-family: monospace;">₹${(p.bid_amount || 0).toLocaleString()}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+
+        async function fetchAuctionState() {
+            const { data } = await supabaseClient.from('auction_settings').select('*').eq('id', 'global').single();
+            if (data) handleAuctionUpdate(data);
+        }
+
+        async function fetchRecentBids() {
+            if (!currentPlayerId) return;
+
+            const { data: bids } = await supabaseClient
+                .from('auction_bids')
+                .select('*, points_table(team_name)')
+                .eq('player_id', currentPlayerId)
+                .order('created_at', { ascending: false })
+                .limit(5);
+
+            if (bids) renderBidHistory(bids);
+        }
+
+        function renderBidHistory(bids) {
+            const list = document.getElementById('owner-bid-history');
+            if (!bids || bids.length === 0) {
+                list.innerHTML = '<li style="color: #475569; text-align: center; padding: 10px;">No bids yet...</li>';
+                return;
+            }
+
+            list.innerHTML = bids.map(bid => `
+                <li class="history-item">
+                    <span class="history-team">${bid.points_table?.team_name || 'Team'}</span>
+                    <span class="history-amount">₹${bid.bid_amount.toLocaleString()}</span>
+                </li>
+            `).join('');
+        }
+
+        function handleAuctionUpdate(settings) {
+            const prevPlayerId = currentPlayerId;
+            const prevStatus = currentAuctionStatus;
+            currentBid = settings.current_bid;
+            currentPlayerId = settings.current_player_id;
+            highestBidderId = settings.highest_bidder_id;
+            currentAuctionStatus = settings.status;
+
+            const idleMsg = document.getElementById('auction-idle-msg');
+            const activeControls = document.getElementById('auction-active-controls');
+            const bidBtn = document.getElementById('bid-btn');
+
+            const showBoard = settings.current_player_id && (settings.status === 'bidding' || settings.status === 'idle');
+
+            if (showBoard) {
+                idleMsg.style.display = 'none';
+                activeControls.style.display = 'block';
+
+                if (prevPlayerId !== currentPlayerId) {
+                    fetchPlayerInfo(settings.current_player_id);
+                    fetchRecentBids();
+                    fetchTeamBudgets();
+                    refreshMyBudget();
+                }
+
+                updateNextBidUI();
+                let nextRequired = currentBid + bidIncrement;
+
+                if (settings.status === 'idle') {
+                    bidBtn.disabled = true;
+                    bidBtn.innerText = "WAITING TO START ⏸️";
+                    bidBtn.style.background = "#64748b";
+                } else if (nextRequired > myBudget) {
+                    bidBtn.disabled = true;
+                    bidBtn.innerText = "NSF (LOW BUDGET)";
+                    bidBtn.style.background = "#64748b";
+                } else if (highestBidderId == myTeamId) {
+                    bidBtn.disabled = true;
+                    bidBtn.innerText = "YOU ARE HIGHEST";
+                    bidBtn.style.background = "#22c55e";
+                } else {
+                    bidBtn.disabled = false;
+                    bidBtn.innerText = "PLACE BID 🚀";
+                    bidBtn.style.background = "";
+                }
+            } else {
+                idleMsg.style.display = 'block';
+                activeControls.style.display = 'none';
+
+                if (settings.status === 'sold') {
+                    idleMsg.innerHTML = '<div style="font-size:3.5rem; margin-bottom:15px; text-align:center;">✅</div><h2 style="color:#22c55e; font-size:2rem; text-align:center; font-weight:900; margin:0;">PLAYER SOLD!</h2><p style="font-size:1.1rem; margin-top:10px; text-align:center; color:#94a3b8;">Next one coming...</p>';
+                } else if (settings.status === 'unsold') {
+                    idleMsg.innerHTML = '<div style="font-size:3.5rem; margin-bottom:15px; text-align:center;">❌</div><h2 style="color:#ef4444; font-size:2rem; text-align:center; font-weight:900; margin:0;">PLAYER UNSOLD</h2><p style="font-size:1.1rem; margin-top:10px; text-align:center; color:#94a3b8;">Next one coming...</p>';
+                } else {
+                    idleMsg.innerHTML = '<div style="font-size:3.5rem; margin-bottom:15px; text-align:center;">🏏</div><h2 style="color:#fff; font-size:2rem; text-align:center; font-weight:900; margin:0;">AUCTION IS IDLE</h2><p style="font-size:1.1rem; margin-top:10px; text-align:center; color:#94a3b8;">Waiting for the auctioneer to start...</p>';
+                }
+
+                if (settings.status !== prevStatus) {
+                    fetchTeamBudgets();
+                    refreshMyBudget();
+                }
+            }
+            // Always refresh display to account for live bid subtracting from remaining
+            updateBudgetUI();
+        }
+
+        async function refreshMyBudget() {
+            if (!myTeamId) return;
+            try {
+                // 1. Fetch my Team Data
+                const { data: team } = await supabaseClient.from('points_table').select('*').eq('id', myTeamId).single();
+                // 2. Fetch my Squad Data (to calculate spent amount dynamically)
+                const { data: squad } = await supabaseClient.from('team_players').select('bid_amount').eq('team_id', myTeamId);
+
+                if (team) {
+                    myTotalBudget = team.budget || 0;
+                    mySpent = squad ? squad.reduce((sum, p) => sum + (p.bid_amount || 0), 0) : 0;
+                    myBudget = myTotalBudget - mySpent;
+                    updateBudgetUI();
+                }
+            } catch (err) {
+                console.error("refreshMyBudget error:", err);
+            }
+        }
+
+        async function fetchPlayerInfo(id) {
+            const { data } = await supabaseClient.from('player_registrations').select('*').eq('id', id).single();
+            if (data) {
+                document.getElementById('p-name').innerText = data.player_name;
+                document.getElementById('p-reg').innerText = data.registration_no || 'TBD';
+                document.getElementById('p-photo').src = data.photo_url || 'img.jpg';
+
+                document.getElementById('p-format').innerText = (data.batting || 'Right').toUpperCase() + ' HAND';
+                document.getElementById('p-bowling').innerText = (data.bowling || 'Right').toUpperCase() + ' ARM';
+                document.getElementById('p-wk').innerText = (data.wicket_keeper || 'no').toUpperCase();
+
+                if (data.date_of_birth) {
+                    const dob = new Date(data.date_of_birth);
+                    const diff = Date.now() - dob.getTime();
+                    const age = new Date(diff).getUTCFullYear() - 1970;
+                    document.getElementById('p-age').innerText = age > 0 ? age : '--';
+                } else {
+                    document.getElementById('p-age').innerText = '--';
+                }
+            }
+        }
+
+        function updateNextBidUI() {
+            document.getElementById('next-bid-amount').innerText = `₹${currentBid.toLocaleString()}`;
+            let nextVal = currentBid + bidIncrement;
+            document.getElementById('your-next-bid-preview').innerText = `₹${nextVal.toLocaleString()}`;
+        }
+
+        async function placeBid() {
+            let amount = currentBid + bidIncrement;
+            if (amount > myBudget) return alert("Low Budget!");
+
+            const bidBtn = document.getElementById('bid-btn');
+            bidBtn.disabled = true;
+            bidBtn.innerText = "SENDING...";
+
+            try {
+                const { data: latest } = await supabaseClient.from('auction_settings').select('current_bid, highest_bidder_id').eq('id', 'global').single();
+
+                if (latest.highest_bidder_id && latest.current_bid >= amount) {
+                    alert("Bid already increased! Refreshing...");
+                    fetchAuctionState();
+                    return;
+                }
+
+                await supabaseClient.from('auction_bids').insert([{
+                    player_id: currentPlayerId,
+                    team_id: myTeamId,
+                    bid_amount: amount
+                }]);
+
+                await supabaseClient.from('auction_settings').update({
+                    current_bid: amount,
+                    highest_bidder_id: myTeamId
+                }).eq('id', 'global');
+
+            } catch (err) {
+                console.error(err);
+                alert("Bid failed! Check connection.");
+            } finally {
+                fetchAuctionState();
+            }
+        }
+
+        function subscribeToAuction() {
+            supabaseClient.channel('auction_room')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'auction_settings' }, payload => {
+                    handleAuctionUpdate(payload.new);
+                })
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'auction_bids' }, payload => {
+                    fetchRecentBids();
+                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'team_players' }, payload => {
+                    fetchTeamBudgets();
+                    refreshMyBudget();
+                    fetchMySquad();
+                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'points_table' }, payload => {
+                    fetchTeamBudgets();
+                    if (payload.new && payload.new.id === myTeamId) {
+                        refreshMyBudget();
+                    }
+                })
+                .subscribe();
+        }
+
+        async function enterRoom() {
+            document.getElementById('login-overlay').style.display = 'none';
+            document.getElementById('bidding-room').style.display = 'block';
+
+            const { data: team } = await supabaseClient.from('points_table').select('*').eq('id', myTeamId).single();
+            const { data: squad } = await supabaseClient.from('team_players').select('bid_amount').eq('team_id', myTeamId);
+
+            if (team) {
+                document.getElementById('selected-team-display').innerText = team.team_name.toUpperCase();
+                document.getElementById('team-display-name').innerText = team.team_name.toUpperCase();
+                document.getElementById('team-owner-name').innerText = `Owner: ${team.owner_name || 'Not Set'}`;
+
+                myTotalBudget = team.budget || 0;
+                mySpent = squad ? squad.reduce((sum, p) => sum + (p.bid_amount || 0), 0) : 0;
+                myBudget = myTotalBudget - mySpent;
+                updateBudgetUI();
+            }
+
+            fetchAuctionState();
+            fetchRecentBids();
+            fetchTeamBudgets();
+            fetchMySquad();
+        }
+
+        document.addEventListener('DOMContentLoaded', initOwnerPanel);
+    </script>
+</body>
+
+</html>
