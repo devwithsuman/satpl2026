@@ -23,6 +23,48 @@
         body {
             font-family: var(--font-main);
         }
+
+        /* Mobile Adjustments */
+        @media (max-width: 600px) {
+            .hero-title {
+                font-size: 2rem !important;
+            }
+
+            .hero-subtitle {
+                font-size: 1rem !important;
+            }
+
+            .countdown-grid {
+                gap: 10px !important;
+            }
+
+            .countdown-item span:first-child {
+                font-size: 1.5rem !important;
+            }
+
+            #live-score-container {
+                padding: 20px !important;
+            }
+
+            .tv-score-main {
+                font-size: 2.5rem !important;
+            }
+
+            .leaderboard-grid {
+                grid-template-columns: 1fr !important;
+            }
+
+            .navbar .container {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .nav-links {
+                justify-content: center;
+                width: 100%;
+                font-size: 0.8rem;
+            }
+        }
     </style>
 </head>
 
