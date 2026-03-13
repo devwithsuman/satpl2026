@@ -352,6 +352,12 @@
     </header>
 
     <div class="search-container">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <span id="total-player-badge" class="badge"
+                style="background: rgba(255, 0, 85, 0.1); color: #ff0055; border: 1px solid rgba(255, 0, 85, 0.2); font-size: 1rem; padding: 8px 16px;">
+                TOTAL PLAYERS: --
+            </span>
+        </div>
         <div class="search-box">
             <input type="text" id="player-search" class="search-input" placeholder="Search by name or reg no...">
             <select id="role-filter" class="filter-select">
@@ -412,7 +418,13 @@
 
         function renderPlayers(players) {
             const list = document.getElementById('players-list');
+            const countBadge = document.getElementById('total-player-badge');
             if (!list) return;
+
+            // Update Total Count
+            if (countBadge) {
+                countBadge.innerText = `TOTAL PLAYERS: ${players.length}`;
+            }
 
             if (players.length === 0) {
                 list.innerHTML = `<div class="no-results">No players found matching your search criteria.</div>`;
