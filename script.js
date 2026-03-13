@@ -200,7 +200,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         photo_url: photoUrl,
                         payment_status: "pending",
                         payment_id: "PENDING_CHECKOUT",
-                        token: playerToken
+                        token: playerToken,
+                        registration_no: null // Explicitly null to avoid duplicate key collisions with DB defaults
                     }])
                     .select();
 
