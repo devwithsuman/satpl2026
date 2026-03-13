@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Auction | SONAIJURI ANCHAL TENNIS PREMIER LEAGUE (SATPL)</title>
+
+    <!-- Google Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&family=Inter:wght@400;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        :root {
+            --primary: #ff0055;
+            --secondary: #00f2ff;
+            --accent: #ff8c00;
+            --bg-dark: #0a0a0b;
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            background: radial-gradient(circle at top right, #1a0b14, #0a0a0b);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .auction-container {
+            max-width: 1200px;
+            margin: 100px auto 40px;
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 30px;
+        }
+
+        @media (max-width: 992px) {
+            .auction-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Live Player Card */
+        .player-auction-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 30px;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        .player-auction-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+        }
+
+        .auction-status-badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 0, 85, 0.1);
+            color: var(--primary);
+            padding: 8px 20px;
+            border-radius: 50px;
+            font-weight: 800;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid rgba(255, 0, 85, 0.2);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--primary);
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.5);
+                opacity: 0.5;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .player-photo-frame {
+            width: 280px;
+            height: 280px;
+            border-radius: 30px;
+            overflow: hidden;
+            border: 4px solid var(--glass-border);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+            margin-bottom: 25px;
+            background: #151517;
+        }
+
+        .player-photo-frame img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .player-info-main {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .player-name {
+            font-size: 3rem;
+            font-weight: 900;
+            margin: 0;
+            background: linear-gradient(135deg, #00f2ff, #00d2ff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .player-reg-no {
+            color: #ff0055;
+            font-weight: 800;
+            letter-spacing: 4px;
+            font-size: 1.1rem;
+            text-transform: uppercase;
+        }
+
+        .player-stats-row {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .mini-stat {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .mini-stat span {
+            display: block;
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .mini-stat strong {
+            font-size: 1.1rem;
+            color: #fff;
+        }
+
+        /* Bid Section */
+        .bid-display {
+            margin-top: 40px;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .bid-card {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 25px;
+            text-align: center;
+        }
+
+        .bid-card.current {
+            border-color: var(--secondary);
+            background: rgba(0, 242, 255, 0.05);
+            box-shadow: 0 0 30px rgba(0, 242, 255, 0.1);
+        }
+
+        .bid-label {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            margin-bottom: 5px;
+            letter-spacing: 1px;
+        }
+
+        .bid-amount {
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: #fff;
+            font-family: 'monospace';
+        }
+
+        .bidder-name {
+            color: var(--secondary);
+            font-weight: 700;
+            font-size: 1rem;
+            margin-top: 5px;
+        }
+
+        /* Sidebar: Recent Bids */
+        .auction-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .side-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 25px;
+        }
+
+        .panel-title {
+            font-size: 1rem;
+            font-weight: 800;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #fff;
+        }
+
+        .bid-history-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .history-team {
+            font-weight: 600;
+            color: #fff;
+            font-size: 0.9rem;
+        }
+
+        .history-amount {
+            color: var(--secondary);
+            font-weight: 800;
+            font-family: 'monospace';
+        }
+
+        /* Timer Section */
+        .timer-container {
+            text-align: center;
+            padding: 20px 0;
+        }
+
+        .timer-circle {
+            width: 100px;
+            height: 100px;
+            border: 5px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .timer-value {
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: var(--primary);
+        }
+
+        .timer-svg {
+            position: absolute;
+            top: -5px;
+            left: -5px;
+            width: 100px;
+            height: 100px;
+            transform: rotate(-90deg);
+        }
+
+        .timer-svg circle {
+            fill: transparent;
+            stroke: var(--primary);
+            stroke-width: 5;
+            stroke-dasharray: 298.5;
+            /* 2 * PI * 47.5 */
+            stroke-dashoffset: 0;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 1s linear;
+        }
+
+        /* Empty State */
+        .no-auction {
+            display: none;
+            text-align: center;
+            padding: 100px 20px;
+        }
+
+        .no-auction i {
+            font-size: 4rem;
+            color: var(--glass-border);
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 600px) {
+            .auction-container {
+                margin-top: 80px;
+                padding: 0 10px;
+            }
+
+            .player-auction-card {
+                padding: 20px;
+                border-radius: 20px;
+            }
+
+            .player-photo-frame {
+                width: 200px;
+                height: 200px;
+            }
+
+            .player-name {
+                font-size: 2rem;
+            }
+
+            .player-reg-no {
+                font-size: 0.8rem;
+                letter-spacing: 2px;
+            }
+
+            .player-stats-row {
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+
+            .mini-stat {
+                padding: 8px 15px;
+                flex: 1 1 40%;
+            }
+
+            .bid-display {
+                grid-template-columns: 1fr;
+            }
+
+            .bid-amount {
+                font-size: 2rem;
+            }
+
+            .timer-circle {
+                width: 80px;
+                height: 80px;
+            }
+
+            .timer-value {
+                font-size: 2rem;
+            }
+
+            .timer-svg {
+                width: 80px;
+                height: 80px;
+            }
+        }
+
+        /* Flash Sale Alert Animation */
+        .flash-active {
+            animation: bg-flash 0.5s infinite;
+        }
+
+        @keyframes bg-flash {
+            0% {
+                background: radial-gradient(circle at top right, #330011, #0a0a0b);
+            }
+
+            50% {
+                background: radial-gradient(circle at top right, #660022, #1a0b14);
+            }
+
+            100% {
+                background: radial-gradient(circle at top right, #330011, #0a0a0b);
+            }
+        }
+
+        .timer-flash {
+            animation: timer-pulse 0.5s infinite;
+        }
+
+        @keyframes timer-pulse {
+            0% {
+                transform: scale(1);
+                filter: drop-shadow(0 0 5px #ff0000);
+            }
+
+            50% {
+                transform: scale(1.1);
+                filter: drop-shadow(0 0 20px #ff0000);
+            }
+
+            100% {
+                transform: scale(1);
+                filter: drop-shadow(0 0 5px #ff0000);
+            }
+        }
+    </style>
+</head>
+
+<body class="auction-page">
+    <nav class="navbar">
+        <div class="container"
+            style="max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <img src="logo.png" alt="SATPL" style="height: 45px;">
+                <h1
+                    style="font-size: 1.5rem; background: linear-gradient(to right, #fff, var(--secondary)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">
+                    LIVE AUCTION CENTER</h1>
+            </div>
+            <div class="nav-links">
+                <a href="index.html" class="btn-secondary">HOME</a>
+                <a href="squads.html" class="btn-secondary">SQUADS</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Auction Interface -->
+    <div id="auction-active-view" class="auction-container">
+        <!-- Main Content -->
+        <main>
+            <div class="player-auction-card">
+                <div class="auction-status-badge">
+                    <span class="status-dot"></span>
+                    <span id="auction-status-text">LIVE BIDDING</span>
+                </div>
+
+                <div class="player-photo-frame">
+                    <img id="player-photo" src="img.jpg" alt="Player">
+                </div>
+
+                <div class="player-info-main">
+                    <div id="player-reg-no" class="player-reg-no">OSATPL01S0001</div>
+                    <h2 id="player-name" class="player-name">PLAYER NAME</h2>
+                    <div class="player-stats-row">
+                        <div class="mini-stat">
+                            <span>BATTING</span>
+                            <strong id="player-batting">RIGHT HAND</strong>
+                        </div>
+                        <div class="mini-stat">
+                            <span>BOWLING</span>
+                            <strong id="player-bowling">RIGHT ARM</strong>
+                        </div>
+                        <div class="mini-stat">
+                            <span>WICKET KEEPER</span>
+                            <strong id="player-wk">NO</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bid-display">
+                    <div class="bid-card current">
+                        <div class="bid-label">Current Bid</div>
+                        <div class="bid-amount">₹<span id="current-bid">0</span></div>
+                        <div id="highest-bidder" class="bidder-name">NO BIDS YET</div>
+                    </div>
+                    <div class="bid-card">
+                        <div class="bid-label">Base Price</div>
+                        <div class="bid-amount">₹<span id="base-price">150</span></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Sidebar -->
+        <aside class="auction-sidebar">
+            <!-- Timer Panel -->
+            <div class="side-panel">
+                <div class="panel-title">⏱️ TIME REMAINING</div>
+                <div class="timer-container">
+                    <div class="timer-circle">
+                        <svg class="timer-svg" viewBox="0 0 100 100">
+                            <circle cx="50" cy="50" r="47.5" id="timer-progress"></circle>
+                        </svg>
+                        <div id="timer-value" class="timer-value">30</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Team Budgets Panel -->
+            <div class="side-panel">
+                <div class="panel-title" style="color: var(--secondary);">💰 TEAM BUDGETS</div>
+                <div id="team-budget-list" style="display: flex; flex-direction: column; gap: 10px;">
+                    <div style="text-align: center; color: var(--text-dim); font-size: 0.8rem; padding: 10px;">Loading
+                        budgets...</div>
+                </div>
+            </div>
+
+            <!-- Recent Bids Panel -->
+            <div class="side-panel">
+                <div class="panel-title">🚀 RECENT BIDS</div>
+                <ul id="bid-history" class="bid-history-list">
+                    <!-- Bids will injected here -->
+                    <li class="history-item"
+                        style="color: var(--text-dim); text-align: center; justify-content: center;">Waiting for bids...
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Recently Sold Panel -->
+            <div class="side-panel">
+                <div class="panel-title" style="color: #22c55e;">✅ RECENTLY SOLD</div>
+                <div id="recently-sold-list" style="display: flex; flex-direction: column; gap: 10px;">
+                    <div style="text-align: center; color: var(--text-dim); font-size: 0.8rem; padding: 10px;">
+                        No players sold in this session.
+                    </div>
+                </div>
+                <a href="squads.html" class="btn-secondary"
+                    style="margin-top: 15px; width: 100%; text-align: center; font-size: 0.7rem; display: block; padding: 8px;">VIEW
+                    FULL SQUADS</a>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Empty State -->
+    <div id="auction-idle-view" class="no-auction">
+        <div style="font-size: 5rem; margin-bottom: 20px;">🏏</div>
+        <h2 style="font-size: 2.5rem; font-weight: 900; color: #fff;">AUCTION IS CURRENTLY IDLE</h2>
+        <p style="color: var(--text-dim); font-size: 1.2rem;">Next player will appear here when the auctioneer starts
+            the session.</p>
+        <button onclick="window.location.reload()" class="btn" style="margin-top: 30px;">REFRESH PAGE</button>
+    </div>
+
+    <!-- Scripts -->
+    <script src="supabase-config.js"></script>
+    <script src="auction-script.js"></script>
+</body>
+
+</html>
