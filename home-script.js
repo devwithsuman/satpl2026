@@ -11,7 +11,8 @@ async function loadHomepageContent() {
         loadNotices(),
         loadLeaderboard(),
         loadGallery(),
-        startCountdown()
+        startCountdown(),
+        checkLiveAuction()
     ]).catch(err => console.error("Initial Load Error:", err));
 
     // 2. Setup Real-time Sync (The "Bulletproof" Flow)
@@ -170,6 +171,61 @@ function setupRealtimeSync() {
             loadHeroAndScores();
         })
         .subscribe();
+
+    // Sync Auction Status
+    supabaseClient
+        .channel('public:auction_home_sync')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'auction_settings' }, () => {
+            console.log("🔄 Auction Status Changed! Refreshing...");
+            checkLiveAuction();
+        })
+        .subscribe();
+}
+
+async function checkLiveAuction() {
+    try {
+        const { data } = await supabaseClient
+            .from('auction_settings')
+            .select('*')
+            .eq('id', 'global')
+            .single();
+
+        if (data && data.status === 'bidding') {
+            showAuctionNotice(true);
+        } else {
+            showAuctionNotice(false);
+        }
+    } catch (err) {
+        console.error("Auction Check Error:", err);
+    }
+}
+
+function showAuctionNotice(active) {
+    let notice = document.getElementById('auction-live-notice');
+    if (active) {
+        if (!notice) {
+            notice = document.createElement('div');
+            notice.id = 'auction-live-notice';
+            notice.className = 'glass animate-fade';
+            notice.style.cssText = `
+                position: fixed; bottom: 100px; left: 20px; z-index: 1000;
+                padding: 15px 25px; border: 2px solid var(--secondary);
+                background: rgba(0, 242, 255, 0.1); border-radius: 50px;
+                display: flex; align-items: center; gap: 15px;
+                box-shadow: 0 10px 30px rgba(0, 242, 255, 0.2);
+            `;
+            notice.innerHTML = `
+                <span class="pulse-dot"></span>
+                <div style="font-weight: 800; font-size: 0.9rem;">
+                    PLAYER AUCTION IS <span style="color: var(--secondary);">LIVE!</span>
+                </div>
+                <a href="auction.html" class="btn" style="padding: 8px 15px; font-size: 0.75rem;">Join Auction🔨</a>
+            `;
+            document.body.appendChild(notice);
+        }
+    } else if (notice) {
+        notice.remove();
+    }
 }
 
 
