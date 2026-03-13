@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registered Players | SATPL 2026</title>
+
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --font-main: 'Outfit', sans-serif;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background: var(--bg-dark);
+            color: white;
+            min-height: 100vh;
+        }
+
+        .players-hero {
+            padding: 80px 20px 40px;
+            text-align: center;
+            background: linear-gradient(135deg, rgba(255, 0, 85, 0.05) 0%, rgba(0, 242, 255, 0.05) 100%);
+        }
+
+        .search-container {
+            max-width: 800px;
+            margin: -30px auto 40px;
+            padding: 20px;
+            z-index: 10;
+            position: relative;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            padding: 10px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .search-input {
+            flex: 1;
+            background: none;
+            border: none;
+            color: white;
+            padding: 12px 20px;
+            font-size: 1rem;
+            outline: none;
+        }
+
+        .filter-select {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            padding: 0 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .filter-select option {
+            background: #1a1a2e;
+            color: white;
+        }
+
+        .players-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 25px;
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .player-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .player-card:hover {
+            transform: translateY(-12px);
+            background: rgba(255, 255, 255, 0.05);
+            border-color: var(--secondary);
+            box-shadow: 0 25px 50px rgba(0, 242, 255, 0.15);
+        }
+
+        .player-img-wrap {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            position: relative;
+            background: #0f0f1b;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.05);
+            cursor: pointer;
+        }
+
+        .player-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: top center;
+            transition: transform 0.6s ease;
+        }
+
+        .doc-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-dim);
+        }
+
+        .doc-icon {
+            font-size: 3rem;
+            filter: drop-shadow(0 0 10px var(--secondary));
+        }
+
+        .player-card:hover .player-img {
+            transform: scale(1.08);
+        }
+
+        .status-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            padding: 6px 14px;
+            border-radius: 25px;
+            font-size: 0.75rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            z-index: 5;
+        }
+
+        .status-available {
+            background: rgba(0, 242, 255, 0.15);
+            color: var(--secondary);
+            border: 1px solid var(--secondary);
+        }
+
+        .status-sold {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+            border: 1px solid #22c55e;
+        }
+
+        .status-unsold {
+            background: rgba(255, 0, 85, 0.2);
+            color: var(--primary);
+            border: 1px solid var(--primary);
+        }
+
+        .player-info {
+            padding: 24px;
+            text-align: center;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .player-reg {
+            font-size: 0.75rem;
+            color: var(--secondary);
+            font-weight: 700;
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+            font-family: monospace;
+        }
+
+        .player-name {
+            font-size: 1.4rem;
+            font-weight: 900;
+            margin-bottom: 12px;
+            color: white;
+            text-transform: uppercase;
+        }
+
+        .skill-tags {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: auto;
+        }
+
+        .skill-tag {
+            font-size: 0.7rem;
+            padding: 5px 12px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 8px;
+            color: var(--text-dim);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            font-weight: 600;
+        }
+
+        .price-tag {
+            margin-top: 25px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .price-label {
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .price-value {
+            font-size: 1.2rem;
+            font-weight: 900;
+            color: #fff;
+        }
+
+        .sold-text {
+            color: #22c55e !important;
+        }
+
+        .unsold-text {
+            color: #ef4444 !important;
+        }
+
+        .no-results {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 100px 20px;
+            color: var(--text-dim);
+        }
+
+        /* Lightbox Styles */
+        .lightbox-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .lightbox-content {
+            max-width: 90%;
+            max-height: 90%;
+            position: relative;
+            animation: zoomIn 0.3s ease;
+        }
+
+        .lightbox-image {
+            width: auto;
+            height: auto;
+            max-width: 100%;
+            max-height: 80vh;
+            border-radius: 12px;
+            box-shadow: 0 0 50px rgba(0, 242, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .lightbox-close {
+            position: absolute;
+            top: -40px;
+            right: 0;
+            color: white;
+            font-size: 2rem;
+            cursor: pointer;
+            font-weight: 900;
+            transition: transform 0.3s ease;
+        }
+
+        .lightbox-close:hover {
+            transform: rotate(90deg) scale(1.2);
+            color: var(--primary);
+        }
+
+        @keyframes zoomIn {
+            from {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        /* Mobile Adjustments */
+        @media (max-width: 600px) {
+            .search-box {
+                flex-direction: column;
+            }
+
+            .filter-select {
+                padding: 12px;
+            }
+
+            .player-name {
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar animate-fade">
+        <div class="container" style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <img src="img.svg" alt="SATPL Logo" style="height: 50px; width: auto;">
+                <h1 class="gradient-text" style="font-size: 1.8rem; margin: 0;">SATPL 2026</h1>
+            </div>
+            <div class="nav-links" id="dynamic-navbar">
+                <!-- Loaded via nav-loader.js -->
+            </div>
+        </div>
+    </nav>
+
+    <header class="players-hero">
+        <div class="container">
+            <span class="badge"
+                style="background: rgba(0, 242, 255, 0.1); color: var(--secondary); border: 1px solid var(--secondary);">SEASON
+                2026 LIVE</span>
+            <h1 class="gradient-text"
+                style="font-size: 3.5rem; font-weight: 900; margin-top: 15px; letter-spacing: -1px;">Tournament Roster
+            </h1>
+            <p style="color: var(--text-dim); font-size: 1.1rem; max-width: 600px; margin: 15px auto 0;">The official
+                list of all registered warriors for the Sonaijuri Anchal Tennis Premier League.</p>
+        </div>
+    </header>
+
+    <div class="search-container">
+        <div class="search-box">
+            <input type="text" id="player-search" class="search-input" placeholder="Search by name or reg no...">
+            <select id="role-filter" class="filter-select">
+                <option value="all">All Roles</option>
+                <option value="batting">Batsman</option>
+                <option value="bowling">Bowler</option>
+                <option value="wicket_keeper">Wicket Keeper</option>
+            </select>
+        </div>
+    </div>
+
+    <main class="players-grid" id="players-list">
+        <!-- Players populated by JS -->
+        <div class="no-results">
+            <div class="loading-spinner"></div>
+            <p>Syncing player database...</p>
+        </div>
+    </main>
+
+    <!-- Lightbox Modal -->
+    <div id="lightbox-modal" class="lightbox-modal" onclick="closeLightbox()">
+        <div class="lightbox-content" onclick="event.stopPropagation()">
+            <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
+            <img id="lightbox-img" src="" class="lightbox-image">
+            <div id="lightbox-caption"
+                style="text-align: center; margin-top: 15px; font-weight: 700; font-size: 1.1rem;"></div>
+        </div>
+    </div>
+
+    <footer
+        style="padding: 60px 20px; text-align: center; color: var(--text-dim); border-top: 1px solid rgba(255, 255, 255, 0.05); margin-top: 80px; background: rgba(0,0,0,0.2);">
+        <img src="img.svg" style="height: 40px; opacity: 0.5; margin-bottom: 20px;">
+        <p>© 2026 SATPL Premium Experience. All rights reserved.</p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="nav-loader.js"></script>
+    <script>
+        let allPlayers = [];
+
+        async function fetchPlayers() {
+            console.log("📂 Fetching Registered Players list...");
+            const { data, error } = await supabaseClient
+                .from('player_registrations')
+                .select('*')
+                .order('player_name', { ascending: true });
+
+            if (error) {
+                console.error("Error fetching players:", error);
+                document.getElementById('players-list').innerHTML = `<div class="no-results">Error connection: ${error.message}</div>`;
+                return;
+            }
+
+            allPlayers = data || [];
+            renderPlayers(allPlayers);
+        }
+
+        function renderPlayers(players) {
+            const list = document.getElementById('players-list');
+            if (!list) return;
+
+            if (players.length === 0) {
+                list.innerHTML = `<div class="no-results">No players found matching your search criteria.</div>`;
+                return;
+            }
+
+            list.innerHTML = players.map(p => {
+                const status = (p.status || 'paid').toLowerCase();
+                const statusClass = `status-${status === 'paid' ? 'available' : status}`;
+                const statusLabel = status === 'paid' ? 'AVAILABLE' : status.toUpperCase();
+
+                const skills = [];
+                if (p.batting && p.batting !== 'no') skills.push(`${p.batting.toUpperCase()} HAND BAT`);
+                if (p.bowling && p.bowling !== 'no') skills.push(`${p.bowling.toUpperCase()} ARM BOWL`);
+                if (p.wicket_keeper === 'yes' || p.wicket_keeper === true) skills.push('WICKET KEEPER');
+
+                // Image handling logic
+                let photoUrl = p.photo_url || 'img.svg';
+                let isImage = true;
+                const lowerUrl = photoUrl.toLowerCase();
+
+                // Support for PDF or non-image types
+                if (lowerUrl.endsWith('.pdf') || lowerUrl.includes('document')) {
+                    isImage = false;
+                }
+
+                // Photo HTML with lightbox trigger
+                const photoHtml = isImage ?
+                    `<img src="${photoUrl}" class="player-img" onerror="this.src='img.svg'" onclick="openLightbox('${photoUrl}', '${p.player_name}')">` :
+                    `<div class="doc-placeholder" onclick="window.open('${photoUrl}', '_blank')">
+                        <span class="doc-icon">📄</span>
+                        <span style="font-size: 0.7rem;">VIEW PLAYER PROFILE</span>
+                     </div>`;
+
+                // Status logic for price/label
+                let priceHtml = "";
+                if (status === 'sold') {
+                    priceHtml = `
+                        <div style="display: flex; flex-direction: column; gap: 5px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); pb: 5px;">
+                                <span class="price-label" style="margin:0;">BASE PRICE</span>
+                                <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-dim);">₹${(p.base_price || 150).toLocaleString()}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; pt: 5px;">
+                                <span class="price-label" style="margin:0;">SOLD PRICE</span>
+                                <span class="price-value sold-text" style="font-size: 1.1rem;">₹${(p.auction_price || 0).toLocaleString()}</span>
+                            </div>
+                        </div>
+                    `;
+                } else if (status === 'unsold') {
+                    priceHtml = `
+                        <span class="price-label">AUCTION STATUS</span>
+                        <span class="price-value unsold-text">UNSOLD</span>
+                    `;
+                } else {
+                    priceHtml = `
+                        <span class="price-label">BASE PRICE</span>
+                        <span class="price-value">₹${(p.base_price || 150).toLocaleString()}</span>
+                    `;
+                }
+
+                return `
+                    <div class="player-card animate-fade">
+                        <div class="player-img-wrap">
+                            ${photoHtml}
+                            <span class="status-badge ${statusClass}">${statusLabel}</span>
+                        </div>
+                        <div class="player-info">
+                            <div class="player-reg">${p.registration_no || 'OSATPL-TBD'}</div>
+                            <div class="player-name">${p.player_name}</div>
+                            <div class="skill-tags">
+                                ${skills.map(s => `<span class="skill-tag">${s}</span>`).join('')}
+                                ${skills.length === 0 ? '<span class="skill-tag">ALL ROUNDER</span>' : ''}
+                            </div>
+                            <div class="price-tag">
+                                ${priceHtml}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function filterPlayers() {
+            const searchTerm = document.getElementById('player-search').value.toLowerCase();
+            const roleFilter = document.getElementById('role-filter').value;
+
+            const filtered = allPlayers.filter(p => {
+                const matchesSearch = p.player_name.toLowerCase().includes(searchTerm) ||
+                    (p.registration_no && p.registration_no.toLowerCase().includes(searchTerm));
+
+                let matchesRole = true;
+                if (roleFilter === 'batting') matchesRole = p.batting && p.batting !== 'no';
+                else if (roleFilter === 'bowling') matchesRole = p.bowling && p.bowling !== 'no';
+                else if (roleFilter === 'wicket_keeper') matchesRole = p.wicket_keeper === 'yes' || p.wicket_keeper === true;
+
+                return matchesSearch && matchesRole;
+            });
+
+            renderPlayers(filtered);
+        }
+
+        // Lightbox Logic
+        function openLightbox(url, name) {
+            const modal = document.getElementById('lightbox-modal');
+            const img = document.getElementById('lightbox-img');
+            const caption = document.getElementById('lightbox-caption');
+
+            img.src = url;
+            caption.innerText = name;
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden'; // Stop scrolling
+        }
+
+        function closeLightbox() {
+            const modal = document.getElementById('lightbox-modal');
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto'; // Resume scrolling
+        }
+
+        document.getElementById('player-search').addEventListener('input', filterPlayers);
+        document.getElementById('role-filter').addEventListener('change', filterPlayers);
+
+        // Auto-refresh when status changes in DB (Realtime)
+        supabaseClient
+            .channel('public:player_registrations_sync')
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'player_registrations' }, () => {
+                console.log("🔄 Player Status Updated! Refreshing list...");
+                fetchPlayers();
+            })
+            .subscribe();
+
+        document.addEventListener('DOMContentLoaded', fetchPlayers);
+    </script>
+</body>
+
+</html>
