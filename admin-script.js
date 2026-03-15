@@ -3616,9 +3616,11 @@ async function fetchAuctionResults() {
                     <td style="color: ${statusColor}; font-weight: 800;">${p.status.toUpperCase()}</td>
                     <td>${p.status === 'sold' ? '₹' + (salePrice ? salePrice.toLocaleString() : '---') : '---'}</td>
                     <td style="color: var(--secondary); font-weight: 600;">${teamDisplay}</td>
-                    <td>
+                    <td style="display: flex; gap: 8px;">
+                        <button class="btn" style="background: var(--secondary); color: var(--bg-dark); font-size: 0.7rem; padding: 5px 10px; border: none; font-weight: 800;" 
+                            onclick="openEditAuctionModal('${p.id}', '${p.registration_no}', '${(p.player_name || '').replace(/'/g, "\\'")}', '${p.status}', ${salePrice || 0}, '${assignment ? assignment.team_name : ''}')">EDIT</button>
                         <button class="btn" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; font-size: 0.7rem; padding: 5px 10px; border: 1px solid #ef4444;" 
-                            onclick="releasePlayer('${p.id}', '${p.registration_no}')">RELEASE / RESET</button>
+                            onclick="releasePlayer('${p.id}', '${p.registration_no}')">RELEASE</button>
                     </td>
                 </tr>
             `;
@@ -3651,23 +3653,11 @@ async function releasePlayer(playerId, regNo) {
         // 3. Remove from team_players
         await supabaseClient.from('team_players').delete().eq('reg_no', regNo);
 
-        // 4. Handle Refund
-        if (assignment && assignment.team_id) {
-            const { data: team } = await supabaseClient
-                .from('points_table')
-                .select('spent_points')
-                .eq('id', assignment.team_id)
-                .single();
-
-            if (team) {
-                const newSpent = Math.max(0, (team.spent_points || 0) - (assignment.bid_amount || 0));
-                await supabaseClient.from('points_table').update({ spent_points: newSpent }).eq('id', assignment.team_id);
-            }
-        }
+        // 4. Trigger Budget Recalculation (Reliable approach)
+        await syncTeamBudgetsFromSquads();
 
         alert("✅ Player released and budget refunded successfully!");
         fetchAuctionResults();
-        fetchAdminPoints();
         if (typeof loadDashboard === 'function') loadDashboard();
     } catch (err) {
         alert("Release Error: " + err.message);
@@ -3907,4 +3897,106 @@ async function syncTeamBudgetsFromSquads() {
     }
 
     if (typeof fetchAdminPoints === 'function') fetchAdminPoints();
+}
+// ================= EDIT AUCTION RESULT =================
+
+async function openEditAuctionModal(playerId, regNo, name, status, amount, teamName) {
+    const modal = document.getElementById('edit-auction-modal');
+    document.getElementById('edit-auction-player-id').value = playerId;
+    document.getElementById('edit-auction-reg-no').value = regNo;
+    document.getElementById('edit-auction-player-info').innerText = `${name} (${regNo})`;
+    document.getElementById('edit-auction-status').value = status;
+    document.getElementById('edit-auction-price').value = amount || 0;
+
+    // Store old values for budget adjustment
+    document.getElementById('edit-auction-old-amount').value = amount || 0;
+
+    // Populate teams and select current one
+    const teamSelect = document.getElementById('edit-auction-team');
+    teamSelect.innerHTML = '<option value="">Select Team</option>';
+
+    const { data: teams } = await supabaseClient.from('points_table').select('id, team_name').order('team_name');
+    if (teams) {
+        teams.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t.id;
+            opt.innerText = t.team_name;
+            if (t.team_name === teamName) {
+                opt.selected = true;
+                document.getElementById('edit-auction-old-team-id').value = t.id;
+            }
+            teamSelect.appendChild(opt);
+        });
+    }
+
+    toggleEditAuctionTeamPrice();
+    modal.style.display = 'flex';
+}
+
+function toggleEditAuctionTeamPrice() {
+    const status = document.getElementById('edit-auction-status').value;
+    const fields = document.getElementById('edit-auction-sale-fields');
+    fields.style.display = (status === 'sold') ? 'block' : 'none';
+}
+
+async function saveAuctionEdit() {
+    const playerId = document.getElementById('edit-auction-player-id').value;
+    const regNo = document.getElementById('edit-auction-reg-no').value;
+    const newStatus = document.getElementById('edit-auction-status').value;
+    const newAmount = parseInt(document.getElementById('edit-auction-price').value) || 0;
+    const newTeamId = document.getElementById('edit-auction-team').value;
+
+    const oldAmount = parseInt(document.getElementById('edit-auction-old-amount').value) || 0;
+    const oldTeamId = document.getElementById('edit-auction-old-team-id').value;
+
+    try {
+        console.log("💾 Saving Auction Edit...");
+
+        // 1. Update Registration Status
+        const { error: regErr } = await supabaseClient
+            .from('player_registrations')
+            .update({
+                status: newStatus,
+                auction_price: (newStatus === 'sold' ? newAmount : null)
+            })
+            .eq('id', playerId);
+        if (regErr) throw regErr;
+
+        // 2. Handle Team Assignments
+        if (newStatus === 'sold') {
+            if (!newTeamId) {
+                alert("Please select a team for SOLD status");
+                return;
+            }
+
+            const { data: teamData } = await supabaseClient.from('points_table').select('team_name').eq('id', newTeamId).single();
+            const teamName = teamData ? teamData.team_name : 'Unknown';
+
+            // Upsert into team_players
+            const { error: squadErr } = await supabaseClient
+                .from('team_players')
+                .upsert({
+                    reg_no: regNo,
+                    team_id: newTeamId,
+                    team_name: teamName,
+                    bid_amount: newAmount
+                }, { onConflict: 'reg_no' });
+            if (squadErr) throw squadErr;
+
+        } else {
+            // Remove from squad if not sold
+            await supabaseClient.from('team_players').delete().eq('reg_no', regNo);
+        }
+
+        // 3. Trigger Budget Recalculation (Reliable approach)
+        await syncTeamBudgetsFromSquads();
+
+        alert("Auction result updated successfully! ✨");
+        document.getElementById('edit-auction-modal').style.display = 'none';
+        fetchAuctionResults();
+
+    } catch (err) {
+        console.error("Save edit error:", err);
+        alert("Error saving changes: " + err.message);
+    }
 }
