@@ -3388,6 +3388,76 @@ async function finalizeSale() {
     alert(`✅ ${player.player_name} SOLD to ${team.team_name} for ₹${settings.current_bid.toLocaleString()}!`);
     fetchAdminAuctionState();
 }
+
+async function directSale() {
+    const teamName = document.getElementById('direct-sell-team').value;
+    const amountStr = document.getElementById('direct-sell-amount').value;
+    const amount = parseInt(amountStr);
+
+    if (!teamName) return alert("Select a team for direct sale!");
+    if (!amountStr || isNaN(amount) || amount <= 0) return alert("Enter a valid amount!");
+
+    // Check if there is a player on the board
+    const { data: settings } = await supabaseClient.from('auction_settings').select('current_player_id').eq('id', 'global').single();
+    if (!settings || !settings.current_player_id) {
+        return alert("No active player on the auction board! Put a player on the board first.");
+    }
+
+    if (!confirm(`Are you sure you want to directly sell this player to ${teamName} for ₹${amount}?`)) return;
+
+    try {
+        // 1. Get Team ID
+        const { data: team } = await supabaseClient.from('points_table').select('*').eq('team_name', teamName).single();
+        if (!team) return alert("Selected team not found in database!");
+
+        // 2. Get Player Name
+        const { data: player } = await supabaseClient.from('player_registrations').select('*').eq('id', settings.current_player_id).single();
+
+        // 2.5 Check if already in squad
+        const { data: existing } = await supabaseClient.from('team_players').select('id').eq('reg_no', player.registration_no).maybeSingle();
+        if (existing) {
+            return alert("Error: This player is already assigned to a team!");
+        }
+
+        // 3. Insert into team_players
+        const { error: squadError } = await supabaseClient.from('team_players').insert([{
+            team_id: team.id,
+            team_name: team.team_name,
+            player_name: player.player_name,
+            reg_no: player.registration_no,
+            bid_amount: amount,
+            playing_format: (player.batting !== 'no' && player.bowling !== 'no') ? 'Allrounder' : (player.batting !== 'no' ? 'Batting' : 'Bowling'),
+            is_wicket_keeper: player.wicket_keeper === 'yes',
+            batting_style: player.batting + ' Hand',
+            bowling_style: player.bowling + ' Bowl'
+        }]);
+
+        if (squadError) return alert("Squad Error: " + squadError.message);
+
+        // 4. Update Team Spent Points (Increment)
+        const newSpent = (team.spent_points || 0) + amount;
+        await supabaseClient.from('points_table').update({ spent_points: newSpent }).eq('id', team.id);
+
+        // 5. Update Player Status & Price
+        await supabaseClient.from('player_registrations')
+            .update({ status: 'sold', auction_price: amount })
+            .eq('id', settings.current_player_id);
+
+        // 6. Update Auction Status
+        await supabaseClient.from('auction_settings').update({ status: 'sold' }).eq('id', 'global');
+
+        alert(`✅ ${player.player_name} DIRECT SOLD to ${team.team_name} for ₹${amount.toLocaleString()}!`);
+
+        // Reset the inputs
+        document.getElementById('direct-sell-team').value = "";
+        document.getElementById('direct-sell-amount').value = "";
+
+        fetchAdminAuctionState();
+    } catch (e) {
+        console.error(e);
+        alert("Error during direct sale: " + e.message);
+    }
+}
 // ================= AUCTION RESULTS MANAGEMENT =================
 
 async function fetchAuctionResults() {
