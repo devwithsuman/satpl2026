@@ -409,7 +409,9 @@
 
         async function fetchPlayers() {
             console.log("📂 Fetching Registered Players list...");
-            const { data, error } = await supabaseClient
+
+            // 1. Fetch all registered players
+            const { data: players, error } = await supabaseClient
                 .from('player_registrations')
                 .select('*')
                 .order('player_name', { ascending: true });
@@ -420,7 +422,20 @@
                 return;
             }
 
-            allPlayers = data || [];
+            // 2. Fetch all team assignments
+            const { data: squad } = await supabaseClient
+                .from('team_players')
+                .select('reg_no, team_name');
+
+            // 3. Map team names to players
+            allPlayers = (players || []).map(p => {
+                const assignment = squad ? squad.find(s => s.reg_no === p.registration_no) : null;
+                return {
+                    ...p,
+                    team_name: assignment ? assignment.team_name : null
+                };
+            });
+
             renderPlayers(allPlayers);
         }
 
@@ -473,6 +488,10 @@
                     priceHtml = `
                         <div style="display: flex; flex-direction: column; gap: 5px;">
                             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); pb: 5px;">
+                                <span class="price-label" style="margin:0;">TEAM</span>
+                                <span style="font-size: 0.9rem; font-weight: 800; color: var(--secondary); text-transform: uppercase;">${p.team_name || 'Assigned'}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); pb: 5px; pt: 5px;">
                                 <span class="price-label" style="margin:0;">BASE PRICE</span>
                                 <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-dim);">₹${(p.base_price || 150).toLocaleString()}</span>
                             </div>
