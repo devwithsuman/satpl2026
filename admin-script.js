@@ -688,9 +688,19 @@ async function fetchAdminPoints() {
             <td><input type="text" value="${team.group_name || 'A'}" class="table-input group-input" style="width: 50px; text-align: center; font-weight: 800;"></td>
             <td><input type="text" value="${team.team_name || ''}" class="table-input team-name-input"></td>
             <td>
-                <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
-                    ${team.logo_url ? `<img src="${team.logo_url}" onclick="previewTeam('${team.id}')" class="logo-preview" style="width: 35px; height: 35px; border-radius: 50%; object-fit: cover; cursor: pointer; border: 2px solid var(--secondary); transition: 0.3s;" title="Click to preview">` : `<div onclick="previewTeam('${team.id}')" style="width:35px; height:35px; background:rgba(255,255,255,0.1); border-radius:50%; cursor: pointer;" title="Click to preview"></div>`}
-                    <input type="file" class="logo-upload-input" accept="image/png, image/jpeg" style="font-size: 0.6rem; width: 100px;">
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px dashed rgba(255,255,255,0.1);">
+                    <div style="position: relative; width: 45px; height: 45px;">
+                        ${team.logo_url ?
+            `<img src="${team.logo_url}" onclick="previewTeam('${team.id}')" class="logo-preview" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; cursor: pointer; border: 2px solid var(--secondary); box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);" title="Full Preview">` :
+            `<div onclick="previewTeam('${team.id}')" style="width:100%; height:100%; background:rgba(255,255,255,0.05); border-radius:50%; cursor: pointer; display: flex; align-items: center; justify-content: center; border: 2px dashed rgba(255,255,255,0.2);" title="No Logo">
+                                <span style="font-size: 1.2rem; opacity: 0.5;">🖼️</span>
+                            </div>`
+        }
+                    </div>
+                    <label class="btn-secondary" style="font-size: 0.65rem; padding: 4px 8px; cursor: pointer; margin: 0;">
+                        <span>Upload Logo</span>
+                        <input type="file" class="logo-upload-input" accept="image/png, image/jpeg" style="display: none;" onchange="handleLogoSelect(this)">
+                    </label>
                     <input type="hidden" value="${team.logo_url || ''}" class="logo-url-hidden">
                 </div>
             </td>
@@ -744,6 +754,26 @@ async function deleteTeam(id) {
     } else {
         showToast("Team deleted!", "info");
         fetchAdminPoints();
+    }
+}
+
+// Handle local logo selection for preview
+function handleLogoSelect(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        const row = input.closest('tr');
+        const previewImg = row.querySelector('.logo-preview');
+        const previewDiv = previewImg ? null : row.querySelector('div[onclick^="previewTeam"]');
+
+        reader.onload = function (e) {
+            if (previewImg) {
+                previewImg.src = e.target.result;
+            } else if (previewDiv) {
+                previewDiv.innerHTML = `<img src="${e.target.result}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+            }
+            showToast("Logo ready to upload! Click 'Save All Changes' to apply.", "info");
+        };
+        reader.readAsDataURL(input.files[0]);
     }
 }
 
