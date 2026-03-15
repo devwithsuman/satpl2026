@@ -3972,6 +3972,10 @@ async function saveAuctionEdit() {
             const { data: teamData } = await supabaseClient.from('points_table').select('team_name').eq('id', newTeamId).single();
             const teamName = teamData ? teamData.team_name : 'Unknown';
 
+            // Fetch player name to satisfy not-null constraint in team_players
+            const { data: pData } = await supabaseClient.from('player_registrations').select('player_name').eq('id', playerId).single();
+            const playerName = pData ? pData.player_name : 'Unknown Player';
+
             // Safe approach: Delete existing assignment first to avoid constraint issues
             await supabaseClient.from('team_players').delete().eq('reg_no', regNo);
 
@@ -3980,6 +3984,7 @@ async function saveAuctionEdit() {
                 .from('team_players')
                 .insert([{
                     reg_no: regNo,
+                    player_name: playerName,
                     team_id: newTeamId,
                     team_name: teamName,
                     bid_amount: newAmount
