@@ -3972,15 +3972,18 @@ async function saveAuctionEdit() {
             const { data: teamData } = await supabaseClient.from('points_table').select('team_name').eq('id', newTeamId).single();
             const teamName = teamData ? teamData.team_name : 'Unknown';
 
-            // Upsert into team_players
+            // Safe approach: Delete existing assignment first to avoid constraint issues
+            await supabaseClient.from('team_players').delete().eq('reg_no', regNo);
+
+            // Insert new assignment
             const { error: squadErr } = await supabaseClient
                 .from('team_players')
-                .upsert({
+                .insert([{
                     reg_no: regNo,
                     team_id: newTeamId,
                     team_name: teamName,
                     bid_amount: newAmount
-                }, { onConflict: 'reg_no' });
+                }]);
             if (squadErr) throw squadErr;
 
         } else {
