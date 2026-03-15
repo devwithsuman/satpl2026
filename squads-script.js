@@ -28,10 +28,37 @@ async function loadRosterFilters() {
 
 async function loadTeamRoster(teamId, btn) {
     const list = document.getElementById('home-roster-list');
+    const profileHeader = document.getElementById('team-profile-header');
 
     // UI Feedback
     document.querySelectorAll('.roster-filter-btn').forEach(b => b.classList.remove('active-filter'));
     if (btn) btn.classList.add('active-filter');
+
+    // Ensure header is visible but in loading state
+    profileHeader.style.display = 'block';
+    document.getElementById('team-profile-name').innerText = 'Loading...';
+
+    // 1. Fetch Team Details First (for Logo, Owner, and Base Budget)
+    const { data: teamInfo, error: teamError } = await window.safeSupabaseCall(() =>
+        supabaseClient
+            .from('points_table')
+            .select('*')
+            .eq('id', teamId)
+            .single()
+    );
+
+    if (teamError) {
+        console.error('Team Info Error:', teamError);
+    } else if (teamInfo) {
+        // Update Profile UI
+        document.getElementById('team-profile-logo').src = teamInfo.logo_url || 'img.svg';
+        document.getElementById('team-profile-name').innerText = teamInfo.team_name;
+        document.getElementById('team-profile-owner').innerHTML = `Owner: <span style="color: white; font-weight: 600;">${teamInfo.owner_name || 'Not Assigned'}</span>`;
+
+        // Initial Budget placeholders (will refine after roster load)
+        const totalBudget = teamInfo.budget || 4000;
+        document.getElementById('budget-remaining').innerText = `₹${totalBudget}`;
+    }
 
     // Skeleton Loader UI
     list.innerHTML = `
@@ -64,8 +91,32 @@ async function loadTeamRoster(teamId, btn) {
 
     if (!data || data.length === 0) {
         list.innerHTML = '<div style="text-align: center; color: var(--text-dim); padding: 50px;" class="animate-slide-up">No squad information available for this team yet.</div>';
+
+        // Reset budget bar to empty
+        document.getElementById('budget-spent').innerText = `₹0`;
+        document.getElementById('budget-percentage').innerText = `0%`;
+        document.getElementById('budget-progress-bar').style.width = `0%`;
         return;
     }
+
+    // 2. Budget Calculation Logic
+    const totalSpent = data.reduce((sum, p) => sum + (parseInt(p.bid_amount) || 0), 0);
+    const maxBudget = (teamInfo && teamInfo.budget) ? teamInfo.budget : 4000;
+    const remaining = maxBudget - totalSpent;
+    const spentPercentage = Math.min(100, Math.round((totalSpent / maxBudget) * 100));
+
+    // Update Budget UI with Animation
+    document.getElementById('budget-spent').innerText = `₹${totalSpent}`;
+    document.getElementById('budget-remaining').innerText = `₹${remaining}`;
+    document.getElementById('budget-percentage').innerText = `${spentPercentage}%`;
+
+    const progressBar = document.getElementById('budget-progress-bar');
+    progressBar.style.width = `${spentPercentage}%`;
+
+    // Change bar color based on spending
+    if (spentPercentage > 90) progressBar.style.background = 'linear-gradient(90deg, #ff4d4d, #ff0000)';
+    else if (spentPercentage > 75) progressBar.style.background = 'linear-gradient(90deg, #ffa500, #ff8c00)';
+    else progressBar.style.background = 'linear-gradient(90deg, var(--secondary), var(--primary))';
 
     let tableHtml = `
         <div class="table-responsive animate-slide-up" style="margin-top: 20px;">
@@ -170,9 +221,14 @@ window.openPlayerStarCard = async function (regNo, name, format, batting, bowlin
         }
     }
 
-    // Try to get team name from active filter
-    const activeBtn = document.querySelector('.roster-filter-btn.active-filter');
-    if (activeBtn) teamName = activeBtn.innerText.trim();
+    // Try to get team name from profile header or active filter
+    const profileNameEl = document.getElementById('team-profile-name');
+    if (profileNameEl && profileNameEl.innerText !== 'Team Name') {
+        teamName = profileNameEl.innerText.trim();
+    } else {
+        const activeBtn = document.querySelector('.roster-filter-btn.active-filter');
+        if (activeBtn) teamName = activeBtn.innerText.trim();
+    }
 
     body.innerHTML = `
         <div class="player-card-hero" style="background: #1a1a1a;">
