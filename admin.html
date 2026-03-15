@@ -606,14 +606,34 @@
 
                 <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 30px;">
                     <!-- Step 1: Select Player -->
-                    <div class="glass dashboard-card">
+                    <div class="glass dashboard-card" style="position: relative; z-index: 1000;">
                         <h3 class="card-title">1. Select Player to Auction</h3>
                         <div class="form-group">
-                            <label>Search Paid Player (Reg No)</label>
-                            <div style="display: flex; gap: 10px;">
+                            <label>Search Paid Player</label>
+
+                            <!-- Search by Reg No -->
+                            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
                                 <input type="text" id="auction-search-reg" class="table-input"
-                                    placeholder="e.g. OSATPL01S2001">
+                                    placeholder="Search by Reg No (e.g. OSATPL01S...)">
                                 <button class="btn" onclick="lookupAuctionPlayer()">Search</button>
+                            </div>
+
+                            <div
+                                style="text-align: center; color: var(--text-dim); font-size: 0.8rem; margin-bottom: 15px;">
+                                - OR -</div>
+
+                            <!-- Search by Name with Autocomplete -->
+                            <div style="display: flex; gap: 10px; position: relative;">
+                                <input type="text" id="auction-search-name" class="table-input"
+                                    placeholder="Type Player Name..." onkeyup="filterAuctionNames(this.value)"
+                                    autocomplete="off">
+                                <button class="btn" onclick="lookupAuctionPlayerByName()">Search</button>
+
+                                <!-- Autocomplete Dropdown -->
+                                <div id="auction-name-dropdown"
+                                    style="display: none; position: absolute; top: calc(100% + 5px); left: 0; right: 0; background: #1e293b; border: 2px solid #00f2ff; border-radius: 12px; max-height: 300px; overflow-y: auto; z-index: 99999; box-shadow: 0 20px 50px rgba(0,0,0,0.9); opacity: 1 !important;">
+                                    <!-- Populated by JS -->
+                                </div>
                             </div>
                         </div>
                         <div id="auction-player-preview" style="margin-top: 20px; display: none;">
