@@ -3472,11 +3472,9 @@ async function finalizeSale() {
     // 2. Get Player Name
     const { data: player } = await supabaseClient.from('player_registrations').select('*').eq('id', settings.current_player_id).single();
 
-    // 2.5 Check if already in squad
-    const { data: existing } = await supabaseClient.from('team_players').select('id').eq('reg_no', player.registration_no).maybeSingle();
-    if (existing) {
-        return alert("Error: This player is already assigned to a team!");
-    }
+    // 2.5 Safe Clearance: Ensure any ghost records are removed before assignment
+    console.log("🧹 Clearing any existing squad records for this player...");
+    await supabaseClient.from('team_players').delete().eq('reg_no', player.registration_no);
 
     // 3. Insert into team_players
     const { error: squadError } = await supabaseClient.from('team_players').insert([{
@@ -3533,11 +3531,9 @@ async function directSale() {
         // 2. Get Player Name
         const { data: player } = await supabaseClient.from('player_registrations').select('*').eq('id', settings.current_player_id).single();
 
-        // 2.5 Check if already in squad
-        const { data: existing } = await supabaseClient.from('team_players').select('id').eq('reg_no', player.registration_no).maybeSingle();
-        if (existing) {
-            return alert("Error: This player is already assigned to a team!");
-        }
+        // 2.5 Safe Clearance: Ensure any ghost records are removed before assignment
+        console.log("🧹 Clearing any existing squad records for this player...");
+        await supabaseClient.from('team_players').delete().eq('reg_no', player.registration_no);
 
         // 3. Insert into team_players
         const { error: squadError } = await supabaseClient.from('team_players').insert([{
