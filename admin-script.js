@@ -3972,22 +3972,27 @@ async function saveAuctionEdit() {
             const { data: teamData } = await supabaseClient.from('points_table').select('team_name').eq('id', newTeamId).single();
             const teamName = teamData ? teamData.team_name : 'Unknown';
 
-            // Fetch player name to satisfy not-null constraint in team_players
-            const { data: pData } = await supabaseClient.from('player_registrations').select('player_name').eq('id', playerId).single();
-            const playerName = pData ? pData.player_name : 'Unknown Player';
+            // Fetch FULL player data to satisfy all not-null constraints in team_players
+            const { data: player } = await supabaseClient.from('player_registrations').select('*').eq('id', playerId).single();
+
+            if (!player) throw new Error("Player not found in database.");
 
             // Safe approach: Delete existing assignment first to avoid constraint issues
             await supabaseClient.from('team_players').delete().eq('reg_no', regNo);
 
-            // Insert new assignment
+            // Insert new assignment with all required metadata
             const { error: squadErr } = await supabaseClient
                 .from('team_players')
                 .insert([{
                     reg_no: regNo,
-                    player_name: playerName,
+                    player_name: player.player_name,
                     team_id: newTeamId,
                     team_name: teamName,
-                    bid_amount: newAmount
+                    bid_amount: newAmount,
+                    playing_format: (player.batting !== 'no' && player.bowling !== 'no') ? 'Allrounder' : (player.batting !== 'no' ? 'Batting' : 'Bowling'),
+                    is_wicket_keeper: player.wicket_keeper === 'yes' || player.wicket_keeper === true,
+                    batting_style: (player.batting || 'Right') + ' Hand',
+                    bowling_style: (player.bowling || 'Right') + ' Bowl'
                 }]);
             if (squadErr) throw squadErr;
 
