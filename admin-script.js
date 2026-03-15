@@ -4019,6 +4019,7 @@ async function saveAuctionEdit() {
         }
 
         // 3. Trigger Budget Recalculation
+        // 3. Trigger Budget Recalculation
         console.log("⏳ [DEBUG V3] Syncing budgets...");
         await syncTeamBudgetsFromSquads();
 
@@ -4029,5 +4030,65 @@ async function saveAuctionEdit() {
     } catch (err) {
         console.error("❌ [DEBUG V3] CRITICAL ERROR:", err);
         alert("Error saving changes: " + err.message);
+    }
+}
+
+// ================= DATABASE MAINTENANCE =================
+
+async function cleanupOrphanedSquads() {
+    if (!confirm("This will find players who are NOT 'Sold' but still have a team assignment and remove them from squads. Continue?")) return;
+
+    try {
+        console.log("🧹 Starting Squad Cleanup...");
+
+        // 1. Fetch all assigned players
+        const { data: assignments, error: assignedErr } = await supabaseClient
+            .from('team_players')
+            .select('reg_no, player_name');
+
+        if (assignedErr) throw assignedErr;
+        if (!assignments || assignments.length === 0) {
+            alert("No assignments found to check.");
+            return;
+        }
+
+        // 2. Fetch all registered players who are NOT sold
+        const { data: nonSoldPlayers, error: nonSoldErr } = await supabaseClient
+            .from('player_registrations')
+            .select('registration_no')
+            .neq('status', 'sold');
+
+        if (nonSoldErr) throw nonSoldErr;
+
+        const nonSoldRegNos = new Set(nonSoldPlayers.map(p => p.registration_no));
+        const orphanedRegNos = assignments
+            .filter(a => nonSoldRegNos.has(a.reg_no))
+            .map(a => a.reg_no);
+
+        if (orphanedRegNos.length === 0) {
+            alert("Everything looks clean! No orphaned assignments found. ✨");
+            return;
+        }
+
+        console.log(`🗑️ Found ${orphanedRegNos.length} orphaned assignments. Deleting...`);
+
+        // 3. Delete orphaned records
+        const { error: delErr } = await supabaseClient
+            .from('team_players')
+            .delete()
+            .in('reg_no', orphanedRegNos);
+
+        if (delErr) throw delErr;
+
+        // 4. Recalculate budgets
+        await syncTeamBudgetsFromSquads();
+
+        alert(`✅ Cleanup successful! Removed ${orphanedRegNos.length} orphaned assignments and updated budgets.`);
+        fetchAuctionResults();
+        if (typeof fetchAdminRoster === 'function') fetchAdminRoster();
+
+    } catch (err) {
+        console.error("Cleanup Error:", err);
+        alert("Cleanup failed: " + err.message);
     }
 }
