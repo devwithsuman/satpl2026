@@ -3940,19 +3940,21 @@ function toggleEditAuctionTeamPrice() {
 }
 
 async function saveAuctionEdit() {
+    console.log("🚀 [DEBUG V3] saveAuctionEdit triggered");
     const playerId = document.getElementById('edit-auction-player-id').value;
     const regNo = document.getElementById('edit-auction-reg-no').value;
     const newStatus = document.getElementById('edit-auction-status').value;
     const newAmount = parseInt(document.getElementById('edit-auction-price').value) || 0;
     const newTeamId = document.getElementById('edit-auction-team').value;
 
+    console.log(`🔍 [DEBUG V3] Details: ID=${playerId}, Reg=${regNo}, Status=${newStatus}, Team=${newTeamId}, Amount=${newAmount}`);
+
     const oldAmount = parseInt(document.getElementById('edit-auction-old-amount').value) || 0;
     const oldTeamId = document.getElementById('edit-auction-old-team-id').value;
 
     try {
-        console.log("💾 Saving Auction Edit...");
-
         // 1. Update Registration Status
+        console.log("⏳ [DEBUG V3] Updating player_registrations...");
         const { error: regErr } = await supabaseClient
             .from('player_registrations')
             .update({
@@ -3969,18 +3971,29 @@ async function saveAuctionEdit() {
                 return;
             }
 
+            console.log("⏳ [DEBUG V3] Fetching Team and Player metadata...");
             const { data: teamData } = await supabaseClient.from('points_table').select('team_name').eq('id', newTeamId).single();
             const teamName = teamData ? teamData.team_name : 'Unknown';
 
             // Fetch FULL player data to satisfy all not-null constraints in team_players
-            const { data: player } = await supabaseClient.from('player_registrations').select('*').eq('id', playerId).single();
+            let { data: player } = await supabaseClient.from('player_registrations').select('*').eq('id', playerId).maybeSingle();
 
-            if (!player) throw new Error("Player not found in database.");
+            // Fallback to Reg No if ID fails
+            if (!player && regNo) {
+                console.warn("⚠️ [DEBUG V3] Player not found by ID, trying Reg No...");
+                const { data: pByReg } = await supabaseClient.from('player_registrations').select('*').eq('registration_no', regNo).maybeSingle();
+                player = pByReg;
+            }
 
-            // Safe approach: Delete existing assignment first to avoid constraint issues
+            if (!player) throw new Error("Could not find player data for: " + (regNo || playerId));
+            console.log("✅ [DEBUG V3] Player Name Found:", player.player_name);
+
+            // Safe approach: Delete existing assignment first
+            console.log("⏳ [DEBUG V3] Deleting existing squad entry...");
             await supabaseClient.from('team_players').delete().eq('reg_no', regNo);
 
             // Insert new assignment with all required metadata
+            console.log("⏳ [DEBUG V3] Inserting new squad entry...");
             const { error: squadErr } = await supabaseClient
                 .from('team_players')
                 .insert([{
@@ -3994,14 +4007,19 @@ async function saveAuctionEdit() {
                     batting_style: (player.batting || 'Right') + ' Hand',
                     bowling_style: (player.bowling || 'Right') + ' Bowl'
                 }]);
-            if (squadErr) throw squadErr;
+
+            if (squadErr) {
+                console.error("❌ [DEBUG V3] Squad Insert Error:", squadErr);
+                throw squadErr;
+            }
 
         } else {
             // Remove from squad if not sold
             await supabaseClient.from('team_players').delete().eq('reg_no', regNo);
         }
 
-        // 3. Trigger Budget Recalculation (Reliable approach)
+        // 3. Trigger Budget Recalculation
+        console.log("⏳ [DEBUG V3] Syncing budgets...");
         await syncTeamBudgetsFromSquads();
 
         alert("Auction result updated successfully! ✨");
@@ -4009,7 +4027,7 @@ async function saveAuctionEdit() {
         fetchAuctionResults();
 
     } catch (err) {
-        console.error("Save edit error:", err);
+        console.error("❌ [DEBUG V3] CRITICAL ERROR:", err);
         alert("Error saving changes: " + err.message);
     }
 }
