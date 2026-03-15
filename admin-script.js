@@ -3240,10 +3240,120 @@ async function updateAdminAuctionUI(settings) {
     }
 }
 
-async function lookupAuctionPlayer() {
-    const regNo = document.getElementById('auction-search-reg').value.trim().toUpperCase();
-    if (!regNo) return alert("Enter Reg No");
+let allPaidPlayersForAuction = [];
 
+// Fetch all paid players for fast autocomplete
+async function fetchPaidPlayersForAutocomplete() {
+    try {
+        const { data, error } = await supabaseClient
+            .from('player_registrations')
+            .select('id, registration_no, player_name, photo_url, batting, bowling, status, payment_status')
+            .in('payment_status', ['paid', 'completed']);
+
+        if (!error && data) {
+            allPaidPlayersForAuction = data;
+        }
+    } catch (e) {
+        console.error("Error fetching players for autocomplete:", e);
+    }
+}
+
+// Ensure it loads properly
+document.addEventListener('DOMContentLoaded', () => {
+    fetchPaidPlayersForAutocomplete();
+});
+
+function filterAuctionNames(query) {
+    const dropdown = document.getElementById('auction-name-dropdown');
+
+    // Trigger even with 1 character
+    if (!query || query.length < 1) {
+        dropdown.style.display = 'none';
+        return;
+    }
+
+    // Ensure data is loaded
+    if (!allPaidPlayersForAuction || allPaidPlayersForAuction.length === 0) {
+        fetchPaidPlayersForAutocomplete();
+        dropdown.innerHTML = '<div style="padding: 10px; color: var(--text-dim); text-align: center;">Loading...</div>';
+        dropdown.style.display = 'block';
+        return;
+    }
+
+    query = query.toLowerCase().trim();
+
+    // Filter logic: Check if player name includes the exact typed string
+    const filtered = allPaidPlayersForAuction.filter(p => {
+        if (!p || !p.player_name) return false;
+        return p.player_name.toLowerCase().includes(query);
+    }).slice(0, 15); // Show max 15 results
+
+    if (filtered.length === 0) {
+        dropdown.innerHTML = '<div style="padding: 15px; color: #94a3b8; text-align: center; font-weight: 600;">No matches found</div>';
+    } else {
+        dropdown.innerHTML = filtered.map(p => {
+            const isSold = p.status && p.status.toLowerCase() === 'sold';
+            return `
+                <div style="padding: 12px 18px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 12px; transition: all 0.2s;"
+                     onmouseover="this.style.background='rgba(0, 242, 255, 0.15)'"
+                     onmouseout="this.style.background='transparent'"
+                     onclick="selectAuctionPlayerFromDropdown('${p.registration_no}', '${(p.player_name || '').replace(/'/g, "\\'")}')">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <img src="${p.photo_url || 'img.jpg'}" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.15);">
+                        <div>
+                            <div style="font-weight: 800; font-size: 1.05rem; color: ${isSold ? '#64748b' : '#ffffff'}; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">${p.player_name}</div>
+                            <div style="font-size: 0.8rem; color: #94a3b8; font-weight: 600;">Reg: ${p.registration_no}</div>
+                        </div>
+                    </div>
+                    ${isSold ? '<span style="background: #ef4444; color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 900; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);">SOLD</span>' : ''}
+                </div>
+            `;
+        }).join('');
+    }
+    dropdown.style.display = 'block';
+}
+
+function selectAuctionPlayerFromDropdown(regNo, name) {
+    document.getElementById('auction-search-name').value = name;
+    document.getElementById('auction-search-reg').value = regNo; // Also fill reg no field just in case
+    document.getElementById('auction-name-dropdown').style.display = 'none';
+    lookupAuctionPlayerByRegDirectly(regNo);
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function (e) {
+    const dropdown = document.getElementById('auction-name-dropdown');
+    const input = document.getElementById('auction-search-name');
+    if (dropdown && input && !dropdown.contains(e.target) && e.target !== input) {
+        dropdown.style.display = 'none';
+    }
+});
+
+async function lookupAuctionPlayerByName() {
+    const nameInput = document.getElementById('auction-search-name').value.trim();
+    if (!nameInput) return alert("Enter Player Name");
+
+    // Try finding exact or partial match from pre-loaded list first
+    const match = allPaidPlayersForAuction.find(p => p.player_name.toLowerCase() === nameInput.toLowerCase());
+
+    if (match) {
+        lookupAuctionPlayerByRegDirectly(match.registration_no);
+    } else {
+        // Fallback to database query if not found in list
+        const { data, error } = await supabaseClient
+            .from('player_registrations')
+            .select('*')
+            .ilike('player_name', `%${nameInput}%`)
+            .in('status', ['paid', 'unsold'])
+            .limit(1);
+
+        if (error || !data || data.length === 0) return alert("Player not found or not in 'paid/unsold' status!");
+
+        displayAuctionPlayerPreview(data[0]);
+    }
+}
+
+async function lookupAuctionPlayerByRegDirectly(regNo) {
     const { data, error } = await supabaseClient
         .from('player_registrations')
         .select('*')
@@ -3251,7 +3361,10 @@ async function lookupAuctionPlayer() {
         .single();
 
     if (error || !data) return alert("Player not found!");
+    displayAuctionPlayerPreview(data);
+}
 
+function displayAuctionPlayerPreview(data) {
     currentAuctionPlayer = data;
     document.getElementById('auction-p-photo').src = data.photo_url || 'img.jpg';
     document.getElementById('auction-p-name').innerText = data.player_name;
@@ -3261,15 +3374,22 @@ async function lookupAuctionPlayer() {
 
     // Status Check
     const putOnBtn = document.querySelector('button[onclick="putPlayerOnAuction()"]');
-    if (data.status === 'sold' || data.status === 'unsold') {
+    if (data.status === 'sold') {
         putOnBtn.disabled = true;
         putOnBtn.style.opacity = '0.5';
-        putOnBtn.innerText = `Player Already ${data.status.toUpperCase()}`;
+        putOnBtn.innerText = `Player Already SOLD`;
     } else {
         putOnBtn.disabled = false;
         putOnBtn.style.opacity = '1';
         putOnBtn.innerText = 'Put on Auction Board';
     }
+}
+
+async function lookupAuctionPlayer() {
+    const regNo = document.getElementById('auction-search-reg').value.trim().toUpperCase();
+    if (!regNo) return alert("Enter Reg No");
+
+    lookupAuctionPlayerByRegDirectly(regNo);
 }
 
 async function putPlayerOnAuction() {
