@@ -360,12 +360,20 @@
         </div>
         <div class="search-box">
             <input type="text" id="player-search" class="search-input" placeholder="Search by name or reg no...">
-            <select id="role-filter" class="filter-select">
-                <option value="all">All Roles</option>
-                <option value="batting">Batsman</option>
-                <option value="bowling">Bowler</option>
-                <option value="wicket_keeper">Wicket Keeper</option>
-            </select>
+            <div style="display: flex; gap: 10px;">
+                <select id="role-filter" class="filter-select">
+                    <option value="all">All Roles</option>
+                    <option value="batting">Batsman</option>
+                    <option value="bowling">Bowler</option>
+                    <option value="wicket_keeper">Wicket Keeper</option>
+                </select>
+                <select id="status-filter" class="filter-select">
+                    <option value="all">Every Player</option>
+                    <option value="sold">Sold Players</option>
+                    <option value="unsold">Unsold Players</option>
+                    <option value="paid">Available (Auction Pool)</option>
+                </select>
+            </div>
         </div>
     </div>
 
@@ -511,6 +519,7 @@
         function filterPlayers() {
             const searchTerm = document.getElementById('player-search').value.toLowerCase();
             const roleFilter = document.getElementById('role-filter').value;
+            const statusFilter = document.getElementById('status-filter').value;
 
             const filtered = allPlayers.filter(p => {
                 const matchesSearch = p.player_name.toLowerCase().includes(searchTerm) ||
@@ -521,7 +530,13 @@
                 else if (roleFilter === 'bowling') matchesRole = p.bowling && p.bowling !== 'no';
                 else if (roleFilter === 'wicket_keeper') matchesRole = p.wicket_keeper === 'yes' || p.wicket_keeper === true;
 
-                return matchesSearch && matchesRole;
+                let matchesStatus = true;
+                const pStatus = (p.status || 'paid').toLowerCase();
+                if (statusFilter !== 'all') {
+                    matchesStatus = (pStatus === statusFilter);
+                }
+
+                return matchesSearch && matchesRole && matchesStatus;
             });
 
             renderPlayers(filtered);
@@ -547,6 +562,7 @@
 
         document.getElementById('player-search').addEventListener('input', filterPlayers);
         document.getElementById('role-filter').addEventListener('change', filterPlayers);
+        document.getElementById('status-filter').addEventListener('change', filterPlayers);
 
         // Auto-refresh when status changes in DB (Realtime)
         supabaseClient
