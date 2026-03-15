@@ -653,9 +653,24 @@
                                 ❌</button>
                         </div>
                         <div style="margin-top: 20px; border-top: 1px solid var(--glass-border); padding-top: 20px;">
+                            <p style="color: var(--text-dim); font-size: 0.8rem; margin-bottom: 10px;">OPTION 1: Sell to
+                                Highest Bidder</p>
                             <button class="btn"
-                                style="width: 100%; background: var(--secondary); color: var(--bg-dark); font-weight: 900; font-size: 1.1rem;"
-                                onclick="finalizeSale()">🔨 SOLD / FINALIZE SALE</button>
+                                style="width: 100%; background: var(--secondary); color: var(--bg-dark); font-weight: 900; font-size: 1.1rem; margin-bottom: 20px;"
+                                onclick="finalizeSale()">🔨 SOLD (Owner Bid)</button>
+
+                            <p style="color: var(--text-dim); font-size: 0.8rem; margin-bottom: 10px;">OPTION 2: Direct
+                                Sell</p>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                                <select id="direct-sell-team" class="table-input team-selector-sync">
+                                    <option value="">Select Team</option>
+                                </select>
+                                <input type="number" id="direct-sell-amount" class="table-input"
+                                    placeholder="Amount (₹)">
+                            </div>
+                            <button class="btn"
+                                style="width: 100%; background: #3b82f6; color: white; font-weight: 900; font-size: 1.1rem;"
+                                onclick="directSale()">⚡ DIRECT SOLD</button>
                         </div>
                     </div>
                 </div>
