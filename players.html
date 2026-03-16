@@ -248,6 +248,60 @@
             color: var(--text-dim);
         }
 
+        /* High Value Player Highlights */
+        .high-value-card {
+            border: 2px solid var(--secondary) !important;
+            animation: pulse-border 2s infinite ease-in-out;
+            background: linear-gradient(135deg, rgba(0, 242, 255, 0.08), rgba(255, 255, 255, 0.02)) !important;
+        }
+
+        .high-value-glow {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 24px;
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.3);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .star-badge {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: linear-gradient(45deg, #ffd700, #ff8000);
+            color: black;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
+            z-index: 5;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        @keyframes pulse-border {
+            0% {
+                border-color: var(--secondary);
+                box-shadow: 0 0 10px rgba(0, 242, 255, 0.1);
+            }
+
+            50% {
+                border-color: var(--primary);
+                box-shadow: 0 0 25px rgba(0, 242, 255, 0.3);
+            }
+
+            100% {
+                border-color: var(--secondary);
+                box-shadow: 0 0 10px rgba(0, 242, 255, 0.1);
+            }
+        }
+
         /* Lightbox Styles */
         .lightbox-modal {
             display: none;
@@ -373,6 +427,11 @@
                     <option value="unsold">Unsold Players</option>
                     <option value="paid">Available (Auction Pool)</option>
                 </select>
+                <select id="sort-order" class="filter-select">
+                    <option value="alphabetical">Sort: PRICE VALUE</option>
+                    <option value="bid-high">Price: High to Low</option>
+                    <option value="bid-low">Price: Low to High</option>
+                </select>
             </div>
         </div>
     </div>
@@ -442,22 +501,37 @@
         function renderPlayers(players) {
             const list = document.getElementById('players-list');
             const countBadge = document.getElementById('total-player-badge');
+            const sortOrder = document.getElementById('sort-order').value;
             if (!list) return;
+
+            // Apply Sorting
+            let sortedPlayers = [...players];
+            if (sortOrder === 'alphabetical') {
+                sortedPlayers.sort((a, b) => a.player_name.localeCompare(b.player_name));
+            } else if (sortOrder === 'bid-high') {
+                sortedPlayers.sort((a, b) => (b.auction_price || 0) - (a.auction_price || 0));
+            } else if (sortOrder === 'bid-low') {
+                sortedPlayers.sort((a, b) => (a.auction_price || 0) - (b.auction_price || 0));
+            }
 
             // Update Total Count
             if (countBadge) {
-                countBadge.innerText = `TOTAL PLAYERS: ${players.length}`;
+                countBadge.innerText = `TOTAL PLAYERS: ${sortedPlayers.length}`;
             }
 
-            if (players.length === 0) {
+            if (sortedPlayers.length === 0) {
                 list.innerHTML = `<div class="no-results">No players found matching your search criteria.</div>`;
                 return;
             }
 
-            list.innerHTML = players.map(p => {
+            list.innerHTML = sortedPlayers.map(p => {
                 const status = (p.status || 'paid').toLowerCase();
                 const statusClass = `status-${status === 'paid' ? 'available' : status}`;
                 const statusLabel = status === 'paid' ? 'AVAILABLE' : status.toUpperCase();
+
+                // High Value Detection (> 499)
+                const isHighValue = status === 'sold' && (parseInt(p.auction_price) > 499);
+                const highValueClass = isHighValue ? 'high-value-card' : '';
 
                 const skills = [];
                 if (p.batting && p.batting !== 'no') skills.push(`${p.batting.toUpperCase()} HAND BAT`);
@@ -469,12 +543,10 @@
                 let isImage = true;
                 const lowerUrl = photoUrl.toLowerCase();
 
-                // Support for PDF or non-image types
                 if (lowerUrl.endsWith('.pdf') || lowerUrl.includes('document')) {
                     isImage = false;
                 }
 
-                // Photo HTML with lightbox trigger
                 const photoHtml = isImage ?
                     `<img src="${photoUrl}" class="player-img" onerror="this.src='img.svg'" onclick="openLightbox('${photoUrl}', '${p.player_name}')">` :
                     `<div class="doc-placeholder" onclick="window.open('${photoUrl}', '_blank')">
@@ -482,21 +554,20 @@
                         <span style="font-size: 0.7rem;">VIEW PLAYER PROFILE</span>
                      </div>`;
 
-                // Status logic for price/label
                 let priceHtml = "";
                 if (status === 'sold') {
                     priceHtml = `
                         <div style="display: flex; flex-direction: column; gap: 5px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); pb: 5px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px;">
                                 <span class="price-label" style="margin:0;">TEAM</span>
                                 <span style="font-size: 0.9rem; font-weight: 800; color: var(--secondary); text-transform: uppercase;">${p.team_name || 'Assigned'}</span>
                             </div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); pb: 5px; pt: 5px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px; padding-top: 5px;">
                                 <span class="price-label" style="margin:0;">BASE PRICE</span>
                                 <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-dim);">₹${(p.base_price || 150).toLocaleString()}</span>
                             </div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; pt: 5px;">
-                                <span class="price-label" style="margin:0;">SOLD PRICE</span>
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 5px;">
+                                <span class="price-label" style="margin:0;">SOLD PRICE ${isHighValue ? '🔥' : ''}</span>
                                 <span class="price-value sold-text" style="font-size: 1.1rem;">₹${(p.auction_price || 0).toLocaleString()}</span>
                             </div>
                         </div>
@@ -514,7 +585,8 @@
                 }
 
                 return `
-                    <div class="player-card animate-fade">
+                    <div class="player-card animate-fade ${highValueClass}">
+                        ${isHighValue ? '<div class="high-value-glow"></div><div class="star-badge">💎 TOP BUY</div>' : ''}
                         <div class="player-img-wrap">
                             ${photoHtml}
                             <span class="status-badge ${statusClass}">${statusLabel}</span>
@@ -582,6 +654,7 @@
         document.getElementById('player-search').addEventListener('input', filterPlayers);
         document.getElementById('role-filter').addEventListener('change', filterPlayers);
         document.getElementById('status-filter').addEventListener('change', filterPlayers);
+        document.getElementById('sort-order').addEventListener('change', filterPlayers);
 
         // Auto-refresh when status changes in DB (Realtime)
         supabaseClient
