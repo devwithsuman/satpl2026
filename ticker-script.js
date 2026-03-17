@@ -22,20 +22,37 @@ async function initTicker() {
             return;
         }
 
-        // Fetch latest sales for the ticker
-        const { data: sales, error } = await window.supabaseClient
+        // 1. Fetch Latest Sales
+        const { data: sales } = await window.supabaseClient
             .from('team_players')
             .select('player_name, team_name, auction_price')
             .order('created_at', { ascending: false })
             .limit(5);
 
-        let newsItems = [...staticNews];
+        // 2. Fetch Active Manual News
+        const { data: dbNews } = await window.supabaseClient
+            .from('news_ticker')
+            .select('content')
+            .eq('is_active', true)
+            .order('priority', { ascending: false });
+
+        let newsItems = [];
+
+        // Add Manual News First
+        if (dbNews && dbNews.length > 0) {
+            newsItems = dbNews.map(n => n.content);
+        }
+
+        // Add Auction Sales
         if (sales && sales.length > 0) {
             const saleNews = sales.map(s =>
                 `🔥 SOLD: ${s.player_name} to ${s.team_name} for ₹${s.auction_price.toLocaleString()}!`
             );
-            newsItems = [...saleNews, ...staticNews];
+            newsItems = [...newsItems, ...saleNews];
         }
+
+        // Fallback to static if everything empty
+        if (newsItems.length === 0) newsItems = staticNews;
 
         renderTicker(newsItems);
 
