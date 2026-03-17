@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scorer Login | SATPL 2026</title>
+    <link rel="stylesheet" href="admin-styles.css">
+    <style>
+        .admin-login-body {
+            background: radial-gradient(circle at top right, #1e293b, #0f172a);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-box {
+            max-width: 400px;
+            width: 90%;
+            padding: 40px;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body class="admin-login-body">
+
+    <div class="login-box glass animate-fade">
+        <div style="margin-bottom: 30px;">
+            <img src="img.svg" alt="SATPL" style="width: 80px; margin-bottom: 15px;">
+            <h2 class="gradient-text">Scorer Dashboard</h2>
+            <p style="color: var(--text-dim); font-size: 0.9rem;">Official Scoring Login</p>
+        </div>
+
+        <form id="scorerLoginForm">
+            <div class="form-group" style="text-align: left; margin-bottom: 20px;">
+                <label style="font-size: 0.8rem; margin-bottom: 5px; display: block;">Username</label>
+                <input type="text" id="username" placeholder="Enter your username" required class="table-input">
+            </div>
+            <div class="form-group" style="text-align: left; margin-bottom: 25px;">
+                <label style="font-size: 0.8rem; margin-bottom: 5px; display: block;">6-Digit Password</label>
+                <input type="password" id="password" placeholder="Enter password" required class="table-input">
+            </div>
+            <button type="submit" class="btn" style="width: 100%; padding: 15px;">Login to Dashboard 🏏</button>
+            <p id="errorMsg" style="margin-top: 20px; font-size: 0.9rem; min-height: 20px;"></p>
+        </form>
+
+        <div style="text-align: center; margin-top: 20px;">
+            <a href="index.html" class="btn-secondary" style="font-size: 0.8rem; padding: 10px 20px;">Back to
+                Homepage</a>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+
+    <script>
+        const loginForm = document.getElementById("scorerLoginForm");
+        const errorMsg = document.getElementById("errorMsg");
+
+        loginForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const submitBtn = e.target.querySelector('button');
+            const originalBtnText = submitBtn.innerText;
+
+            submitBtn.disabled = true;
+            submitBtn.innerText = "Authenticating...";
+            errorMsg.innerText = "";
+
+            const username = document.getElementById("username").value.trim();
+            const password = document.getElementById("password").value;
+
+            try {
+                // Check against scorers table
+                const { data, error } = await supabaseClient
+                    .from('scorers')
+                    .select('*')
+                    .eq('username', username)
+                    .eq('password', password)
+                    .single();
+
+                if (error || !data) {
+                    throw new Error("Invalid username or password");
+                }
+
+                // Success
+                localStorage.setItem('satpl_scorer_session', JSON.stringify({
+                    id: data.id,
+                    username: data.username,
+                    name: data.name,
+                    timestamp: Date.now()
+                }));
+
+                errorMsg.style.color = "#22c55e";
+                errorMsg.innerText = "✅ Welcome, " + data.name + "! Redirecting...";
+
+                setTimeout(() => {
+                    window.location.href = "scorer-panel.html";
+                }, 800);
+
+            } catch (err) {
+                console.error("Login Error:", err);
+                errorMsg.style.color = "#ff4d8d";
+                errorMsg.innerText = "❌ " + err.message;
+                submitBtn.disabled = false;
+                submitBtn.innerText = originalBtnText;
+            }
+        });
+    </script>
+
+</body>
+
+</html>
