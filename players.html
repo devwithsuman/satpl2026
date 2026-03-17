@@ -656,16 +656,41 @@
         document.getElementById('status-filter').addEventListener('change', filterPlayers);
         document.getElementById('sort-order').addEventListener('change', filterPlayers);
 
-        // Auto-refresh when status changes in DB (Realtime)
-        supabaseClient
-            .channel('public:player_registrations_sync')
-            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'player_registrations' }, () => {
-                console.log("🔄 Player Status Updated! Refreshing list...");
-                fetchPlayers();
-            })
-            .subscribe();
+        // Initialize Realtime Sync only after client is ready
+        function initializeRealtime() {
+            if (typeof supabaseClient === 'undefined' || !supabaseClient) {
+                console.warn("⚠️ Supabase client not ready for Realtime. Retrying in 1s...");
+                setTimeout(initializeRealtime, 1000);
+                return;
+            }
 
-        document.addEventListener('DOMContentLoaded', fetchPlayers);
+            console.log("📡 Initializing Player Sync Channel...");
+            supabaseClient
+                .channel('public:player_registrations_sync')
+                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'player_registrations' }, () => {
+                    console.log("🔄 Player Status Updated! Refreshing list...");
+                    fetchPlayers();
+                })
+                .subscribe((status) => {
+                    if (status === 'SUBSCRIBED') {
+                        console.log("✅ Subscribed to real-time player updates.");
+                    }
+                });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Wait for supabase-config to initialize window.supabaseClient
+            const initCheck = setInterval(() => {
+                if (window.supabaseClient) {
+                    clearInterval(initCheck);
+                    fetchPlayers();
+                    initializeRealtime();
+                }
+            }, 100);
+
+            // Timeout after 10s to stop trying
+            setTimeout(() => clearInterval(initCheck), 10000);
+        });
     </script>
 </body>
 
