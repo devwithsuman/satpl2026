@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scorer Panel | SATPL 2026</title>
+    <link rel="stylesheet" href="admin-styles.css">
+    <style>
+        .scorer-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .scorer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 20px;
+            border: 1px solid var(--glass-border);
+        }
+
+        .btn-red-blink {
+            background: #ef4444;
+            animation: pulse-red 2s infinite;
+        }
+
+        @keyframes pulse-red {
+            0% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+            }
+        }
+    </style>
+        /* ---- SCORER PANEL MOBILE FIXES ---- */
+        @media (max-width: 768px) { .scorer-container { padding: 12px; } .scorer-header { flex-direction: column !important; gap: 12px; text-align: center; padding: 15px; } .section-header { flex-direction: column !important; gap: 10px; align-items: flex-start !important; } #score-fixture-id { width: 100% !important; } .btn-scoring { padding: 13px 6px !important; font-size: 0.92rem !important; } }
+        @media (max-width: 480px) { .scorer-container { padding: 8px; } .btn-scoring { padding: 11px 5px !important; font-size: 0.85rem !important; } #score-display-runs { font-size: 2rem !important; } }
+    </style>
+</head>
+
+<body>
+
+    <div class="scorer-container">
+
+        <header class="scorer-header animate-fade">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <img src="img.svg" alt="SATPL" style="width: 50px;">
+                <div>
+                    <h2 class="gradient-text" style="font-size: 1.2rem; margin: 0;">SATPL Scorer Panel</h2>
+                    <p id="scorer-name-display" style="color: var(--text-dim); font-size: 0.8rem;">Logged in as: ...</p>
+                </div>
+            </div>
+            <button onclick="logoutScorer()" class="btn-secondary" style="padding: 10px 20px;">Logout</button>
+        </header>
+
+        <main class="animate-slide-up">
+            <!-- Professional Live Scoring Section -->
+            <div id="scoring-section" class="active">
+                <header class="section-header" style="margin-bottom: 25px;">
+                    <div>
+                        <h2 class="gradient-text">Live Match Scoring</h2>
+                        <p style="color: var(--text-dim); font-size: 0.9rem;">Professional ball-by-ball match control
+                        </p>
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <span style="color: var(--text-dim); font-size: 0.8rem;">Select Fixture:</span>
+                        <select id="score-fixture-id" class="table-input" style="width: 250px;"
+                            onchange="syncFixtureToScoring(this.value)">
+                            <option value="">-- Choose Match --</option>
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+                </header>
+
+                <div class="grid" style="grid-template-columns: 2fr 1fr; gap: 30px;">
+                    <!-- Scoring Box -->
+                    <div class="glass dashboard-card">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 25px;">
+                            <div>
+                                <h3 id="score-display-team" style="font-size: 1.8rem; margin: 0;">Loading Match...</h3>
+                                <div style="display: flex; align-items: baseline; gap: 10px; margin-top: 10px;">
+                                    <span id="score-display-runs"
+                                        style="font-size: 3rem; font-weight: 900; color: white;">0</span>
+                                    <span style="font-size: 2.5rem; color: var(--secondary); font-weight: 800;">/ <span
+                                            id="score-display-wkts">0</span></span>
+                                    <span id="score-display-overs"
+                                        style="font-size: 1.5rem; color: var(--text-dim);">0.0</span>
+                                </div>
+                            </div>
+                            <div class="badge animate-pulse" id="live-dot" style="background: #22c55e;">● LIVE</div>
+                        </div>
+
+                        <!-- Player Stats (Batting) -->
+                        <div class="grid"
+                            style="grid-template-columns: 1fr 1fr; gap: 20px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px;">
+                            <div class="player-entry glass" id="player-1-box"
+                                style="padding: 15px; border: 1px solid rgba(255,255,255,0.05);">
+                                <div
+                                    style="position: relative; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; margin-bottom: 10px;">
+                                    <div style="display: flex; gap: 10px;">
+                                        <input type="text" id="score-p1-reg" class="table-input"
+                                            placeholder="Name or Reg No" style="height: 35px; font-size: 0.8rem;"
+                                            oninput="filterScoringPlayers(this.value, 1)">
+                                        <button onclick="fetchPlayerForScore(1)" class="btn"
+                                            style="padding: 0 10px;">🔍</button>
+                                    </div>
+                                    <div id="score-p1-dropdown" class="suggestion-dropdown"></div>
+                                </div>
+                                <div id="score-p1-name" style="font-weight: 800; color: var(--secondary);">Striker Name
+                                </div>
+                                <div style="font-size: 1.2rem; font-weight: 900; margin-top: 5px;"><span
+                                        id="score-p1-runs">0</span> (<span id="score-p1-balls">0</span>)</div>
+                            </div>
+                            <div class="player-entry glass" id="player-2-box"
+                                style="padding: 15px; border: 1px solid rgba(255,255,255,0.05);">
+                                <div
+                                    style="position: relative; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; margin-bottom: 10px;">
+                                    <div style="display: flex; gap: 10px;">
+                                        <input type="text" id="score-p2-reg" class="table-input"
+                                            placeholder="Name or Reg No" style="height: 35px; font-size: 0.8rem;"
+                                            oninput="filterScoringPlayers(this.value, 2)">
+                                        <button onclick="fetchPlayerForScore(2)" class="btn"
+                                            style="padding: 0 10px;">🔍</button>
+                                    </div>
+                                    <div id="score-p2-dropdown" class="suggestion-dropdown"></div>
+                                </div>
+                                <div id="score-p2-name" style="font-weight: 800; color: white;">Non-Striker Name</div>
+                                <div style="font-size: 1.2rem; font-weight: 900; margin-top: 5px;"><span
+                                        id="score-p2-runs">0</span> (<span id="score-p2-balls">0</span>)</div>
+                            </div>
+                        </div>
+
+                        <!-- Bowling Stats -->
+                        <div
+                            style="margin-top: 20px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+                            <div style="display: flex; gap: 10px; align-items: center; position: relative;">
+                                <input type="text" id="score-bowl-reg" class="table-input" placeholder="Name/Reg No"
+                                    style="height: 35px; width: 150px;"
+                                    oninput="filterScoringPlayers(this.value, 'bowl')">
+                                <button onclick="fetchPlayerForScore('bowl')" class="btn"
+                                    style="padding: 0 10px;">🔍</button>
+                                <span id="score-bowl-name" style="font-weight: 700;">Bowler Name</span>
+                                <div id="score-bowl-dropdown" class="suggestion-dropdown"
+                                    style="top: 40px; width: 250px;"></div>
+                            </div>
+                            <div style="font-weight: 900;"><span id="score-bowl-wkts">0</span> - <span
+                                    id="score-bowl-runs">0</span> (<span id="score-bowl-overs">0.0</span>)</div>
+                        </div>
+
+                        <!-- Control Buttons (CRICBUZZ STYLE) -->
+                        <div style="margin-top: 30px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+                            <button onclick="handleScoreAction(0)" class="btn-scoring runs">0</button>
+                            <button onclick="handleScoreAction(1)" class="btn-scoring runs">1</button>
+                            <button onclick="handleScoreAction(2)" class="btn-scoring runs">2</button>
+                            <button onclick="handleScoreAction(3)" class="btn-scoring runs">3</button>
+                            <button onclick="handleScoreAction(4)" class="btn-scoring boundary-4">4</button>
+                            <button onclick="handleScoreAction(6)" class="btn-scoring boundary-6">6</button>
+                            <button onclick="handleScoreAction('WD')" class="btn-scoring extra">WD</button>
+                            <button onclick="handleScoreAction('NB')" class="btn-scoring extra">NB</button>
+                            <button onclick="handleScoreAction('W')" class="btn-scoring wicket-btn"
+                                style="grid-column: span 2;">WICKET ☝️</button>
+                            <button onclick="switchStrike()" class="btn-scoring strike-btn"
+                                style="grid-column: span 2;">STRIKE 🔄</button>
+                        </div>
+                    </div>
+
+                    <!-- Match History / Timeline -->
+                    <div class="glass dashboard-card">
+                        <h3 class="card-title">Recent Balls (Over)</h3>
+                        <div id="score-timeline" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px;">
+                            <!-- Balls -->
+                        </div>
+                        <div style="margin-top: 40px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px;">
+                            <h3 class="card-title">Quick Settings</h3>
+                            <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <div class="form-group">
+                                    <label>Overs Limit</label>
+                                    <input type="number" id="score-max-overs" class="table-input" value="6">
+                                </div>
+                                <div class="form-group">
+                                    <label>Wicket Limit</label>
+                                    <input type="number" id="score-max-wkts" class="table-input" value="10">
+                                </div>
+                            </div>
+
+                            <!-- 🔄 PRIMARY LIVE SYNC BUTTON -->
+                            <button onclick="saveLiveScore()" class="btn btn-sync"
+                                style="width: 100%; padding: 18px; margin-bottom: 25px;">SYNC LIVE SCORE TO WEBSITE
+                                📡</button>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
+                                <button onclick="undoLastBall()" class="btn-scoring"
+                                    style="font-size: 0.9rem; padding: 10px;">↩️ Undo</button>
+                                <button onclick="redoLastBall()" class="btn-scoring"
+                                    style="font-size: 0.9rem; padding: 10px;">Redo ↪️</button>
+                            </div>
+
+                            <button onclick="window.open('scorecard.html','_blank')" class="btn-primary"
+                                style="width: 100%; margin-bottom: 10px; background: var(--secondary); color: var(--bg-dark); border-color: var(--secondary);">View
+                                Scorecard 📊</button>
+
+                            <button onclick="resetInnings()" class="btn-secondary"
+                                style="width: 100%; margin-bottom: 30px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: #ef4444;">Reset
+                                Innings</button>
+
+                            <!-- 🏆 FINAL MATCH RESULT SECTION -->
+                            <div
+                                style="margin-bottom:15px; background: rgba(0, 242, 255, 0.03); padding: 20px; border-radius: 16px; border: 1.5px dashed rgba(0, 242, 255, 0.3);">
+                                <label
+                                    style="display: block; margin-bottom: 15px; color: var(--secondary); font-weight: 900; text-transform: uppercase; letter-spacing: 1px;">🏆
+                                    Finalize Match Result</label>
+
+                                <select id="score-winner-select" class="table-input"
+                                    style="margin-bottom:15px; background: #0f172a; border-color: rgba(255,255,255,0.1);">
+                                    <option value="">Select Winner Team</option>
+                                    <!-- Populated dynamically -->
+                                </select>
+
+                                <div
+                                    style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                                    <input type="text" id="score-top-bat" class="table-input" placeholder="Best Batsman"
+                                        style="background: #0f172a;">
+                                    <input type="number" id="score-top-bat-runs" class="table-input" placeholder="Runs"
+                                        style="background: #0f172a;">
+                                </div>
+
+                                <div
+                                    style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
+                                    <input type="text" id="score-top-bowl" class="table-input" placeholder="Best Bowler"
+                                        style="background: #0f172a;">
+                                    <input type="number" id="score-top-bowl-wkts" class="table-input" placeholder="Wkts"
+                                        style="background: #0f172a;">
+                                </div>
+
+                                <button onclick="finalizeLiveMatch()" class="btn"
+                                    style="width: 100%; background: var(--secondary); color: var(--bg-dark); font-weight: 900; box-shadow: 0 0 20px rgba(0, 242, 255, 0.2);">SAVE
+                                    FINAL RESULT 🏁</button>
+                            </div>
+
+                            <button onclick="startSecondInnings()" class="btn-scoring strike-btn"
+                                style="width: 100%; margin-top: 20px; font-size: 0.9rem;">🔄 Start 2nd Innings
+                                (Chase)</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="success-modal" class="modal-backdrop" style="display: none; z-index: 9999;">
+        <div class="glass modal-content animate-fade"
+            style="max-width: 400px; text-align: center; padding: 40px; border: 2px solid #22c55e;">
+            <div
+                style="width: 80px; height: 80px; background: rgba(34, 197, 94, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; color: #22c55e; font-size: 2.5rem;">
+                ✓</div>
+            <h2 style="color: white; margin-bottom: 10px;">Successful!</h2>
+            <p id="success-message" style="color: var(--text-dim); margin-bottom: 25px;">Live scoreboard updated.</p>
+            <button onclick="closeSuccessModal()" class="btn" style="width: 100%;">Awesome!</button>
+        </div>
+    </div>
+
+    <!-- Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="scorer-script.js"></script>
+</body>
+
+</html>
