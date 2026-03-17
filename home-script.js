@@ -723,18 +723,32 @@ async function loadSponsors() {
             .order('priority', { ascending: false });
 
         if (error || !data || data.length === 0) {
-            // Default hardcoded ones if table empty
             return;
         }
 
-        // Create the track content (duplicated for infinite loop)
-        const itemsHtml = data.map(s => `
-            <div class="sponsor-item">
-                ${s.logo_url ? `<img src="${s.logo_url}" alt="${s.name}" class="sponsor-logo">` : `<span class="sponsor-name">${s.name}</span>`}
-            </div>
-        `).join('');
+        const itemsHtml = data.map(s => {
+            const logoContent = s.logo_url 
+                ? `<img src="${s.logo_url}" alt="${s.name}" class="sponsor-logo" style="max-height: 80px; width: auto; object-fit: contain; filter: drop-shadow(0 0 10px rgba(255,255,255,0.1));">` 
+                : `<span class="sponsor-name" style="font-size: 1.5rem; font-weight: 900; background: linear-gradient(135deg, #fff, #888); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">${s.name}</span>`;
+            
+            if (s.website_url) {
+                return `
+                    <div class="sponsor-item" style="padding: 0 40px;">
+                        <a href="${s.website_url}" target="_blank" style="text-decoration: none; transition: transform 0.3s ease; display: inline-block;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+                            ${logoContent}
+                        </a>
+                    </div>
+                `;
+            } else {
+                return `
+                    <div class="sponsor-item" style="padding: 0 40px;">
+                        ${logoContent}
+                    </div>
+                `;
+            }
+        }).join('');
 
-        track.innerHTML = itemsHtml + itemsHtml; // Duplicate for smooth continuous scroll
+        track.innerHTML = itemsHtml + itemsHtml; 
     } catch (e) {
         console.warn("Sponsors load failed:", e.message);
     }
