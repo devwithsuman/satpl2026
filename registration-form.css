@@ -120,3 +120,21 @@
         font-size: 0.95rem;
     }
 }
+/* ---- EXTRA MOBILE PATCHES ---- */
+@media (max-width: 600px) {
+    /* Status checker - also goes single column */
+    .status-checker-section .form-grid,
+    [style*="grid-template-columns: 1fr 1fr"] {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* File upload */
+    .file-upload-wrapper input {
+        font-size: 0.85rem;
+    }
+
+    #submitBtn {
+        font-size: 1rem;
+        padding: 14px;
+    }
+}
