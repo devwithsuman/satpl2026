@@ -138,6 +138,10 @@
                                     <span id="score-display-overs"
                                         style="font-size: 1.5rem; color: var(--text-dim);">0.0</span>
                                 </div>
+                                <div id="target-display-wrap" style="display:none; color: var(--secondary); font-weight: bold; font-size: 0.9rem; margin-top: 5px;">
+                                    🎯 TARGET: <span id="score-display-target">0</span> 
+                                    (Team A: <span id="score-display-t1">0</span>)
+                                </div>
                             </div>
                             <div class="badge animate-pulse" id="live-dot" style="background: #22c55e;">● LIVE</div>
                         </div>
@@ -309,6 +313,22 @@
             <h2 style="color: white; margin-bottom: 10px;">Successful!</h2>
             <p id="success-message" style="color: var(--text-dim); margin-bottom: 25px;">Live scoreboard updated.</p>
             <button onclick="closeSuccessModal()" class="btn" style="width: 100%;">Awesome!</button>
+        </div>
+    </div>
+
+    <!-- Innings Over Modal -->
+    <div id="innings-over-modal" class="modal-backdrop" style="display: none; z-index: 9999;">
+        <div class="glass modal-content animate-slide-up" style="max-width: 450px; text-align: center; padding: 40px; border: 2px solid var(--secondary);">
+            <div style="font-size: 3rem; margin-bottom: 15px;">🏏</div>
+            <h2 class="gradient-text" style="font-size: 1.8rem; margin-bottom: 10px;">Innings Complete!</h2>
+            <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 15px; margin-bottom: 25px;">
+                <p style="color: var(--text-dim); margin-bottom: 5px;">Team A Final Score:</p>
+                <h3 style="font-size: 2rem; color: white; margin: 0;"><span id="modal-t1-runs">0</span>/<span id="modal-t1-wkts">0</span></h3>
+                <p style="color: var(--secondary); font-size: 0.9rem; margin-top: 5px; font-weight: 800;">TARGET: <span id="modal-target">0</span></p>
+            </div>
+            <p style="color: var(--text-dim); margin-bottom: 25px; font-size: 0.9rem;">The first innings has ended. Team A's score is now locked. Ready to start the chase?</p>
+            <button onclick="startSecondInningsFromModal()" class="btn" style="width: 100%; padding: 15px; background: var(--secondary); color: var(--bg-dark); font-weight: 900; font-size: 1.1rem; box-shadow: 0 0 30px rgba(0, 242, 255, 0.3);">START 2ND INNINGS 🚀</button>
+            <button onclick="document.getElementById('innings-over-modal').style.display='none'" class="btn-secondary" style="width: 100%; margin-top: 15px; border: none; background: transparent; color: var(--text-dim);">Review Scorecard First</button>
         </div>
     </div>
 
