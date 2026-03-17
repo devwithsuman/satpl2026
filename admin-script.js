@@ -4752,19 +4752,20 @@ async function fetchSponsors() {
     if (!tbody) return;
 
     if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: var(--text-dim); padding: 40px;">No sponsors added yet. Click "+ Add New Sponsor" to get started.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--text-dim); padding: 40px;">No sponsors added yet. Click "+ Add New Sponsor" to get started.</td></tr>';
         return;
     }
 
     tbody.innerHTML = data.map(s => `
         <tr>
-            <td>${s.logo_url ? `<img src="${s.logo_url}" style="height: 40px; border-radius: 5px; object-fit: contain;">` : '---'}</td>
+            <td>${s.logo_url ? `<img src="${s.logo_url}" style="height: 50px; border-radius: 8px; object-fit: contain; background: rgba(255,255,255,0.05); padding: 5px;">` : '---'}</td>
             <td><strong>${s.name}</strong></td>
+            <td>${s.website_url ? `<a href="${s.website_url}" target="_blank" style="color: var(--secondary); font-size: 0.8rem; text-decoration: none;">🔗 Link</a>` : '<span style="color: var(--text-dim);">No Link</span>'}</td>
             <td>${s.priority}</td>
             <td><span class="status-badge ${s.is_active ? 'paid' : 'pending'}">${s.is_active ? 'Active' : 'Inactive'}</span></td>
             <td>
-                <button class="btn-secondary" style="margin-right:5px;" onclick="openEditSponsorModal('${s.id}')">Edit</button>
-                <button class="btn-scoring" style="background: rgba(239,68,68,0.1); color: #ef4444;" onclick="deleteSponsor('${s.id}')">Delete</button>
+                <button class="btn-secondary" style="margin-right:5px; padding: 5px 10px;" onclick="openEditSponsorModal('${s.id}')">Edit</button>
+                <button class="btn-scoring" style="background: rgba(239,68,68,0.1); color: #ef4444; padding: 5px 10px;" onclick="deleteSponsor('${s.id}')">Delete</button>
             </td>
         </tr>
     `).join('');
@@ -4781,11 +4782,29 @@ function closeSponsorModal() {
     document.getElementById('sponsor-modal').style.display = 'none';
 }
 
+function handleSponsorLogoUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+        alert("File size too large. Please upload an image under 2MB.");
+        event.target.value = '';
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        document.getElementById('sponsor-logo').value = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
 async function openEditSponsorModal(id) {
     const { data } = await supabaseClient.from('sponsors').select('*').eq('id', id).single();
     if (data) {
         document.getElementById('sponsor-id').value = data.id;
         document.getElementById('sponsor-name').value = data.name;
+        document.getElementById('sponsor-website').value = data.website_url || '';
         document.getElementById('sponsor-logo').value = data.logo_url || '';
         document.getElementById('sponsor-priority').value = data.priority || 0;
         document.getElementById('sponsor-active').checked = data.is_active;
@@ -4798,6 +4817,7 @@ async function saveSponsor(e) {
     const id = document.getElementById('sponsor-id').value;
     const sponsorData = {
         name: document.getElementById('sponsor-name').value,
+        website_url: document.getElementById('sponsor-website').value || null,
         logo_url: document.getElementById('sponsor-logo').value || null,
         priority: parseInt(document.getElementById('sponsor-priority').value) || 0,
         is_active: document.getElementById('sponsor-active').checked
