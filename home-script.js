@@ -17,7 +17,21 @@ async function loadHomepageContent() {
     ]).catch(err => console.error("Initial Load Error:", err));
 
     // 2. Setup Real-time Sync (The "Bulletproof" Flow)
-    setupRealtimeSync();
+    try {
+        setupRealtimeSync();
+    } catch (e) {
+        console.error("Realtime Setup Error:", e);
+    }
+
+    // 🚀 GLOBAL FALLBACK POLLING (Every 10s)
+    // Moving this OUTSIDE setupRealtimeSync to ensure it starts even if Realtime errors out
+    if (!window.liveSyncPollingStarted) {
+        setInterval(() => {
+            console.log("💓 Heartbeat: Auto-Refreshing Live Score...");
+            loadHeroAndScores();
+        }, 10000);
+        window.liveSyncPollingStarted = true;
+    }
 }
 
 
@@ -143,16 +157,34 @@ function setupRealtimeSync() {
             console.log("🔄 Points Table Updated! Syncing...");
             loadPointsTable();
         })
-        .subscribe();
+        .subscribe((status) => {
+            console.log(`📡 Points Table Sync Status: ${status}`);
+        });
 
     // Sync Match Center (Hero Content)
     supabaseClient
-        .channel('public:hero_content')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'hero_content' }, () => {
-            console.log("🔄 Match Center Updated! Syncing...");
+        .channel('hero_home_sync')
+        .on('postgres_changes', { 
+            event: 'UPDATE', 
+            schema: 'public', 
+            table: 'hero_content',
+            filter: `id=eq.${MATCH_MAP['live-match']}` 
+        }, (payload) => {
+            console.log("⚡ [REALTIME] Live Score Update Received!", payload.new);
+            handleLiveScoreUpdate(payload.new);
+        })
+        .on('postgres_changes', { 
+            event: 'UPDATE', 
+            schema: 'public', 
+            table: 'hero_content'
+        }, () => {
+            console.log("🔄 Hero Content changed. Refreshing all...");
             loadHeroAndScores();
         })
-        .subscribe();
+        .subscribe((status) => {
+            if (status === 'SUBSCRIBED') showLiveSyncIndicator(true);
+            else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') showLiveSyncIndicator(false);
+        });
 
     // Sync Notices
     supabaseClient
@@ -190,6 +222,8 @@ function setupRealtimeSync() {
             showLiveNotification(payload.payload.message);
         })
         .subscribe();
+
+    // 🚀 Fallback Polling is now global in loadHomepageContent to be more robust
 }
 
 async function checkLiveAuction() {
@@ -363,24 +397,54 @@ async function loadHeroAndScores() {
         statusEl.innerText = live.match_status || "";
         statusEl.style.textShadow = "0 0 10px rgba(0, 255, 163, 0.3)";
 
-        // Detailed Score
+        // Detailed Score (Wickets, Overs, Balls)
         if (document.getElementById('display-live-wickets')) {
-            document.getElementById('display-live-wickets').innerText = live.wickets || 0;
-            document.getElementById('display-live-overs').innerText = live.overs || 0;
-            document.getElementById('display-live-balls').innerText = live.balls || 0;
+            const is2ndInning = live.badge?.includes('TARGET');
+            
+            // Show stats for the CURRENT batting team
+            const currentWickets = is2ndInning ? (live.team2_wickets || 0) : (live.wickets || 0);
+            const currentOvers = is2ndInning ? (live.team2_overs || 0) : (live.overs || 0);
+            const currentBalls = is2ndInning ? (live.team2_balls || 0) : (live.balls || 0);
 
-            // Target
+            document.getElementById('display-live-wickets').innerText = currentWickets;
+            document.getElementById('display-live-overs').innerText = currentOvers;
+            document.getElementById('display-live-balls').innerText = currentBalls;
+
+            // --- PROFESSIONAL CHASE DISPLAY ---
+            const statusEl = document.getElementById('display-live-status');
             const targetWrap = document.getElementById('display-live-target-wrap');
-            if (live.target > 0) {
-                targetWrap.style.display = 'block';
-                document.getElementById('display-live-target').innerText = live.target;
+            
+            if (is2ndInning && live.target > 0) {
+                const req = live.target - (live.team2_score || 0);
+                const playedBalls = (live.team2_overs * 6) + live.team2_balls;
+                const totalBalls = (live.max_overs || 6) * 6;
+                const ballsLeft = Math.max(0, totalBalls - playedBalls);
+
+                if (statusEl) {
+                    if (req <= 0) {
+                        statusEl.innerText = `${live.team2_name} won the match! 🏆`;
+                        statusEl.style.color = "var(--secondary)";
+                    } else if (ballsLeft <= 0 && req > 0) {
+                        statusEl.innerText = `${live.team1_name} won the match! 🏆`;
+                        statusEl.style.color = "#ef4444";
+                    } else {
+                        statusEl.innerText = `${live.team2_name} needs ${req} from ${ballsLeft} balls.`;
+                        statusEl.style.color = "white";
+                    }
+                }
+                
+                if (targetWrap) {
+                    targetWrap.style.display = 'block';
+                    document.getElementById('display-live-target').innerText = live.target;
+                }
             } else {
-                targetWrap.style.display = 'none';
+                if (targetWrap) targetWrap.style.display = 'none';
+                if (statusEl) statusEl.innerText = live.match_status || "Match Highlights LIVE";
             }
 
             // Batsman
             const batsmanWrap = document.getElementById('display-live-batsman-wrap');
-            if (live.batsman1) {
+            if (live.batsman1 && batsmanWrap) {
                 batsmanWrap.style.display = 'block';
                 const runs = live.batsman1_runs || 0;
                 const balls = live.batsman1_balls || 0;
@@ -388,12 +452,15 @@ async function loadHeroAndScores() {
                     <span class="batsman-name">${live.batsman1}</span> 
                     <span class="batsman-score">${runs} (${balls})</span>
                 `;
-            } else {
+            } else if (batsmanWrap) {
                 batsmanWrap.style.display = 'none';
             }
         }
+        
+        // Final fallback: Ensure it's shown if we got here
+        liveContainer.style.display = 'block';
     } else {
-        liveContainer.style.display = 'none';
+        if (liveContainer) liveContainer.style.display = 'none';
     }
 
     // 4. Render Upcoming Match
@@ -440,6 +507,81 @@ async function loadHeroAndScores() {
     }
 
     // Global Map Link is handled in loadSiteSettings
+}
+
+function handleLiveScoreUpdate(data) {
+    if (!data) return;
+    
+    // Update only the necessary DOM elements for maximum performance
+    const score1 = document.getElementById('display-live-score1');
+    const score2 = document.getElementById('display-live-score2');
+    const wkt = document.getElementById('display-live-wickets');
+    const overs = document.getElementById('display-live-overs');
+    const balls = document.getElementById('display-live-balls');
+    const status = document.getElementById('display-live-status');
+    const batWrap = document.getElementById('display-live-batsman-wrap');
+    const batName = document.getElementById('display-live-batsman');
+
+    if (score1) score1.innerText = data.team1_score || 0;
+    if (score2) score2.innerText = data.team2_score || 0;
+    if (wkt) wkt.innerText = data.wickets || 0;
+    if (overs) overs.innerText = data.overs || 0;
+    if (balls) balls.innerText = data.balls || 0;
+    if (status) status.innerText = data.match_status || "Live Score Updating...";
+
+    // 🎯 ENSURE VISIBILITY
+    const container = document.getElementById('live-score-container');
+    if (container && data.team1_name && data.team2_name) {
+        container.style.display = 'block';
+        
+        // Update teams if they were missing
+        const t1 = document.getElementById('display-live-team1');
+        const t2 = document.getElementById('display-live-team2');
+        if (t1) t1.innerText = data.team1_name;
+        if (t2) t2.innerText = data.team2_name;
+    }
+
+    // 🎯 TARGET Logic
+    const targetWrap = document.getElementById('display-live-target-wrap');
+    const targetVal = document.getElementById('display-live-target');
+    if (targetWrap && targetVal) {
+        if (data.target > 0) {
+            targetWrap.style.display = 'block';
+            targetVal.innerText = data.target;
+        } else {
+            targetWrap.style.display = 'none';
+        }
+    }
+
+    if (data.batsman1 && batWrap && batName) {
+        batWrap.style.display = 'block';
+        batName.innerHTML = `<span class="batsman-name">${data.batsman1}</span> <span class="batsman-score">${data.batsman1_runs || 0} (${data.batsman1_balls || 0})</span>`;
+    }
+
+    // Add a quick flash effect to show it updated
+    if (container) {
+        container.style.borderColor = 'var(--secondary)';
+        setTimeout(() => container.style.borderColor = 'var(--primary)', 300);
+    }
+}
+
+function showLiveSyncIndicator(active) {
+    let indicator = document.getElementById('live-sync-indicator');
+    if (active) {
+        if (!indicator) {
+            indicator = document.createElement('div');
+            indicator.id = 'live-sync-indicator';
+            indicator.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.6); padding: 5px 12px; border-radius: 20px; border: 1px solid rgba(0,242,255,0.3); font-size: 0.7rem; color: #00f2ff; font-weight: 700;">
+                    <span class="pulse-dot" style="width: 8px; height: 8px;"></span> LIVE SYNC ACTIVE
+                </div>
+            `;
+            indicator.style.cssText = "position: fixed; top: 80px; right: 20px; z-index: 999; pointer-events: none;";
+            document.body.appendChild(indicator);
+        }
+    } else if (indicator) {
+        indicator.remove();
+    }
 }
 
 window.allTeamsData = []; // Global store for team details
@@ -710,7 +852,12 @@ function closeLightbox() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', loadHomepageContent);
+// Reliable Initialization
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadHomepageContent);
+} else {
+    loadHomepageContent();
+}
 async function loadSponsors() {
     const track = document.getElementById('sponsor-track-dynamic');
     if (!track) return;
