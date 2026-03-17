@@ -11,6 +11,7 @@ async function loadHomepageContent() {
         loadNotices(),
         loadLeaderboard(),
         loadGallery(),
+        loadSponsors(),
         startCountdown(),
         checkLiveAuction()
     ]).catch(err => console.error("Initial Load Error:", err));
@@ -178,6 +179,15 @@ function setupRealtimeSync() {
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'auction_settings' }, () => {
             console.log("🔄 Auction Status Changed! Refreshing...");
             checkLiveAuction();
+        })
+        .subscribe();
+
+    // Sync Live Alerts (Broadcast)
+    supabaseClient
+        .channel('match-updates')
+        .on('broadcast', { event: 'live-alert' }, (payload) => {
+            console.log("📢 Live Alert Received!", payload);
+            showLiveNotification(payload.payload.message);
         })
         .subscribe();
 }
@@ -499,7 +509,28 @@ function showTeamProfileByIndex(index) {
     const modal = document.getElementById('team-modal');
 
     document.getElementById('team-modal-name').innerText = team.team_name;
-    document.getElementById('team-modal-owner').innerText = team.owner_name || "TBD";
+
+    // Support Multiple Owners
+    const owners = Array.isArray(team.owners) ? team.owners : (team.owner_name ? [{ name: team.owner_name, photo: team.owner_photo }] : []);
+    const ownerEl = document.getElementById('team-modal-owner');
+
+    if (owners.length > 0) {
+        ownerEl.innerHTML = `
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+                ${owners.map(o => `
+                    <div style="display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 12px;">
+                        <img src="${o.photo || 'img.svg'}" style="width: 35px; height: 35px; border-radius: 50%; border: 1px solid var(--primary);">
+                        <div style="text-align: left;">
+                            <div style="font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase;">Owner</div>
+                            <div style="font-weight: 700; color: white; line-height: 1;">${o.name}</div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    } else {
+        ownerEl.innerText = "TBD";
+    }
 
     const logoImg = document.getElementById('team-modal-logo');
     if (team.logo_url) {
@@ -680,3 +711,46 @@ function closeLightbox() {
 }
 
 document.addEventListener('DOMContentLoaded', loadHomepageContent);
+async function loadSponsors() {
+    const track = document.getElementById('sponsor-track-dynamic');
+    if (!track) return;
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('sponsors')
+            .select('*')
+            .eq('is_active', true)
+            .order('priority', { ascending: false });
+
+        if (error || !data || data.length === 0) {
+            // Default hardcoded ones if table empty
+            return;
+        }
+
+        // Create the track content (duplicated for infinite loop)
+        const itemsHtml = data.map(s => `
+            <div class="sponsor-item">
+                ${s.logo_url ? `<img src="${s.logo_url}" alt="${s.name}" class="sponsor-logo">` : `<span class="sponsor-name">${s.name}</span>`}
+            </div>
+        `).join('');
+
+        track.innerHTML = itemsHtml + itemsHtml; // Duplicate for smooth continuous scroll
+    } catch (e) {
+        console.warn("Sponsors load failed:", e.message);
+    }
+}
+
+function showLiveNotification(msg) {
+    const toast = document.createElement('div');
+    toast.className = 'live-toast animate-fade';
+    toast.innerHTML = `<strong>LIVE ALERT:</strong> ${msg}`;
+    toast.style = `
+        position: fixed; top: 20px; right: 20px;
+        background: var(--primary); color: white;
+        padding: 15px 25px; border-radius: 12px;
+        z-index: 100000; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        font-weight: 700; border-left: 5px solid white;
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 4000);
+}
