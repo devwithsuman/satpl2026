@@ -66,6 +66,7 @@ function showSection(sectionId) {
             loadAnalytics();
         }
         if (sectionId === 'scorers') { fetchScorers(); fetchPaidPlayersForAutocomplete(); }
+        if (sectionId === 'news') fetchNews();
     }
 }
 
@@ -198,31 +199,29 @@ async function saveHero() {
     submitBtn.disabled = false;
 }
 
-// Quick Scoring Functions
+// Quick Scoring Functions (Inning Aware)
 function quickScore(runs) {
-    const scoreVal = document.getElementById("hero-team1-score"); // Usually home team is batting
+    const is2ndInning = document.getElementById("hero-badge")?.value?.includes("TARGET") || (Number(document.getElementById("hero-target")?.value) > 0);
+    const scoreVal = document.getElementById(is2ndInning ? "hero-team2-score" : "hero-team1-score");
     const currentScore = parseInt(scoreVal.value) || 0;
     scoreVal.value = currentScore + runs;
-    quickBall(); // Every run counted usually means a ball delivery unless wide/nb (keeping it simple for user)
+    quickBall(); 
 }
 
 function quickWicket() {
-    const wktVal = document.getElementById("hero-wickets");
+    const is2ndInning = document.getElementById("hero-badge")?.value?.includes("TARGET") || (Number(document.getElementById("hero-target")?.value) > 0);
+    const wktVal = document.getElementById(is2ndInning ? "hero-t2-wickets" : "hero-wickets");
     const currentWkts = parseInt(wktVal.value) || 0;
     wktVal.value = currentWkts + 1;
     quickBall();
 }
 
 function quickBall() {
-    const ballsVal = document.getElementById("hero-balls");
-    const oversVal = document.getElementById("hero-overs");
+    const is2ndInning = document.getElementById("hero-badge")?.value?.includes("TARGET") || (Number(document.getElementById("hero-target")?.value) > 0);
+    const ballsVal = document.getElementById(is2ndInning ? "hero-t2-balls" : "hero-balls");
+    const oversVal = document.getElementById(is2ndInning ? "hero-t2-overs" : "hero-overs");
     let b = parseInt(ballsVal.value) || 0;
     let o = parseInt(oversVal.value) || 0;
-
-    if (o >= 6) {
-        showToast("Innings limit (6 overs) reached!", "info");
-        return;
-    }
 
     b++;
     if (b >= 6) {
@@ -234,8 +233,32 @@ function quickBall() {
     oversVal.value = o;
 
     if (o === 6 && b === 0) {
-        showToast("Innings Completed (6.0 Overs)", "success");
+        showToast(`Innings Completed (${is2ndInning ? 'Team 2' : 'Team 1'})`, "success");
+        if (!is2ndInning) {
+            const btn = document.getElementById('admin-2nd-inning-btn');
+            if (btn) btn.style.display = 'inline-block';
+        }
     }
+}
+
+async function start2ndInningAdmin() {
+    if (!confirm("Start 2nd Innings? This will set the target and lock Team 1 score.")) return;
+    
+    const t1Score = parseInt(document.getElementById('hero-team1-score').value) || 0;
+    const badge = document.getElementById('hero-badge');
+    const target = document.getElementById('hero-target');
+    
+    badge.value = `TARGET: ${t1Score + 1}`;
+    target.value = t1Score + 1;
+    
+    // Clear Team 2 fields for start
+    document.getElementById('hero-team2-score').value = 0;
+    if (document.getElementById('hero-t2-wickets')) document.getElementById('hero-t2-wickets').value = 0;
+    if (document.getElementById('hero-t2-overs')) document.getElementById('hero-t2-overs').value = 0;
+    if (document.getElementById('hero-t2-balls')) document.getElementById('hero-t2-balls').value = 0;
+    
+    document.getElementById('admin-2nd-inning-btn').style.display = 'none';
+    showToast("2nd Innings Started! Click 'Update Live Feed' to broadcast.", "success");
 }
 
 // ================= NAVIGATION MENU =================
@@ -1560,14 +1583,7 @@ async function init() {
 
         // ================= REAL-TIME BROADCAST (Phase 6) =================
 
-        function broadcastMatchEvent(msg) {
-            const channel = supabaseClient.channel('match-updates');
-            channel.send({
-                type: 'broadcast',
-                event: 'live-alert',
-                payload: { message: msg }
-            });
-        }
+        // Broadcast Match Event is now globally defined below
 
         // ================= REFINED NRR (Phase 5) =================
 
@@ -3005,14 +3021,16 @@ async function loadScoringSection() {
             fixtures.map(f => `<option value="${f.id}">${f.team1} vs ${f.team2} (#${f.match_no})</option>`).join('');
     }
 
+    const isInning2 = data.badge?.includes('TARGET');
+    
     liveMatchState = {
-        team_name: data.team1_name || "Team A",
+        team_name: isInning2 ? (data.team2_name || "Team B") : (data.team1_name || "Team A"),
         team1_name: data.team1_name || "Team A",
         team2_name: data.team2_name || "Team B",
-        runs: data.team1_score || 0,
-        wkts: data.wickets || 0,
-        overs: data.overs || 0,
-        balls: data.balls || 0,
+        runs: isInning2 ? (data.team2_score || 0) : (data.team1_score || 0),
+        wkts: isInning2 ? (data.team2_wickets || 0) : (data.wickets || 0),
+        overs: isInning2 ? (data.team2_overs || 0) : (data.overs || 0),
+        balls: isInning2 ? (data.team2_balls || 0) : (data.balls || 0),
         max_overs: data.max_overs || 6,
         max_wkts: data.max_wickets || 10,
         batsman1: {
@@ -3042,7 +3060,12 @@ async function loadScoringSection() {
         striker: data.striker_idx || 1,
         timeline: data.recent_balls ? data.recent_balls.split(',') : [],
         target: parseInt(data.badge?.replace('TARGET: ', '')) || 0,
-        inning: data.badge?.includes('TARGET') ? 2 : 1
+        inning: data.badge?.includes('TARGET') ? 2 : 1,
+        // Preserve Team 1 stats for 2nd inning
+        t1_score: data.team1_score || 0,
+        t1_wickets: data.wickets || 0,
+        t1_overs_int: data.overs || 0,
+        t1_balls_int: data.balls || 0
     };
 
     updateScoringUI();
@@ -3149,7 +3172,13 @@ function updateScoringUI() {
     }
 
     const timeline = document.getElementById('score-timeline');
-    timeline.innerHTML = liveMatchState.timeline.map(b => `<div class="ball ${b == '4' ? 'boundary' : b == '6' ? 'six' : b.toLowerCase().includes('w') ? 'wicket' : ''}">${b}</div>`).join('');
+    timeline.innerHTML = (liveMatchState.timeline || []).map(b => {
+        const val = String(b || "");
+        const isBound = val === '4';
+        const isSix = val === '6';
+        const isWkt = val.toLowerCase().includes('w');
+        return `<div class="ball ${isBound ? 'boundary' : isSix ? 'six' : isWkt ? 'wicket' : ''}">${val}</div>`;
+    }).join('');
 }
 
 async function fetchPlayerForScore(type) {
@@ -3205,7 +3234,7 @@ function filterScoringPlayers(query, type) {
             dropdown.innerHTML = '<div style="padding: 10px; color: var(--text-dim);">No matches</div>';
         } else {
             dropdown.innerHTML = filtered.map(p => `
-                <div class="dropdown-item" onclick="selectScoringPlayer('${p.registration_no}', '${p.player_name.replace(/'/g, "\\'")}', ${type})">
+                <div class="dropdown-item" onclick="selectScoringPlayer('${p.registration_no}', '${p.player_name.replace(/'/g, "\\'")}', '${type}')">
                     <img src="${p.photo_url || 'img.jpg'}">
                     <div class="player-info">
                         <div class="player-name">${p.player_name}</div>
@@ -3219,8 +3248,8 @@ function filterScoringPlayers(query, type) {
 }
 
 function selectScoringPlayer(regNo, name, type) {
-    const regId = type === 1 ? 'score-p1-reg' : type === 2 ? 'score-p2-reg' : 'score-bowl-reg';
-    const dropId = type === 1 ? 'score-p1-dropdown' : type === 2 ? 'score-p2-dropdown' : 'score-bowl-dropdown';
+    const regId = type.toString() === '1' ? 'score-p1-reg' : type.toString() === '2' ? 'score-p2-reg' : 'score-bowl-reg';
+    const dropId = type.toString() === '1' ? 'score-p1-dropdown' : type.toString() === '2' ? 'score-p2-dropdown' : 'score-bowl-dropdown';
 
     const regInput = document.getElementById(regId);
     if (regInput) regInput.value = regNo;
@@ -3228,11 +3257,11 @@ function selectScoringPlayer(regNo, name, type) {
     const dropdown = document.getElementById(dropId);
     if (dropdown) dropdown.style.display = 'none';
 
-    const parentBox = type === 1 ? document.getElementById('player-1-box') : type === 2 ? document.getElementById('player-2-box') : null;
+    const parentBox = type.toString() === '1' ? document.getElementById('player-1-box') : type.toString() === '2' ? document.getElementById('player-2-box') : null;
     if (parentBox) parentBox.classList.remove('search-active-context');
 
-    if (type === 1) { liveMatchState.batsman1.name = name; liveMatchState.batsman1.reg = regNo; }
-    else if (type === 2) { liveMatchState.batsman2.name = name; liveMatchState.batsman2.reg = regNo; }
+    if (type.toString() === '1') { liveMatchState.batsman1.name = name; liveMatchState.batsman1.reg = regNo; }
+    else if (type.toString() === '2') { liveMatchState.batsman2.name = name; liveMatchState.batsman2.reg = regNo; }
     else { liveMatchState.bowler.name = name; liveMatchState.bowler.reg = regNo; }
 
     updateScoringUI();
@@ -3309,11 +3338,15 @@ function handleScoreAction(val) {
             isWide ? 'WD' : isNoBall ? 'NB' : '',
             strikerObj, {}, liveMatchState.bowler);
     }
-
+    
     if (runs % 2 !== 0 && !isWide && !isNoBall) switchStrike();
-
+    
     updateScoringUI();
-
+    
+    // 🚀 AUTO-SYNC ON EVERY BALL (Feature 41 Fix)
+    // We call saveLiveScore without the "Success" popup to keep it seamless
+    saveLiveScoreSilent();
+    
     // After update, check for Win condition
     if (liveMatchState.inning === 2 && liveMatchState.target > 0) {
         if (liveMatchState.runs >= liveMatchState.target) {
@@ -3339,11 +3372,9 @@ function switchStrike() {
 }
 
 async function saveLiveScore() {
+    const is2ndInning = liveMatchState.inning === 2;
+
     const updates = {
-        team1_score: liveMatchState.runs,
-        wickets: liveMatchState.wkts,
-        overs: liveMatchState.overs,
-        balls: liveMatchState.balls,
         batsman1: liveMatchState.batsman1.name,
         batsman1_runs: liveMatchState.batsman1.runs,
         batsman1_balls: liveMatchState.batsman1.balls,
@@ -3366,6 +3397,18 @@ async function saveLiveScore() {
         max_overs: liveMatchState.max_overs,
         recent_balls: liveMatchState.timeline.join(',')
     };
+
+    if (is2ndInning) {
+        updates.team2_score = liveMatchState.runs;
+        updates.team2_wickets = liveMatchState.wkts;
+        updates.team2_overs = liveMatchState.overs;
+        updates.team2_balls = liveMatchState.balls;
+    } else {
+        updates.team1_score = liveMatchState.runs;
+        updates.wickets = liveMatchState.wkts;
+        updates.overs = liveMatchState.overs;
+        updates.balls = liveMatchState.balls;
+    }
 
     const { error } = await supabaseClient.from('hero_content').update(updates).eq('id', '00000000-0000-0000-0000-000000000001');
 
@@ -3392,6 +3435,64 @@ async function saveLiveScore() {
     else showSuccessPopup("Live Scorecard Updated Successfully! 🚀");
 }
 
+async function saveLiveScoreSilent() {
+    const is2ndInning = liveMatchState.inning === 2;
+    const updates = {
+        batsman1: liveMatchState.batsman1.name,
+        batsman1_runs: liveMatchState.batsman1.runs,
+        batsman1_balls: liveMatchState.batsman1.balls,
+        batsman1_4s: liveMatchState.batsman1.f4s,
+        batsman1_6s: liveMatchState.batsman1.s6s,
+        batsman1_reg: liveMatchState.batsman1.reg,
+        batsman2: liveMatchState.batsman2.name,
+        batsman2_runs: liveMatchState.batsman2.runs,
+        batsman2_balls: liveMatchState.batsman2.balls,
+        batsman2_4s: liveMatchState.batsman2.f4s,
+        batsman2_6s: liveMatchState.batsman2.s6s,
+        batsman2_reg: liveMatchState.batsman2.reg,
+        bowler_name: liveMatchState.bowler.name,
+        bowler_runs: liveMatchState.bowler.runs,
+        bowler_wickets: liveMatchState.bowler.wkts,
+        bowler_overs: liveMatchState.bowler.overs,
+        bowler_over_balls: liveMatchState.bowler.balls,
+        bowler_reg: liveMatchState.bowler.reg,
+        striker_idx: liveMatchState.striker,
+        max_overs: liveMatchState.max_overs,
+        recent_balls: liveMatchState.timeline.join(',')
+    };
+
+    if (is2ndInning) {
+        updates.team2_score = liveMatchState.runs;
+        updates.team2_wickets = liveMatchState.wkts;
+        updates.team2_overs = liveMatchState.overs;
+        updates.team2_balls = liveMatchState.balls;
+    } else {
+        updates.team1_score = liveMatchState.runs;
+        updates.wickets = liveMatchState.wkts;
+        updates.overs = liveMatchState.overs;
+        updates.balls = liveMatchState.balls;
+    }
+
+    // Use our global supabaseClient
+    supabaseClient.from('hero_content').update(updates).eq('id', '00000000-0000-0000-0000-000000000001');
+
+    const fixtureId = document.getElementById('score-fixture-id')?.value;
+    if (fixtureId) {
+        const is2ndInning = liveMatchState.inning === 2;
+        const currentOvers = parseFloat(`${liveMatchState.overs}.${liveMatchState.balls}`);
+        
+        await supabaseClient.from('fixtures').update({
+            t1_score: is2ndInning ? (liveMatchState.t1_score || (liveMatchState.target - 1)) : liveMatchState.runs,
+            t1_wickets: is2ndInning ? (liveMatchState.t1_wickets || 10) : liveMatchState.wkts,
+            t1_overs: is2ndInning ? (liveMatchState.t1_overs || 6.0) : currentOvers,
+            t2_score: is2ndInning ? liveMatchState.runs : 0,
+            t2_wickets: is2ndInning ? liveMatchState.wkts : 0,
+            t2_overs: is2ndInning ? currentOvers : 0.0,
+            status: 'live'
+        }).eq('id', fixtureId);
+    }
+}
+
 function resetInnings() {
     if (!confirm("Reset?")) return;
     scoreHistory = [];
@@ -3414,6 +3515,7 @@ function undoLastBall() {
     const lastState = scoreHistory.pop();
     liveMatchState = lastState;
     updateScoringUI();
+    saveLiveScoreSilent(); // 🚀 Sync undo
     showToast("Last ball undone! ↩️", "info");
 }
 
@@ -3447,6 +3549,8 @@ async function startSecondInnings() {
     liveMatchState.t1_score = firstInningsScore;
     liveMatchState.t1_overs = firstInningsOvers;
     liveMatchState.t1_wickets = firstInningsWkts;
+    liveMatchState.t1_overs_int = liveMatchState.overs;
+    liveMatchState.t1_balls_int = liveMatchState.balls;
 
     // Reset for 2nd Innings
     liveMatchState.team_name = chasingTeam;
@@ -3469,10 +3573,14 @@ async function startSecondInnings() {
     const badgeText = `TARGET: ${firstInningsScore + 1}`;
     await supabaseClient.from('hero_content').update({
         badge: badgeText,
-        team1_score: 0,
-        wickets: 0,
-        overs: 0,
-        balls: 0,
+        team1_score: firstInningsScore,
+        wickets: liveMatchState.t1_wickets,
+        overs: liveMatchState.t1_overs_int,
+        balls: liveMatchState.t1_balls_int,
+        team2_score: 0,
+        team2_wickets: 0,
+        team2_overs: 0,
+        team2_balls: 0,
         match_status: `${chasingTeam} needs ${firstInningsScore + 1} runs to win.`
     }).eq('id', '00000000-0000-0000-0000-000000000001');
 
@@ -3549,6 +3657,24 @@ async function finalizeLiveMatch() {
         if (topBowl) await updateTournamentCaps(topBowl, '', 'bowler', 0, topBowlWkts, 0, 1);
 
         showSuccessPopup("Match Finalized & Results Updated Successfully! 🏆");
+
+        // Feature 40: Show Auto-Generated Match Report
+        const reportData = {
+            t1: m.team1,
+            t2: m.team2,
+            winner: winner,
+            score1: finalData.t1_score,
+            wickets1: finalData.t1_wickets,
+            overs1: finalData.t1_overs,
+            score2: finalData.t2_score,
+            wickets2: finalData.t2_wickets,
+            overs2: finalData.t2_overs,
+            topBat: topBat,
+            topBatRuns: topBatRuns,
+            topBowl: topBowl,
+            topBowlWkts: topBowlWkts
+        };
+        setTimeout(() => openMatchReportModal(reportData), 1500);
 
         // Refresh UI
         fetchResults();
@@ -4854,4 +4980,307 @@ async function deleteSponsor(id) {
         showToast("Sponsor deleted.", "success");
         fetchSponsors();
     }
+}
+
+// ================= NEWS TICKER MANAGEMENT (GLOBAL) =================
+
+async function fetchNews() {
+    const { data, error } = await supabaseClient
+        .from('news_ticker')
+        .select('*')
+        .order('priority', { ascending: false });
+
+    if (error) return console.error('News fetch error:', error);
+
+    const tbody = document.getElementById('news-table-body');
+    if (!tbody) return;
+
+    if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: var(--text-dim); padding: 40px;">No news updates found. Click "+ Add New News" to create one.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = data.map(n => `
+        <tr>
+            <td><strong>${n.content}</strong></td>
+            <td>${n.priority}</td>
+            <td><span class="status-badge ${n.is_active ? 'paid' : 'pending'}">${n.is_active ? 'Active' : 'Inactive'}</span></td>
+            <td>
+                <button class="btn-secondary" style="margin-right:5px; padding: 5px 10px;" onclick="openEditNewsModal('${n.id}')">Edit</button>
+                <button class="btn-scoring" style="background: rgba(239,68,68,0.1); color: #ef4444; padding: 5px 10px;" onclick="deleteNews('${n.id}')">Delete</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function openAddNewsModal() {
+    document.getElementById('news-form').reset();
+    document.getElementById('news-id').value = '';
+    document.getElementById('news-modal-title').innerText = 'Add News';
+    document.getElementById('news-active').checked = true;
+    document.getElementById('news-modal').style.display = 'flex';
+}
+
+function closeNewsModal() {
+    document.getElementById('news-modal').style.display = 'none';
+}
+
+async function openEditNewsModal(id) {
+    const { data } = await supabaseClient.from('news_ticker').select('*').eq('id', id).single();
+    if (data) {
+        document.getElementById('news-id').value = data.id;
+        document.getElementById('news-content').value = data.content;
+        document.getElementById('news-priority').value = data.priority || 0;
+        document.getElementById('news-active').checked = data.is_active;
+        document.getElementById('news-modal-title').innerText = 'Edit News';
+        document.getElementById('news-modal').style.display = 'flex';
+    }
+}
+
+async function saveNews(e) {
+    e.preventDefault();
+    const id = document.getElementById('news-id').value;
+    const newsData = {
+        content: document.getElementById('news-content').value,
+        priority: parseInt(document.getElementById('news-priority').value) || 0,
+        is_active: document.getElementById('news-active').checked
+    };
+
+    let error;
+    if (id) {
+        ({ error } = await supabaseClient.from('news_ticker').update(newsData).eq('id', id));
+    } else {
+        ({ error } = await supabaseClient.from('news_ticker').insert([newsData]));
+    }
+
+    if (error) {
+        alert("Error saving news: " + error.message);
+    } else {
+        showToast("News saved successfully!", "success");
+        closeNewsModal();
+        fetchNews();
+    }
+}
+
+async function deleteNews(id) {
+    if (!confirm("Are you sure you want to delete this news item?")) return;
+    const { error } = await supabaseClient.from('news_ticker').delete().eq('id', id);
+    if (error) alert("Error: " + error.message);
+    else {
+        showToast("News item deleted.", "success");
+        fetchNews();
+    }
+}
+// ================= FEATURE 40: AUTO-GENERATED MATCH REPORT =================
+
+let currentMatchReportText = "";
+
+function generateMatchReport(d) {
+    const isT1Winner = d.winner === d.t1;
+    const margin = isT1Winner ? (d.score1 - d.score2) : (d.score2 - d.score1);
+    const winByWickets = isT1Winner ? (10 - d.wickets1) : (10 - d.wickets2);
+
+    const intros = [
+        `কি দারুন একটা ম্যাচ! SATPL 2026-এর আজকের ম্যাচে **${d.winner}** এক অভাবনীয় জয় ছিনিয়ে নিয়েছে। 🏆`,
+        `রোমাঞ্চে ভরপুর আজকের ম্যাচে শেষ হাসি হাসলো **${d.winner}**। 🏏`,
+        `গ্যালারি ভর্তি দর্শকদের সাক্ষী রেখে **${d.winner}** এক দাপুটে পারফরম্যান্স উপহার দিলো। 🔥`
+    ];
+
+    const intro = intros[Math.floor(Math.random() * intros.length)];
+
+    let resultLine = "";
+    if (d.score2 > 0) {
+        // Full match played
+        resultLine = `**${d.t1}** প্রথমে ব্যাট করে **${d.score1}/${d.wickets1}** রান তোলে। জবাবে **${d.t2}**, **${d.score2}/${d.wickets2}** রানে থেমে যায়।`;
+    } else {
+        resultLine = `**${d.t1}** এই ম্যাচে **${d.score1}/${d.wickets1}** রান সংগ্রহ করেছিল।`;
+    }
+
+    const performanceLine = `আজকের ম্যাচের সেরা পারফর্মাররা হলেন:
+🌟 **সেরা ব্যাটসম্যান:** ${d.topBat || 'N/A'} (${d.topBatRuns} রান)
+🎯 **সেরা বোলার:** ${d.topBowl || 'N/A'} (${d.topBowlWkts} উইকেট)`;
+
+    const closingSet = [
+        `টুর্নামেন্টে নিজেদের আধিপত্য বজায় রাখতে এই জয় **${d.winner}**-এর জন্য অত্যন্ত গুরুত্বপূর্ণ ছিল। শুভেচ্ছা জানাই পুরো টিমকে! 🎉`,
+        `আগামী ম্যাচগুলোতেও এমন পারফরম্যান্স দেখার অপেক্ষায় থাকলো সনাইজুরি আঞ্চাল টেনিস প্রিমিয়ার লিগ (SATPL) প্রেমীরা।`
+    ];
+    const closing = closingSet[Math.floor(Math.random() * closingSet.length)];
+
+    return `${intro}
+
+${resultLine}
+
+${performanceLine}
+
+${closing}
+
+---
+🌐 SATPL 2026 - www.inkvibe.in`;
+}
+
+function openMatchReportModal(data) {
+    currentMatchReportText = generateMatchReport(data);
+    const content = document.getElementById('match-report-content');
+    if (content) {
+        // Convert Markdown-ish to HTML for display
+        content.innerHTML = currentMatchReportText
+            .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+            .replace(/\n/g, '<br>');
+    }
+    document.getElementById('match-report-modal').style.display = 'flex';
+}
+
+function closeMatchReportModal() {
+    document.getElementById('match-report-modal').style.display = 'none';
+}
+
+function copyMatchReport() {
+    navigator.clipboard.writeText(currentMatchReportText).then(() => {
+        showToast("Match report copied to clipboard! 📋", "success");
+    });
+}
+
+function shareReportWhatsApp() {
+    const text = encodeURIComponent(currentMatchReportText);
+    window.open(`https://wa.me/?text=${text}`, '_blank');
+}
+window.closeMatchReportModal = closeMatchReportModal;
+window.copyMatchReport = copyMatchReport;
+window.shareReportWhatsApp = shareReportWhatsApp;
+window.openMatchReportModal = openMatchReportModal;
+
+function broadcastMatchEvent(msg) {
+    const channel = supabaseClient.channel('match-updates');
+    channel.send({
+        type: 'broadcast',
+        event: 'live-alert',
+        payload: { message: msg }
+    });
+}
+window.broadcastMatchEvent = broadcastMatchEvent;
+
+// ================= DATABASE DIAGNOSTICS & REPAIR =================
+
+async function runDiagnostics() {
+    const btn = document.getElementById('diag-btn');
+    const seedBtn = document.getElementById('seed-btn');
+    const results = document.getElementById('diag-results');
+    
+    btn.disabled = true;
+    btn.innerText = "Checking... ⏳";
+    results.style.display = 'block';
+    results.innerHTML = "Initializing Diagnostic Sequence...<br>";
+    
+    let missingRows = [];
+    let logs = [];
+
+    async function checkRow(table, id, name) {
+        logs.push(`🔍 Checking <strong>${name}</strong> [${id}]...`);
+        results.innerHTML = logs.join('<br>');
+        
+        const { data, error } = await supabaseClient.from(table).select('id').eq('id', id).single();
+        if (error) {
+            logs.push(`<span style="color: #ff0055;">❌ Missing or Error: ${error.message}</span>`);
+            missingRows.push({ table, id, name });
+        } else {
+            logs.push(`<span style="color: #00ffca;">✅ Found.</span>`);
+        }
+        results.innerHTML = logs.join('<br>');
+    }
+
+    try {
+        // 1. Check hero_content rows
+        const heroIds = [
+            { id: '00000000-0000-0000-0000-000000000001', name: 'Live Match Row' },
+            { id: '00000000-0000-0000-0000-000000000002', name: 'Upcoming Match Row' },
+            { id: '00000000-0000-0000-0000-000000000003', name: 'Recent Result Row' },
+            { id: '00000001-0001-0001-0001-000000000000', name: 'Main Hero Row' }
+        ];
+
+        for (const h of heroIds) {
+            await checkRow('hero_content', h.id, h.name);
+        }
+
+        // 2. Check site_settings
+        await checkRow('site_settings', 'global-settings', 'Global Site Settings');
+
+        if (missingRows.length > 0) {
+            logs.push("<br>⚠️ <strong>Diagnostic Complete:</strong> Some critical rows are missing. Click 'Repair' to fix them.");
+            seedBtn.style.display = 'inline-block';
+        } else {
+            logs.push("<br>🎉 <strong>Diagnostic Complete:</strong> All critical rows are healthy. If you still see issues, check your internet/ISP connection.");
+            seedBtn.style.display = 'none';
+        }
+    } catch (e) {
+        logs.push(`<br>🚨 <strong>System Error:</strong> ${e.message}`);
+    }
+
+    results.innerHTML = logs.join('<br>');
+    btn.disabled = false;
+    btn.innerText = "Run Diagnostic Check 🔍";
+}
+
+async function seedDatabaseRows() {
+    if (!confirm("This will create dummy data for missing critical rows. Continue?")) return;
+    
+    const seedBtn = document.getElementById('seed-btn');
+    const results = document.getElementById('diag-results');
+    
+    seedBtn.disabled = true;
+    seedBtn.innerText = "Repairing... 🚀";
+    
+    const heroRows = [
+        { 
+            id: '00000000-0000-0000-0000-000000000001', 
+            title: 'LIVE MATCH', 
+            subtitle: 'Sonaijuri Anchal Tennis Premier League 2026', 
+            badge: 'LIVE NOW',
+            team1_name: 'Team A', team2_name: 'Team B', team1_score: 0, team2_score: 0 
+        },
+        { 
+            id: '00000000-0000-0000-0000-000000000002', 
+            title: 'UPCOMING CLASH', 
+            subtitle: 'Get ready for the next big game!', 
+            badge: 'COMING UP',
+            team1_name: 'TBD', team2_name: 'TBD'
+        },
+        { 
+            id: '00000000-0000-0000-0000-000000000003', 
+            title: 'LATEST RESULT', 
+            subtitle: 'A thrilling victory in the last game!', 
+            badge: 'RESULT',
+            team1_name: 'TBD', team2_name: 'TBD'
+        },
+        { 
+            id: '00000001-0001-0001-0001-000000000000', 
+            title: 'REGISTRATION IS OPEN', 
+            subtitle: 'Join the SATPL 2026 Season Today!', 
+            badge: 'IMPORTANT'
+        }
+    ];
+
+    results.innerHTML += "<br>🚀 <strong>Starting Repair...</strong><br>";
+
+    for (const row of heroRows) {
+        const { error } = await supabaseClient.from('hero_content').upsert([row]);
+        if (error) {
+            results.innerHTML += `<span style="color: #ff0055;">Failed to seed ${row.id}: ${error.message}</span><br>`;
+        } else {
+            results.innerHTML += `<span style="color: #00ffca;">Successfully repaired row: ${row.id}</span><br>`;
+        }
+    }
+
+    // Seed site_settings
+    await supabaseClient.from('site_settings').upsert([{ 
+        id: 'global-settings', 
+        is_popup_enabled: true,
+        reg_end_date: new Date(Date.now() + 30*24*60*60*1000).toISOString() // 30 days from now
+    }]);
+    results.innerHTML += `<span style="color: #00ffca;">Successfully repaired Global Site Settings</span><br>`;
+
+    results.innerHTML += "<br>✅ <strong>Repair Complete!</strong> Please refresh the dashboard and homepage.";
+    seedBtn.innerText = "Repair Complete ✅";
+    
+    // Auto refresh loadHero
+    if (typeof loadHero === 'function') loadHero();
 }
