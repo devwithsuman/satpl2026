@@ -732,9 +732,13 @@ async function loadSponsors() {
                 : `<span class="sponsor-name" style="font-size: 1.5rem; font-weight: 900; background: linear-gradient(135deg, #fff, #888); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">${s.name}</span>`;
             
             if (s.website_url) {
+                let url = s.website_url.trim();
+                if (!/^https?:\/\//i.test(url)) {
+                    url = 'https://' + url;
+                }
                 return `
                     <div class="sponsor-item" style="padding: 0 40px;">
-                        <a href="${s.website_url}" target="_blank" style="text-decoration: none; transition: transform 0.3s ease; display: inline-block;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+                        <a href="${url}" target="_blank" style="text-decoration: none; transition: transform 0.3s ease; display: inline-block;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
                             ${logoContent}
                         </a>
                     </div>
