@@ -53,7 +53,25 @@ async function loadTeamRoster(teamId, btn) {
         // Update Profile UI
         document.getElementById('team-profile-logo').src = teamInfo.logo_url || 'img.svg';
         document.getElementById('team-profile-name').innerText = teamInfo.team_name;
-        document.getElementById('team-profile-owner').innerHTML = `Owner: <span style="color: white; font-weight: 600;">${teamInfo.owner_name || 'Not Assigned'}</span>`;
+
+        // Support Multiple Owners
+        const owners = Array.isArray(teamInfo.owners) ? teamInfo.owners : (teamInfo.owner_name ? [{ name: teamInfo.owner_name, photo: teamInfo.owner_photo }] : []);
+        const ownerContainer = document.getElementById('team-profile-owner');
+
+        if (owners.length > 0) {
+            ownerContainer.innerHTML = `
+                <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 10px;">
+                    ${owners.map(o => `
+                        <div style="display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.05); padding: 8px 15px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1);">
+                            <img src="${o.photo || 'img.svg'}" style="width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--primary);">
+                            <span style="color: white; font-weight: 600; font-size: 0.9rem;">${o.name}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        } else {
+            ownerContainer.innerHTML = `Owner: <span style="color: white; font-weight: 600;">Not Assigned</span>`;
+        }
 
         // Initial Budget placeholders (will refine after roster load)
         const totalBudget = teamInfo.budget || 4000;
