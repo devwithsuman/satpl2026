@@ -109,6 +109,8 @@ body {
     padding: 40px 20px;
     display: flex;
     flex-direction: column;
+    overflow-y: auto;
+    scrollbar-width: thin;
 }
 
 .sidebar h2 {
