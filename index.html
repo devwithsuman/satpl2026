@@ -305,6 +305,26 @@
                     </div>
                 </section>
 
+                <!-- Match Fixtures Section -->
+                <section id="fixtures" class="reveal" style="margin-top: 60px;">
+                    <div class="section-title">
+                        <span class="badge">Schedule</span>
+                        <h2 class="gradient-text">Upcoming Matches</h2>
+                        <p>Stay updated with the SATPL 2026 match schedule</p>
+                    </div>
+
+                    <div class="fixtures-container">
+                        <div id="fixtures-list" class="fixtures-grid">
+                            <!-- Populated by JS -->
+                            <div class="glass"
+                                style="padding: 40px; text-align: center; color: var(--text-dim); width: 100%;">
+                                <div class="loading-spinner"></div>
+                                Loading Fixtures...
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- Top Performers Section -->
                 <section id="leaderboard" class="reveal" style="margin-top: 60px;">
                     <div class="section-title">
@@ -500,18 +520,11 @@
                         Elite Partners</span>
                 </div>
                 <div class="sponsor-container">
-                    <div class="sponsor-track">
+                    <div id="sponsor-track-dynamic" class="sponsor-track">
+                        <!-- Dynamic Sponsors go here -->
                         <div class="sponsor-item"><span class="sponsor-name">DIAMOND SPONSOR</span></div>
                         <div class="sponsor-item"><span class="sponsor-name">PLATINUM PARTNER</span></div>
                         <div class="sponsor-item"><span class="sponsor-name">GOLD MEDIA</span></div>
-                        <div class="sponsor-item"><span class="sponsor-name">SPORTS GEAR CO.</span></div>
-                        <div class="sponsor-item"><span class="sponsor-name">TECH SOLUTIONS</span></div>
-                        <!-- Duplicate for loop -->
-                        <div class="sponsor-item"><span class="sponsor-name">DIAMOND SPONSOR</span></div>
-                        <div class="sponsor-item"><span class="sponsor-name">PLATINUM PARTNER</span></div>
-                        <div class="sponsor-item"><span class="sponsor-name">GOLD MEDIA</span></div>
-                        <div class="sponsor-item"><span class="sponsor-name">SPORTS GEAR CO.</span></div>
-                        <div class="sponsor-item"><span class="sponsor-name">TECH SOLUTIONS</span></div>
                     </div>
                 </div>
             </div>
@@ -573,8 +586,12 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="supabase-config.js"></script>
     <script src="nav-loader.js"></script>
+    <script src="ticker-script.js"></script>
+    <script src="fixtures-script.js"></script>
     <script src="home-script.js"></script>
 </body>
 
