@@ -232,6 +232,12 @@
             font-weight: 800;
             text-transform: uppercase;
         }
+
+        @keyframes bounce-in {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
     </style>
 </head>
 
@@ -340,130 +346,188 @@
     <script src="supabase-config.js"></script>
     <script src="nav-loader.js"></script>
     <script>
+        // Bulletproof Polling Fallback (Runs every 10 seconds)
+        let fallbackInterval;
+
         async function loadLiveScore() {
-            const { data, error } = await supabaseClient
-                .from('hero_content')
-                .select('*')
-                .eq('id', '00000000-0000-0000-0000-000000000001')
-                .single();
+            try {
+                const { data, error } = await supabaseClient
+                    .from('hero_content')
+                    .select('*')
+                    .eq('id', '00000000-0000-0000-0000-000000000001')
+                    .single();
 
-            if (error || !data) return;
+                if (error || !data) return;
 
-            document.getElementById('team1-name').innerText = data.team1_name;
-            document.getElementById('team2-name').innerText = data.team2_name;
+                showLiveSyncIndicator();
 
-            // Team 1 Display
-            document.getElementById('t1-detailed-score').innerText = `${data.team1_score || 0}/${data.wickets || 0}`;
-            document.getElementById('t1-detailed-overs').innerText = `(${data.overs || 0}.${data.balls || 0} Overs)`;
+                document.getElementById('team1-name').innerText = data.team1_name;
+                document.getElementById('team2-name').innerText = data.team2_name;
 
-            // Team 2 Display (If any)
-            document.getElementById('t2-detailed-score').innerText = `${data.team2_score || 0}/${data.team2_wickets || 0}`;
-            document.getElementById('t2-detailed-overs').innerText = `(${data.team2_overs || 0}.${data.team2_balls || 0} Overs)`;
+                // Team 1 Display
+                document.getElementById('t1-detailed-score').innerText = `${data.team1_score || 0}/${data.wickets || 0}`;
+                document.getElementById('t1-detailed-overs').innerText = `(${data.overs || 0}.${data.balls || 0} Overs)`;
 
-            document.getElementById('match-status').innerText = data.match_status || "";
-            document.getElementById('match-badge').innerText = data.badge || "LIVE MATCH";
+                // Team 2 Display (If any)
+                document.getElementById('t2-detailed-score').innerText = `${data.team2_score || 0}/${data.team2_wickets || 0}`;
+                document.getElementById('t2-detailed-overs').innerText = `(${data.team2_overs || 0}.${data.team2_balls || 0} Overs)`;
 
-            // Extra Info (Target/RRR)
-            const extra = document.getElementById('extra-info');
-            if (data.target > 0) {
-                const runsNeeded = data.target - data.team1_score; // Assuming Team 1 is chasing in this logic
-                extra.innerText = runsNeeded > 0 ? `Target: ${data.target} | ${runsNeeded} runs more to win` : `Target Achieved!`;
-            } else {
-                extra.innerText = "";
+                const statusEl = document.getElementById('match-status');
+                if (data.badge === 'RESULT') {
+                    statusEl.innerHTML = '🏆 ' + (data.match_status || 'Match Completed') + ' 🏆';
+                    statusEl.style.cssText = 'margin-top: 20px; font-size: 1.5rem; color: #00ffa2; background: rgba(0, 255, 162, 0.1); padding: 15px; border-radius: 12px; border: 1px solid #00ffa2; text-transform: uppercase; letter-spacing: 1px; animation: bounce-in 0.5s ease-out;';
+                } else {
+                    statusEl.innerText = data.match_status || "";
+                    statusEl.style.cssText = 'margin-top: 20px; color: var(--secondary); font-weight: 700; font-size: 1.1rem;';
+                }
+
+                document.getElementById('match-badge').innerText = data.badge || "LIVE MATCH";
+
+                // Extra Info (Target/RRR)
+                const extra = document.getElementById('extra-info');
+                if (data.target > 0) {
+                    const runsNeeded = data.target - data.team1_score; // Assuming Team 1 is chasing
+                    extra.innerText = runsNeeded > 0 ? `Target: ${data.target} | ${runsNeeded} runs more to win` : `Target Achieved!`;
+                } else {
+                    extra.innerText = "";
+                }
+
+                // Batting Stats
+                const batBody = document.getElementById('batting-stats');
+                const b1_sr = data.batsman1_balls > 0 ? ((data.batsman1_runs / data.batsman1_balls) * 100).toFixed(1) : "0.0";
+                const b2_sr = data.batsman2_balls > 0 ? ((data.batsman2_runs / data.batsman2_balls) * 100).toFixed(1) : "0.0";
+
+                batBody.innerHTML = `
+                    <tr>
+                        <td class="${data.striker_idx == 1 ? 'on-strike' : ''}">${data.batsman1 || '---'}</td>
+                        <td>${data.batsman1_runs || 0}</td>
+                        <td>${data.batsman1_balls || 0}</td>
+                        <td>${data.batsman1_4s || 0}</td>
+                        <td>${data.batsman1_6s || 0}</td>
+                        <td>${b1_sr}</td>
+                    </tr>
+                    <tr>
+                        <td class="${data.striker_idx == 2 ? 'on-strike' : ''}">${data.batsman2 || '---'}</td>
+                        <td>${data.batsman2_runs || 0}</td>
+                        <td>${data.batsman2_balls || 0}</td>
+                        <td>${data.batsman2_4s || 0}</td>
+                        <td>${data.batsman2_6s || 0}</td>
+                        <td>${b2_sr}</td>
+                    </tr>
+                `;
+
+                // Bowling Stats
+                const bowlBody = document.getElementById('bowling-stats');
+                const eco = data.bowler_overs > 0 ? (data.bowler_runs / data.bowler_overs).toFixed(1) : "0.0";
+                bowlBody.innerHTML = `
+                    <tr>
+                        <td>${data.bowler_name || '---'}</td>
+                        <td>${data.bowler_overs || 0}</td>
+                        <td>${data.bowler_maidens || 0}</td>
+                        <td>${data.bowler_runs || 0}</td>
+                        <td>${data.bowler_wickets || 0}</td>
+                        <td>${eco}</td>
+                    </tr>
+                `;
+
+                // Timeline
+                const timeline = document.getElementById('ball-timeline');
+                if (data.recent_balls) {
+                    const balls = data.recent_balls.split(',');
+                    timeline.innerHTML = balls.map(b => {
+                        let cls = 'ball';
+                        if (b == '4') cls += ' boundary';
+                        if (b == '6') cls += ' six';
+                        if (b.toLowerCase().includes('w')) cls += ' wicket';
+                        return `<div class="${cls}">${b}</div>`;
+                    }).join('');
+                }
+            } catch (err) {
+                console.error("Error loading scorecard:", err);
             }
+        }
 
-            // Batting Stats
-            const batBody = document.getElementById('batting-stats');
-            const b1_sr = data.batsman1_balls > 0 ? ((data.batsman1_runs / data.batsman1_balls) * 100).toFixed(1) : "0.0";
-            const b2_sr = data.batsman2_balls > 0 ? ((data.batsman2_runs / data.batsman2_balls) * 100).toFixed(1) : "0.0";
-
-            batBody.innerHTML = `
-                <tr>
-                    <td class="${data.striker_idx == 1 ? 'on-strike' : ''}">${data.batsman1 || '---'}</td>
-                    <td>${data.batsman1_runs || 0}</td>
-                    <td>${data.batsman1_balls || 0}</td>
-                    <td>${data.batsman1_4s || 0}</td>
-                    <td>${data.batsman1_6s || 0}</td>
-                    <td>${b1_sr}</td>
-                </tr>
-                <tr>
-                    <td class="${data.striker_idx == 2 ? 'on-strike' : ''}">${data.batsman2 || '---'}</td>
-                    <td>${data.batsman2_runs || 0}</td>
-                    <td>${data.batsman2_balls || 0}</td>
-                    <td>${data.batsman2_4s || 0}</td>
-                    <td>${data.batsman2_6s || 0}</td>
-                    <td>${b2_sr}</td>
-                </tr>
-            `;
-
-            // Bowling Stats
-            const bowlBody = document.getElementById('bowling-stats');
-            const eco = data.bowler_overs > 0 ? (data.bowler_runs / data.bowler_overs).toFixed(1) : "0.0";
-            bowlBody.innerHTML = `
-                <tr>
-                    <td>${data.bowler_name || '---'}</td>
-                    <td>${data.bowler_overs || 0}</td>
-                    <td>${data.bowler_maidens || 0}</td>
-                    <td>${data.bowler_runs || 0}</td>
-                    <td>${data.bowler_wickets || 0}</td>
-                    <td>${eco}</td>
-                </tr>
-            `;
-
-            // Timeline
-            const timeline = document.getElementById('ball-timeline');
-            if (data.recent_balls) {
-                const balls = data.recent_balls.split(',');
-                timeline.innerHTML = balls.map(b => {
-                    let cls = 'ball';
-                    if (b == '4') cls += ' boundary';
-                    if (b == '6') cls += ' six';
-                    if (b.toLowerCase().includes('w')) cls += ' wicket';
-                    return `<div class="${cls}">${b}</div>`;
-                }).join('');
+        function showLiveSyncIndicator() {
+            let indicator = document.getElementById('live-sync-indicator');
+            if (!indicator) {
+                indicator = document.createElement('div');
+                indicator.id = 'live-sync-indicator';
+                indicator.style.cssText = 'position:fixed; bottom:20px; right:20px; background:rgba(0,255,150,0.15); color:#00ffa2; padding:8px 15px; border-radius:30px; font-size:12px; font-weight:bold; border:1px solid rgba(0,255,150,0.3); z-index:9999; display:flex; align-items:center; gap:8px; backdrop-filter:blur(10px); animation: fade-pulse 2s infinite;';
+                indicator.innerHTML = '<span style="width:8px; height:8px; background:#00ffa2; border-radius:50%; box-shadow:0 0 10px #00ffa2;"></span> LIVE SYNCING';
+                document.body.appendChild(indicator);
+                
+                const style = document.createElement('style');
+                style.textContent = `@keyframes fade-pulse { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }`;
+                document.head.appendChild(style);
             }
+            indicator.style.display = 'flex';
+            setTimeout(() => { if(indicator) indicator.style.display = 'none'; }, 2000);
         }
 
         async function fetchRecentResults() {
-            const { data, error } = await supabaseClient
-                .from('fixtures')
-                .select('*')
-                .eq('status', 'completed')
-                .order('match_no', { ascending: false })
-                .limit(5);
+            try {
+                const { data, error } = await supabaseClient
+                    .from('fixtures')
+                    .select('*')
+                    .eq('status', 'completed')
+                    .order('match_no', { ascending: false })
+                    .limit(5);
 
-            if (error) return;
-            const list = document.getElementById('recent-results-list');
-            if (data.length === 0) {
-                list.innerHTML = `<div style="text-align: center; color: var(--text-dim); padding: 40px;">No completed matches yet.</div>`;
-                return;
-            }
+                if (error) return;
+                const list = document.getElementById('recent-results-list');
+                if (data.length === 0) {
+                    list.innerHTML = `<div style="text-align: center; color: var(--text-dim); padding: 40px;">No completed matches yet.</div>`;
+                    return;
+                }
 
-            list.innerHTML = data.map(f => `
-                <div class="result-card">
-                    <div>
-                        <div style="color: var(--text-dim); font-size: 0.7rem; margin-bottom: 5px;">MATCH #${f.match_no} • ${f.match_date}</div>
-                        <div style="display: flex; align-items: center;">
-                            <span class="res-team">${f.team1}</span>
-                            <span class="res-score">${f.t1_score}/${f.t1_wickets || 0}</span>
-                            <span class="res-vs">VS</span>
-                            <span class="res-team">${f.team2}</span>
-                            <span class="res-score">${f.t2_score}/${f.t2_wickets || 0}</span>
+                list.innerHTML = data.map(f => `
+                    <div class="result-card">
+                        <div>
+                            <div style="color: var(--text-dim); font-size: 0.7rem; margin-bottom: 5px;">MATCH #${f.match_no} • ${f.match_date}</div>
+                            <div style="display: flex; align-items: center;">
+                                <span class="res-team">${f.team1}</span>
+                                <span class="res-score">${f.t1_score}/${f.t1_wickets || 0}</span>
+                                <span class="res-vs">VS</span>
+                                <span class="res-team">${f.team2}</span>
+                                <span class="res-score">${f.t2_score}/${f.t2_wickets || 0}</span>
+                            </div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div class="res-winner-tag">${f.winner === 'Draw' ? 'No Result' : f.winner + ' WON'}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-dim); margin-top: 5px;">${f.venue}</div>
                         </div>
                     </div>
-                    <div style="text-align: right;">
-                        <div class="res-winner-tag">${f.winner === 'Draw' ? 'No Result' : f.winner + ' WON'}</div>
-                        <div style="font-size: 0.75rem; color: var(--text-dim); margin-top: 5px;">${f.venue}</div>
-                    </div>
-                </div>
-            `).join('');
+                `).join('');
+            } catch (err) {
+                console.error("Error fetching results:", err);
+            }
         }
 
-        // Real-time Update
-        supabaseClient
-            .channel('live-score-sync')
-            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'hero_content' }, loadLiveScore)
-            .subscribe();
+        // Initialize Real-time & Polling
+        function setupSync() {
+            try {
+                // Supabase Subscription
+                supabaseClient
+                    .channel('scorecard-realtime')
+                    .on('postgres_changes', { 
+                        event: 'UPDATE', 
+                        schema: 'public', 
+                        table: 'hero_content',
+                        filter: 'id=eq.00000000-0000-0000-0000-000000000001' 
+                    }, loadLiveScore)
+                    .subscribe();
+
+                // Polling Fallback (10 seconds)
+                if (fallbackInterval) clearInterval(fallbackInterval);
+                fallbackInterval = setInterval(loadLiveScore, 10000);
+                
+                console.log("Real-time sync & fallback polling initialized.");
+            } catch (e) {
+                console.warn("Sync setup failed, using polling only:", e);
+                if (fallbackInterval) clearInterval(fallbackInterval);
+                fallbackInterval = setInterval(loadLiveScore, 10000);
+            }
+        }
 
         async function downloadMatchReport() {
             const btn = event.currentTarget;
@@ -501,10 +565,11 @@
             }
         }
 
-        window.onload = () => {
+        document.addEventListener('DOMContentLoaded', () => {
             loadLiveScore();
             fetchRecentResults();
-        };
+            setupSync();
+        });
     </script>
 </body>
 
