@@ -285,7 +285,7 @@ async function updateTournamentCaps(name, team, cat, r, w, balls = 0, matches = 
             wickets: (existing.wickets || 0) + w,
             balls: (existing.balls || 0) + balls,
             matches: (existing.matches || 0) + matches,
-            team_name: team || existing.team_name
+            team_name: team ? team : existing.team_name
         }).eq('id', existing.id);
     } else {
         await supabaseClient.from('top_performers').insert([{
@@ -483,6 +483,16 @@ function handleScoreAction(val) {
     liveMatchState.timeline.push(val);
     if (liveMatchState.timeline.length > 8) liveMatchState.timeline.shift();
 
+    // 📡 AUTOMATIC CAP UPDATES (ORANGE/PURPLE)
+    if (striker.reg) {
+        // Update batsman stats (Orange Cap logic)
+        updateTournamentCaps(striker.name, liveMatchState.team_name, 'batsman', runs, 0, 0, 0);
+    }
+    if (liveMatchState.bowler.reg) {
+        // Update bowler stats (Purple Cap logic)
+        updateTournamentCaps(liveMatchState.bowler.name, '', 'bowler', (runs + (isWide || isNoBall ? 1 : 0)), (isWicket ? 1 : 0), (isWide || isNoBall ? 0 : 1), 0);
+    }
+
     // 📡 GENERATE AUTO-COMMENTARY
     const fixtureId = document.getElementById('score-fixture-id')?.value;
     if (fixtureId) {
@@ -661,9 +671,9 @@ async function finalizeLiveMatch() {
             balls: 0
         }).eq('id', '00000000-0000-0000-0000-000000000001');
 
-        // 3. Update Tournament Caps (Analytics)
-        if (topBat) await updateTournamentCaps(topBat, '', 'batsman', topBatRuns, 0, 0, 1);
-        if (topBowl) await updateTournamentCaps(topBowl, '', 'bowler', 0, topBowlWkts, 0, 1);
+        // 3. Update Tournament Caps (Analytics - Matches played only, as runs are now live)
+        if (topBat) await updateTournamentCaps(topBat, '', 'batsman', 0, 0, 0, 1);
+        if (topBowl) await updateTournamentCaps(topBowl, '', 'bowler', 0, 0, 0, 1);
 
         // 4. Recalculate Points Table
         await syncPointsTableFromFixtures();
