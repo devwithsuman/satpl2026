@@ -1,11 +1,30 @@
-// ================= AUTH CHECK =================
+// ================= AUTH CHECK & SESSION MANAGEMENT =================
+let lastActivityTime = Date.now();
+const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+
 async function checkAuth() {
     const { data: { session } } = await supabaseClient.auth.getSession();
     if (!session) {
         window.location.href = "admin-login.html";
     }
 }
-// checkAuth(); // We will call this in init
+
+function updateActivity() {
+    lastActivityTime = Date.now();
+}
+
+// Track activity
+['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart'].forEach(event => {
+    document.addEventListener(event, updateActivity, true);
+});
+
+// Check for inactivity every minute
+setInterval(async () => {
+    if (Date.now() - lastActivityTime > INACTIVITY_TIMEOUT) {
+        console.log("Session timed out due to inactivity.");
+        await logout();
+    }
+}, 60000); // Check every 60 seconds
 
 async function logout() {
     await supabaseClient.auth.signOut();
@@ -35,8 +54,9 @@ function showSection(sectionId) {
         if (sectionId === 'announcements') fetchNotices();
         if (sectionId === 'fixtures') fetchFixtures();
         if (sectionId === 'leaderboard') fetchLeaderboard();
+        if (sectionId === 'teams') fetchAdminTeams();
         if (sectionId === 'points') fetchAdminPoints();
-        if (sectionId === 'scoring') loadScoringSection();
+        if (sectionId === 'scoring') { loadScoringSection(); fetchPaidPlayersForAutocomplete(); }
         if (sectionId === 'auction-results') fetchAuctionResults();
         if (sectionId === 'gallery') fetchGallery();
         if (sectionId === 'menu') fetchAdminMenu();
@@ -45,6 +65,7 @@ function showSection(sectionId) {
         if (sectionId === 'analytics-dashboard') {
             loadAnalytics();
         }
+        if (sectionId === 'scorers') { fetchScorers(); fetchPaidPlayersForAutocomplete(); }
     }
 }
 
@@ -234,24 +255,52 @@ async function fetchAdminMenu() {
         console.warn("No nav items found, seeding defaults...");
         const defaults = [
             { label: 'Home', link: 'index.html', order_index: 1, is_active: true },
-            { label: 'Fixtures', link: 'fixtures.html', order_index: 2, is_active: true },
-            { label: 'Register Now', link: 'registration.html', order_index: 3, is_active: true },
+            { label: 'Scorecard', link: 'scorecard.html', order_index: 2, is_active: true },
+            { label: 'Squads', link: 'squads.html', order_index: 3, is_active: true },
+            { label: 'Fixtures', link: 'fixtures.html', order_index: 4, is_active: true },
+            { label: 'Players', link: 'players.html', order_index: 5, is_active: true },
+            { label: 'Admin Panel', link: 'admin.html', order_index: 6, is_active: true },
+            { label: 'Register Now', link: 'registration.html', order_index: 7, is_active: true },
         ];
         list.innerHTML = defaults.map(item => createMenuRowHtml(item)).join("");
-        // Auto-save defaults to the DB
         await window.safeSupabaseCall(() =>
             supabaseClient.from("nav_menu").insert(defaults)
         );
-        fetchAdminMenu(); // Re-fetch to display the newly inserted defaults
+        fetchAdminMenu();
     }
 }
 
+const NAV_PAGES = [
+    { label: '— Select a Page —', link: '' },
+    { label: '🏠 Home', link: 'index.html' },
+    { label: '📺 Scorecard', link: 'scorecard.html' },
+    { label: '🛡️ Squads', link: 'squads.html' },
+    { label: '📅 Fixtures', link: 'fixtures.html' },
+    { label: '🏏 Players', link: 'players.html' },
+    { label: '⚙️ Admin Panel', link: 'admin.html' },
+    { label: '🏷️ Register Now', link: 'registration.html' },
+    { label: '🔴 Live Auction', link: 'auction.html' },
+    { label: '📝 Custom URL', link: '__custom__' },
+];
+
 function createMenuRowHtml(item = { id: '', label: '', link: '', order_index: 0, is_active: true }) {
+    const pageOptions = NAV_PAGES.map(p =>
+        `<option value="${p.link}" ${item.link === p.link ? 'selected' : ''}>${p.label}</option>`
+    ).join('');
+
+    const isCustom = !NAV_PAGES.some(p => p.link === item.link && p.link !== '' && p.link !== '__custom__');
+
     return `
         <tr data-id="${item.id || ''}">
             <td><input type="number" class="table-input menu-order" value="${item.order_index}" style="width: 60px;"></td>
-            <td><input type="text" class="table-input menu-label" value="${item.label}" placeholder="Label"></td>
-            <td><input type="text" class="table-input menu-link" value="${item.link}" placeholder="URL"></td>
+            <td><input type="text" class="table-input menu-label" value="${item.label}" placeholder="Display Label"></td>
+            <td style="min-width:220px;">
+                <select class="table-input menu-link-picker" onchange="onNavPagePick(this)" style="margin-bottom:6px;">
+                    ${pageOptions}
+                </select>
+                <input type="text" class="table-input menu-link" value="${item.link}" placeholder="or type custom URL"
+                    style="${!isCustom ? 'display:none;' : ''}font-size:0.82rem;">
+            </td>
             <td>
                 <select class="table-input menu-active">
                     <option value="true" ${item.is_active ? 'selected' : ''}>Active</option>
@@ -259,10 +308,28 @@ function createMenuRowHtml(item = { id: '', label: '', link: '', order_index: 0,
                 </select>
             </td>
             <td>
-                <button onclick="this.closest('tr').remove()" class="btn-secondary" style="background: #ef4444; border: none; padding: 5px 10px;">Del</button>
+                <button onclick="this.closest('tr').remove()" class="btn-secondary"
+                    style="background:#ef4444;border:none;padding:6px 12px;border-radius:8px;">🗑</button>
             </td>
         </tr>
     `;
+}
+
+function onNavPagePick(select) {
+    const row = select.closest('tr');
+    const customInput = row.querySelector('.menu-link');
+    const label = row.querySelector('.menu-label');
+    if (select.value === '__custom__') {
+        customInput.style.display = '';
+        customInput.value = '';
+        customInput.focus();
+    } else {
+        customInput.style.display = 'none';
+        customInput.value = select.value;
+        // Auto-fill label if it's empty
+        const chosen = NAV_PAGES.find(p => p.link === select.value);
+        if (chosen && !label.value) label.value = chosen.label.replace(/^[^ ]+ /, '');
+    }
 }
 
 function addMenuRow() {
@@ -274,7 +341,8 @@ async function saveMenu() {
     const rows = document.querySelectorAll("#admin-menu-list tr");
     const menuItems = Array.from(rows).map(row => ({
         label: row.querySelector(".menu-label").value,
-        link: row.querySelector(".menu-link").value,
+        // Use the select picker value, but fall back to the text input for custom URLs
+        link: row.querySelector(".menu-link").value || row.querySelector(".menu-link-picker").value,
         order_index: parseInt(row.querySelector(".menu-order").value) || 0,
         is_active: row.querySelector(".menu-active").value === 'true'
     }));
@@ -289,10 +357,103 @@ async function saveMenu() {
     );
 
     if (error) {
-        alert("Error saving menu: " + error.message);
+        showToast("Error saving menu: " + error.message, "error");
     } else {
-        alert("Menu Updated Successfully! Refresh your site to see changes.");
+        showToast("✅ Navbar menu published!", "success");
         fetchAdminMenu();
+    }
+}
+
+// ─────────────────────────────────────────────────
+// MENU TAB SWITCHER
+// ─────────────────────────────────────────────────
+function switchMenuTab(tab) {
+    const desktopPanel = document.getElementById("menu-tab-desktop-panel");
+    const mobilePanel = document.getElementById("menu-tab-mobile-panel");
+    const desktopBtn = document.getElementById("menu-tab-desktop-btn");
+    const mobileBtn = document.getElementById("menu-tab-mobile-btn");
+    if (!desktopPanel || !mobilePanel) return;
+
+    if (tab === "desktop") {
+        desktopPanel.style.display = "";
+        mobilePanel.style.display = "none";
+        desktopBtn.style.borderColor = "var(--secondary)";
+        desktopBtn.style.background = "rgba(0,242,255,0.12)";
+        desktopBtn.style.color = "var(--secondary)";
+        mobileBtn.style.borderColor = "transparent";
+        mobileBtn.style.background = "transparent";
+        mobileBtn.style.color = "var(--text-dim)";
+    } else {
+        desktopPanel.style.display = "none";
+        mobilePanel.style.display = "";
+        mobileBtn.style.borderColor = "var(--secondary)";
+        mobileBtn.style.background = "rgba(0,242,255,0.12)";
+        mobileBtn.style.color = "var(--secondary)";
+        desktopBtn.style.borderColor = "transparent";
+        desktopBtn.style.background = "transparent";
+        desktopBtn.style.color = "var(--text-dim)";
+        fetchMobileMenu();
+    }
+}
+
+// ─────────────────────────────────────────────────
+// MOBILE HAMBURGER MENU CRUD  (mobile_menu table)
+// ─────────────────────────────────────────────────
+let _mobileMenuLoaded = false;
+
+async function fetchMobileMenu() {
+    if (_mobileMenuLoaded) return;
+    _mobileMenuLoaded = true;
+    const list = document.getElementById("mobile-menu-list");
+    if (!list) return;
+    list.innerHTML = "<tr><td colspan='5' style='text-align:center;padding:20px;color:var(--text-dim);'>Loading...</td></tr>";
+
+    const { data } = await window.safeSupabaseCall(() =>
+        supabaseClient.from("mobile_menu").select("*").order("order_index", { ascending: true })
+    );
+
+    if (data && data.length > 0) {
+        list.innerHTML = data.map(item => createMenuRowHtml(item)).join("");
+    } else {
+        const mobileDefaults = [
+            { label: "Scorecard", link: "scorecard.html", order_index: 1, is_active: true },
+            { label: "Admin Panel", link: "admin.html", order_index: 2, is_active: true },
+            { label: "Players", link: "players.html", order_index: 3, is_active: true },
+            { label: "Squads", link: "squads.html", order_index: 4, is_active: true },
+            { label: "Fixtures", link: "fixtures.html", order_index: 5, is_active: true },
+        ];
+        list.innerHTML = mobileDefaults.map(item => createMenuRowHtml(item)).join("");
+        await window.safeSupabaseCall(() => supabaseClient.from("mobile_menu").insert(mobileDefaults));
+    }
+}
+
+function addMobileMenuRow() {
+    const list = document.getElementById("mobile-menu-list");
+    list.insertAdjacentHTML("beforeend", createMenuRowHtml());
+}
+
+async function saveMobileMenu() {
+    const rows = document.querySelectorAll("#mobile-menu-list tr");
+    const items = Array.from(rows).map(row => ({
+        label: row.querySelector(".menu-label").value,
+        link: row.querySelector(".menu-link").value || row.querySelector(".menu-link-picker").value,
+        order_index: parseInt(row.querySelector(".menu-order").value) || 0,
+        is_active: row.querySelector(".menu-active").value === "true"
+    }));
+
+    await window.safeSupabaseCall(() =>
+        supabaseClient.from("mobile_menu").delete().not("id", "is", null)
+    );
+    const { error } = await window.safeSupabaseCall(() =>
+        supabaseClient.from("mobile_menu").insert(items)
+    );
+
+    if (error) {
+        showToast("Error: " + error.message, "error");
+    } else {
+        showToast("📱 Mobile Menu published! Changes live on next page load.", "success");
+        _mobileMenuLoaded = false;
+        fetchMobileMenu();
     }
 }
 
@@ -659,9 +820,220 @@ async function saveNewPlayer(e) {
     }
 }
 
+// ================= TEAM MANAGEMENT =================
+async function fetchAdminTeams() {
+    const list = document.getElementById("admin-teams-list");
+    if (!list) return;
+
+    // Populate Captain Suggestions Datalist
+    populateCaptainDatalist();
+
+    const { data, error } = await window.safeSupabaseCall(() =>
+        supabaseClient
+            .from("points_table")
+            .select("*")
+            .order("team_name", { ascending: true })
+    );
+
+    if (error) {
+        console.error('Error loading teams:', error);
+        list.innerHTML = `<tr><td colspan="9" style="color: #ff4d8d;">Error loading teams: ${error.message}</td></tr>`;
+        return;
+    }
+
+    list.innerHTML = data.map(team => {
+        const owners = Array.isArray(team.owners) ? team.owners : (team.owner_name ? [{ name: team.owner_name, photo: team.owner_photo }] : []);
+
+        return `
+        <tr data-id="${team.id}">
+            <td><input type="text" value="${team.group_name}" class="table-input group-input" style="width: 40px; text-align: center;"></td>
+            <td><input type="text" value="${team.team_name}" class="table-input team-name-input"></td>
+            <!-- Logo -->
+            <td>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 35px; height: 35px; border-radius: 50%; overflow: hidden; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);">
+                        <img src="${team.logo_url || 'logo.png'}" class="logo-preview" style="width: 100%; height: 100%; object-fit: cover;">
+                    </div>
+                    <label class="photo-upload-label">
+                        Upload
+                        <input type="file" class="logo-upload-input" accept="image/*" onchange="handleLogoSelect(this)">
+                    </label>
+                    <input type="hidden" value="${team.logo_url || ''}" class="logo-url-hidden">
+                </div>
+            </td>
+            <!-- Owners List -->
+            <td>
+                <div class="owners-container" style="display: flex; flex-direction: column; gap: 10px; min-width: 250px;">
+                    <div class="owners-list">
+                        ${owners.map((owner, idx) => renderOwnerRow(owner, idx)).join('')}
+                    </div>
+                    <button onclick="addOwnerRow(this)" class="btn-secondary" style="font-size: 0.7rem; padding: 4px 8px; width: fit-content;">+ Add More Owner</button>
+                </div>
+            </td>
+            <!-- Captain -->
+            <td><input type="text" value="${team.captain_name || ''}" class="table-input captain-name-input" placeholder="Captain Name" list="players-datalist"></td>
+            <!-- Captain Photo -->
+            <td>
+                <div class="photo-upload-cell">
+                    <div class="mini-preview">
+                        ${team.captain_photo ? `<img src="${team.captain_photo}" class="row-photo-preview captain-photo-img">` : `<span>🏏</span>`}
+                    </div>
+                    <label class="photo-upload-label">
+                        Upload
+                        <input type="file" class="captain-photo-input" accept="image/*" onchange="handleRowPhotoSelect(this, 'captain')">
+                    </label>
+                    <input type="hidden" value="${team.captain_photo || ''}" class="captain-photo-hidden">
+                </div>
+            </td>
+            <td><input type="text" value="${team.owner_password || ''}" class="table-input pass-input"></td>
+            <td>
+                <button onclick="previewTeam('${team.id}')" class="btn-secondary" style="padding: 5px; min-width: 35px; border-radius: 8px;" title="Quick View">👁️</button>
+                <button onclick="deleteTeam('${team.id}')" class="btn-secondary" style="padding: 5px; min-width: 35px; color: #ff4d8d;">🗑️</button>
+            </td>
+        </tr>
+    `;
+    }).join("");
+}
+
+function renderOwnerRow(owner = { name: '', photo: '' }, index) {
+    return `
+        <div class="owner-entry" style="display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.03); padding: 5px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+            <div class="mini-preview" style="width: 30px; height: 30px; border-radius: 50%; overflow: hidden; border: 1px solid var(--glass-border);">
+                ${owner.photo ? `<img src="${owner.photo}" class="owner-photo-img" style="width:100%; height:100%; object-fit: cover;">` : `<span style="font-size: 1rem; display: flex; align-items: center; justify-content: center; height: 100%;">👤</span>`}
+            </div>
+            <input type="text" value="${owner.name}" class="table-input owner-name-input" placeholder="Owner Name" style="font-size: 0.8rem; padding: 4px 8px;">
+            <label class="photo-upload-label" style="font-size: 0.6rem; padding: 3px 6px;">
+                📷
+                <input type="file" class="owner-photo-input" accept="image/*" style="display: none;" onchange="handleOwnerPhotoSelect(this)">
+            </label>
+            <input type="hidden" value="${owner.photo}" class="owner-photo-url-hidden">
+            <button onclick="this.closest('.owner-entry').remove()" class="btn-secondary" style="padding: 2px 6px; color: #ff4d8d; background: none; border: none; font-size: 1rem;" title="Remove Owner">×</button>
+        </div>
+    `;
+}
+
+function addOwnerRow(btn) {
+    const list = btn.closest('.owners-container').querySelector('.owners-list');
+    const div = document.createElement('div');
+    div.innerHTML = renderOwnerRow();
+    list.appendChild(div.firstElementChild);
+}
+
+function handleOwnerPhotoSelect(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        const entry = input.closest('.owner-entry');
+        const previewImg = entry.querySelector('.owner-photo-img');
+        const previewDiv = entry.querySelector('.mini-preview');
+
+        reader.onload = function (e) {
+            if (previewImg) {
+                previewImg.src = e.target.result;
+            } else {
+                previewDiv.innerHTML = `<img src="${e.target.result}" class="owner-photo-img" style="width:100%; height:100%; object-fit: cover;">`;
+            }
+            showToast("Owner photo ready!", "info");
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+async function saveTeamDetails() {
+    const rows = document.querySelectorAll("#admin-teams-list tr");
+    const saveBtn = document.querySelector('button[onclick="saveTeamDetails()"]');
+    saveBtn.disabled = true;
+    saveBtn.innerText = "Saving & Uploading...";
+
+    try {
+        const updates = await Promise.all(Array.from(rows).map(async (row) => {
+            const uploadFile = async (fileInput, currentUrl, prefix) => {
+                if (fileInput && fileInput.files.length > 0) {
+                    const file = fileInput.files[0];
+                    const timestamp = Date.now();
+                    const fileName = `${prefix}_${timestamp}_${Math.floor(Math.random() * 1000)}.png`;
+                    const { error: uploadError } = await supabaseClient.storage.from("player-photos").upload(fileName, file);
+                    if (!uploadError) {
+                        const { data: photoData } = supabaseClient.storage.from("player-photos").getPublicUrl(fileName);
+                        return photoData.publicUrl;
+                    }
+                }
+                return currentUrl;
+            };
+
+            // 1. Upload Logo
+            const logoUrl = await uploadFile(row.querySelector(".logo-upload-input"), row.querySelector(".logo-url-hidden").value, "logo");
+
+            // 2. Upload Captain Photo
+            const captainPhotoUrl = await uploadFile(row.querySelector(".captain-photo-input"), row.querySelector(".captain-photo-hidden").value, "captain");
+
+            // 3. Process Multiple Owners
+            const ownerEntries = row.querySelectorAll(".owner-entry");
+            const owners = await Promise.all(Array.from(ownerEntries).map(async (entry) => {
+                const name = entry.querySelector(".owner-name-input").value.trim();
+                const photoUrl = await uploadFile(entry.querySelector(".owner-photo-input"), entry.querySelector(".owner-photo-url-hidden").value, "owner");
+                return { name, photo: photoUrl };
+            }));
+
+            // Filter out empty owners
+            const activeOwners = owners.filter(o => o.name);
+
+            return {
+                id: parseInt(row.dataset.id),
+                group_name: row.querySelector(".group-input").value.trim().toUpperCase(),
+                team_name: row.querySelector(".team-name-input").value,
+                logo_url: logoUrl,
+                owners: activeOwners,
+                // Legacy support (optional, keep for safety)
+                owner_name: activeOwners[0]?.name || '',
+                owner_photo: activeOwners[0]?.photo || '',
+                captain_name: row.querySelector(".captain-name-input").value,
+                captain_photo: captainPhotoUrl,
+                owner_password: row.querySelector(".pass-input").value
+            };
+        }));
+
+        const { error } = await supabaseClient.from("points_table").upsert(updates);
+        if (error) throw error;
+        showToast("Team Details saved successfully!", "success");
+        fetchAdminTeams();
+    } catch (err) {
+        showToast("Error saving: " + err.message, "error");
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerText = "Save Team Branding";
+    }
+}
+
+async function populateCaptainDatalist() {
+    const datalist = document.getElementById("players-datalist");
+    if (!datalist) return;
+
+    try {
+        const { data, error } = await window.safeSupabaseCall(() =>
+            supabaseClient
+                .from("player_registrations")
+                .select("player_name")
+                .order("player_name", { ascending: true })
+        );
+
+        if (error) throw error;
+
+        if (data) {
+            // Use a Set to ensure unique names
+            const uniqueNames = [...new Set(data.map(p => p.player_name).filter(Boolean))];
+            datalist.innerHTML = uniqueNames.map(name => `<option value="${name}">`).join("");
+            console.log(`✅ Captain Datalist Populated with ${uniqueNames.length} unique players`);
+        }
+    } catch (err) {
+        console.error("Error populating captain datalist:", err);
+    }
+}
+
 // ================= POINTS TABLE =================
 async function fetchAdminPoints() {
     const list = document.getElementById("admin-points-list");
+    if (!list) return;
+
     const { data, error } = await window.safeSupabaseCall(() =>
         supabaseClient
             .from("points_table")
@@ -671,45 +1043,19 @@ async function fetchAdminPoints() {
 
     if (error) {
         console.error('Error loading points table:', error);
-        list.innerHTML = `<tr><td colspan="6" style="color: #ff4d8d;">Error loading points: ${error.message}</td></tr>`;
+        list.innerHTML = `<tr><td colspan="12" style="color: #ff4d8d;">Error loading points: ${error.message}</td></tr>`;
         return;
     }
 
     if (!data || data.length === 0) {
-        console.warn('Points table is empty');
-        list.innerHTML = `<tr><td colspan="6" style="color: var(--text-dim);">No data found in points table.</td></tr>`;
+        list.innerHTML = `<tr><td colspan="12" style="color: var(--text-dim);">No teams found.</td></tr>`;
         return;
     }
-
-    console.log("Points Table Data Loaded:", data);
 
     list.innerHTML = data.map(team => `
         <tr data-id="${team.id}">
             <td><input type="text" value="${team.group_name || 'A'}" class="table-input group-input" style="width: 50px; text-align: center; font-weight: 800;"></td>
-            <td><input type="text" value="${team.team_name || ''}" class="table-input team-name-input"></td>
-            <td>
-                <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px dashed rgba(255,255,255,0.1);">
-                    <div style="position: relative; width: 45px; height: 45px;">
-                        ${team.logo_url ?
-            `<img src="${team.logo_url}" onclick="previewTeam('${team.id}')" class="logo-preview" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; cursor: pointer; border: 2px solid var(--secondary); box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);" title="Full Preview">` :
-            `<div onclick="previewTeam('${team.id}')" style="width:100%; height:100%; background:rgba(255,255,255,0.05); border-radius:50%; cursor: pointer; display: flex; align-items: center; justify-content: center; border: 2px dashed rgba(255,255,255,0.2);" title="No Logo">
-                                <span style="font-size: 1.2rem; opacity: 0.5;">🖼️</span>
-                            </div>`
-        }
-                    </div>
-                    <label class="btn-secondary" style="font-size: 0.65rem; padding: 4px 8px; cursor: pointer; margin: 0;">
-                        <span>Upload Logo</span>
-                        <input type="file" class="logo-upload-input" accept="image/png, image/jpeg" style="display: none;" onchange="handleLogoSelect(this)">
-                    </label>
-                    <input type="hidden" value="${team.logo_url || ''}" class="logo-url-hidden">
-                </div>
-            </td>
-            <td>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <input type="text" value="${team.owner_name || ''}" class="table-input owner-input">
-                    <button onclick="previewTeam('${team.id}')" class="btn-secondary" style="padding: 5px; min-width: 35px; border-radius: 8px;" title="Quick View">👁️</button>
-                </div>
-            </td>
+            <td style="font-weight: 700; color: #fff;">${team.team_name || ''}</td>
             <td><input type="number" value="${team.played}" class="table-input played-input" oninput="calculateStats(this)"></td>
             <td><input type="number" value="${team.won}" class="table-input won-input" oninput="calculateStats(this)"></td>
             <td><input type="number" value="${team.lost}" class="table-input lost-input" oninput="calculateStats(this)"></td>
@@ -720,9 +1066,8 @@ async function fetchAdminPoints() {
             <td><input type="number" value="${team.nrr || 0}" class="table-input nrr-input" readonly style="background: rgba(0,0,0,0.1);"></td>
             <td><input type="number" value="${team.points}" class="table-input points-input" readonly style="font-weight: bold; color: var(--secondary); background: rgba(0,0,0,0.2); cursor: not-allowed;"></td>
             <td><input type="number" value="${team.budget || 4000}" class="table-input budget-input" style="font-weight: bold; color: var(--secondary);"></td>
-            <td><input type="text" value="${team.owner_password || '123456'}" class="table-input pass-input" style="font-family: monospace;"></td>
             <td>
-                <button class="btn" style="background: #ef4444; padding: 5px 10px;" onclick="deleteTeam('${team.id}')">🗑️</button>
+                <button onclick="previewTeam('${team.id}')" class="btn-secondary" style="padding: 5px; min-width: 35px; border-radius: 8px;" title="Quick View">👁️</button>
             </td>
         </tr>
     `).join("");
@@ -733,14 +1078,22 @@ async function addNewTeamRow() {
         team_name: "New Team",
         group_name: "A",
         budget: 4000,
-        owner_password: "123456"
+        owner_password: "123456",
+        owner_name: "",
+        captain_name: "",
+        owner_photo: "",
+        captain_photo: ""
     }]).select();
 
     if (error) {
         alert("Error adding team: " + error.message);
     } else {
         showToast("New team added! Please edit the name and save.", "success");
-        fetchAdminPoints();
+        if (document.getElementById('teams-section').classList.contains('active')) {
+            fetchAdminTeams();
+        } else {
+            fetchAdminPoints();
+        }
     }
 }
 
@@ -753,7 +1106,11 @@ async function deleteTeam(id) {
         alert("Error deleting team: " + error.message);
     } else {
         showToast("Team deleted!", "info");
-        fetchAdminPoints();
+        if (document.getElementById('teams-section').classList.contains('active')) {
+            fetchAdminTeams();
+        } else {
+            fetchAdminPoints();
+        }
     }
 }
 
@@ -771,7 +1128,27 @@ function handleLogoSelect(input) {
             } else if (previewDiv) {
                 previewDiv.innerHTML = `<img src="${e.target.result}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
             }
-            showToast("Logo ready to upload! Click 'Save All Changes' to apply.", "info");
+            showToast("Logo ready! Click 'Save All Changes' to upload.", "info");
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+// Handle Owner/Captain photo selection
+function handleRowPhotoSelect(input, type) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        const row = input.closest('tr');
+        const previewImg = row.querySelector(`.${type}-photo-img`);
+        const previewDiv = previewImg ? null : row.querySelector(`.${type}-photo-input`).closest('.photo-upload-cell').querySelector('.mini-preview');
+
+        reader.onload = function (e) {
+            if (previewImg) {
+                previewImg.src = e.target.result;
+            } else if (previewDiv) {
+                previewDiv.innerHTML = `<img src="${e.target.result}" class="row-photo-preview">`;
+            }
+            showToast(`${type.charAt(0).toUpperCase() + type.slice(1)} photo ready! Click 'Save' to upload.`, "info");
         };
         reader.readAsDataURL(input.files[0]);
     }
@@ -803,9 +1180,26 @@ async function previewTeam(teamId) {
     }
 
     // Populate Modal
-    logoImg.src = data.logo_url || "img.svg";
+    logoImg.src = data.logo_url || "logo.png";
     teamNameEl.innerText = data.team_name || "Unknown Team";
-    ownerNameEl.innerText = data.owner_name || "Not Set";
+    ownerNameEl.innerHTML = `
+        <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 20px;">
+            <div style="display: flex; align-items: center; gap: 20px; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 15px;">
+                <img src="${data.owner_photo || 'img.svg'}" style="width: 50px; height: 50px; border-radius: 50%; border: 2px solid var(--primary);">
+                <div>
+                    <div style="font-size: 0.7rem; color: var(--text-dim);">OWNER</div>
+                    <div style="font-weight: 800; color: white;">${data.owner_name || 'Not Set'}</div>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 20px; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 15px;">
+                <img src="${data.captain_photo || 'img.svg'}" style="width: 50px; height: 50px; border-radius: 50%; border: 2px solid var(--secondary);">
+                <div>
+                    <div style="font-size: 0.7rem; color: var(--text-dim);">CAPTAIN</div>
+                    <div style="font-weight: 800; color: white;">${data.captain_name || 'Not Set'}</div>
+                </div>
+            </div>
+        </div>
+    `;
 }
 
 // Global function to auto-calculate Points & NRR
@@ -834,54 +1228,26 @@ function calculateStats(input) {
 async function savePointsTable() {
     const rows = document.querySelectorAll("#admin-points-list tr");
     const saveBtn = document.querySelector("button[onclick='savePointsTable()']");
+    if (!saveBtn) return;
     const originalText = saveBtn.innerText;
 
-    saveBtn.innerText = "⏳ Saving & Uploading...";
+    saveBtn.innerText = "⏳ Saving Stats...";
     saveBtn.disabled = true;
 
     try {
-        const updates = await Promise.all(Array.from(rows).map(async (row) => {
-            const fileInput = row.querySelector(".logo-upload-input");
-            let logoUrl = row.querySelector(".logo-url-hidden").value;
-
-            // Handle New Upload if file selected
-            if (fileInput.files.length > 0) {
-                const file = fileInput.files[0];
-                const timestamp = Date.now();
-                const fileName = `logo_${timestamp}_${Math.floor(Math.random() * 1000)}.png`;
-
-                const { error: uploadError } = await supabaseClient.storage
-                    .from("player-photos") // Re-using existing bucket
-                    .upload(fileName, file);
-
-                if (!uploadError) {
-                    const { data: photoData } = supabaseClient.storage
-                        .from("player-photos")
-                        .getPublicUrl(fileName);
-                    logoUrl = photoData.publicUrl;
-                } else {
-                    console.error("Logo Upload Error:", uploadError);
-                }
-            }
-
-            return {
-                id: parseInt(row.dataset.id),
-                group_name: row.querySelector(".group-input").value.trim().toUpperCase(),
-                team_name: row.querySelector(".team-name-input").value,
-                logo_url: logoUrl,
-                owner_name: row.querySelector(".owner-input").value,
-                played: parseInt(row.querySelector(".played-input").value) || 0,
-                won: parseInt(row.querySelector(".won-input").value) || 0,
-                lost: parseInt(row.querySelector(".lost-input").value) || 0,
-                runs_scored: parseInt(row.querySelector(".rs-input").value) || 0,
-                overs_faced: parseFloat(row.querySelector(".of-input").value) || 0,
-                runs_conceded: parseInt(row.querySelector(".rc-input").value) || 0,
-                overs_bowled: parseFloat(row.querySelector(".ob-input").value) || 0,
-                nrr: parseFloat(row.querySelector(".nrr-input").value) || 0,
-                points: parseInt(row.querySelector(".points-input").value) || 0,
-                budget: parseInt(row.querySelector(".budget-input").value) || 0,
-                owner_password: row.querySelector(".pass-input").value.trim()
-            };
+        const updates = Array.from(rows).map(row => ({
+            id: parseInt(row.dataset.id),
+            group_name: row.querySelector(".group-input").value.trim().toUpperCase(),
+            played: parseInt(row.querySelector(".played-input").value) || 0,
+            won: parseInt(row.querySelector(".won-input").value) || 0,
+            lost: parseInt(row.querySelector(".lost-input").value) || 0,
+            runs_scored: parseInt(row.querySelector(".rs-input").value) || 0,
+            overs_faced: parseFloat(row.querySelector(".of-input").value) || 0,
+            runs_conceded: parseInt(row.querySelector(".rc-input").value) || 0,
+            overs_bowled: parseFloat(row.querySelector(".ob-input").value) || 0,
+            nrr: parseFloat(row.querySelector(".nrr-input").value) || 0,
+            points: parseInt(row.querySelector(".points-input").value) || 0,
+            budget: parseInt(row.querySelector(".budget-input").value) || 0
         }));
 
         const { error } = await supabaseClient.from("points_table").upsert(updates);
@@ -889,9 +1255,8 @@ async function savePointsTable() {
         if (error) {
             alert("Error saving: " + error.message);
         } else {
-            showToast("Points Table & Logos Updated!", "success");
+            showToast("Points Table stats saved!", "success");
             fetchAdminPoints();
-            loadRosterTeams();
         }
     } catch (err) {
         console.error("Save Error:", err);
@@ -1191,6 +1556,171 @@ async function init() {
     try {
         await checkAuth();
         console.log("✅ Admin Authenticated");
+        // ================= SPONSOR MANAGEMENT =================
+
+        async function fetchSponsors() {
+            const { data, error } = await supabaseClient.from('sponsors').select('*').order('priority', { ascending: false });
+            if (error) return console.error(error);
+
+            const tbody = document.getElementById('sponsors-table-body');
+            if (!tbody) return;
+
+            tbody.innerHTML = data.map(s => `
+        <tr>
+            <td>${s.logo_url ? `<img src="${s.logo_url}" style="height: 40px; border-radius: 5px;">` : '---'}</td>
+            <td><strong>${s.name}</strong></td>
+            <td>${s.priority}</td>
+            <td><span class="status-badge ${s.is_active ? 'paid' : 'pending'}">${s.is_active ? 'Active' : 'Inactive'}</span></td>
+            <td>
+                <button class="btn-secondary" onclick="openEditSponsorModal('${s.id}')">Edit</button>
+                <button class="btn-scoring" style="background: rgba(239,68,68,0.1); color: #ef4444;" onclick="deleteSponsor('${s.id}')">Delete</button>
+            </td>
+        </tr>
+    `).join('');
+        }
+
+        window.openAddSponsorModal = function () {
+            document.getElementById('sponsor-form').reset();
+            document.getElementById('sponsor-id').value = '';
+            document.getElementById('sponsor-modal').style.display = 'flex';
+        };
+
+        window.closeSponsorModal = function () {
+            document.getElementById('sponsor-modal').style.display = 'none';
+        };
+
+        window.openEditSponsorModal = async function (id) {
+            const { data } = await supabaseClient.from('sponsors').select('*').eq('id', id).single();
+            if (data) {
+                document.getElementById('sponsor-id').value = data.id;
+                document.getElementById('sponsor-name').value = data.name;
+                document.getElementById('sponsor-logo').value = data.logo_url || '';
+                document.getElementById('sponsor-priority').value = data.priority || 0;
+                document.getElementById('sponsor-active').checked = data.is_active;
+                document.getElementById('sponsor-modal').style.display = 'flex';
+            }
+        };
+
+        window.saveSponsor = async function (e) {
+            e.preventDefault();
+            const id = document.getElementById('sponsor-id').value;
+            const sponsorData = {
+                name: document.getElementById('sponsor-name').value,
+                logo_url: document.getElementById('sponsor-logo').value,
+                priority: parseInt(document.getElementById('sponsor-priority').value) || 0,
+                is_active: document.getElementById('sponsor-active').checked
+            };
+
+            let error;
+            if (id) {
+                ({ error } = await supabaseClient.from('sponsors').update(sponsorData).eq('id', id));
+            } else {
+                ({ error } = await supabaseClient.from('sponsors').insert([sponsorData]));
+            }
+
+            if (error) alert("Error: " + error.message);
+            else {
+                closeSponsorModal();
+                fetchSponsors();
+            }
+        };
+
+        window.deleteSponsor = async function (id) {
+            if (!confirm("Are you sure you want to delete this partner?")) return;
+            const { error } = await supabaseClient.from('sponsors').delete().eq('id', id);
+            if (error) alert("Error: " + error.message);
+            else fetchSponsors();
+        };
+
+        // ================= REAL-TIME BROADCAST (Phase 6) =================
+
+        function broadcastMatchEvent(msg) {
+            const channel = supabaseClient.channel('match-updates');
+            channel.send({
+                type: 'broadcast',
+                event: 'live-alert',
+                payload: { message: msg }
+            });
+        }
+
+        // ================= REFINED NRR (Phase 5) =================
+
+        async function syncPointsTableFromFixtures() {
+            console.log("🔄 Recalculating Points Table (Refined NRR)...");
+
+            const { data: fixtures } = await supabaseClient.from('fixtures').select('*').eq('status', 'completed');
+            const { data: teams } = await supabaseClient.from('points_table').select('*');
+
+            if (!fixtures || !teams) return;
+
+            const stats = {};
+            teams.forEach(t => {
+                stats[t.team_name] = {
+                    played: 0, won: 0, lost: 0, points: 0,
+                    runs_scored: 0, overs_faced: 0, runs_conceded: 0, overs_bowled: 0
+                };
+            });
+
+            fixtures.forEach(f => {
+                const t1 = f.team1;
+                const t2 = f.team2;
+                if (!stats[t1] || !stats[t2]) return;
+
+                stats[t1].played += 1;
+                stats[t2].played += 1;
+
+                // Sum Scores
+                stats[t1].runs_scored += (f.t1_score || 0);
+                stats[t1].runs_conceded += (f.t2_score || 0);
+                stats[t2].runs_scored += (f.t2_score || 0);
+                stats[t2].runs_conceded += (f.t1_score || 0);
+
+                // NRR Logic (Full overs if all out)
+                const getOvers = (runs, wickets, overs) => {
+                    if (wickets >= 10) return 6.0; // Assume 6.0 overs if all out
+                    return parseFloat(overs) || 6.0;
+                };
+
+                const o1 = getOvers(f.t1_score, f.t1_wickets, f.t1_overs);
+                const o2 = getOvers(f.t2_score, f.t2_wickets, f.t2_overs);
+
+                const o1_dec = Math.floor(o1) + ((o1 % 1) * 10 / 6);
+                const o2_dec = Math.floor(o2) + ((o2 % 1) * 10 / 6);
+
+                stats[t1].overs_faced += o1_dec;
+                stats[t1].overs_bowled += o2_dec;
+                stats[t2].overs_faced += o2_dec;
+                stats[t2].overs_bowled += o1_dec;
+
+                if (f.winner === t1) {
+                    stats[t1].won += 1;
+                    stats[t1].points += 2;
+                    stats[t2].lost += 1;
+                } else if (f.winner === t2) {
+                    stats[t2].won += 1;
+                    stats[t2].points += 2;
+                    stats[t1].lost += 1;
+                } else {
+                    stats[t1].points += 1;
+                    stats[t2].points += 1;
+                }
+            });
+
+            for (const team of Object.keys(stats)) {
+                const s = stats[team];
+                const forRate = s.overs_faced > 0 ? (s.runs_scored / s.overs_faced) : 0;
+                const againstRate = s.overs_bowled > 0 ? (s.runs_conceded / s.overs_bowled) : 0;
+                const nrr = forRate - againstRate;
+
+                await supabaseClient.from('points_table').update({
+                    played: s.played,
+                    won: s.won,
+                    lost: s.lost,
+                    points: s.points,
+                    nrr: parseFloat(nrr.toFixed(3))
+                }).eq('team_name', team);
+            }
+        }
 
         const tasks = [
             { name: "Hero", fn: loadHero },
@@ -1200,6 +1730,7 @@ async function init() {
             { name: "Settings", fn: loadSettings },
             { name: "Navigation Menu", fn: fetchAdminMenu },
             { name: "Team Dropdowns", fn: syncTeamDropdowns },
+            { name: "Sponsors", fn: fetchSponsors },
             { name: "Gallery", fn: fetchGallery }
         ];
 
@@ -1581,6 +2112,7 @@ async function fetchFixtures() {
 
     list.innerHTML = data.map(f => {
         const date = new Date(f.match_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+        const fixtureJson = JSON.stringify(f).replace(/'/g, "&apos;");
         return `
             <tr>
                 <td>${f.match_no}</td>
@@ -1594,7 +2126,7 @@ async function fetchFixtures() {
                 </td>
                 <td>
                     <div style="display: flex; gap: 8px;">
-                        <button class="btn-secondary" onclick="openFixtureModal('${f.id}')">EDIT</button>
+                        <button class="btn-secondary" onclick='editFixture(${fixtureJson})'>EDIT</button>
                         <button class="btn" style="background: var(--primary);" onclick="startLiveMatch('${f.id}')">Start LIVE 🏏</button>
                         <button class="btn-secondary" style="border-color: #ff4d8d; color: #ff4d8d;" onclick="deleteFixture('${f.id}')">DEL</button>
                     </div>
@@ -2429,7 +2961,7 @@ window.submitMatchResult = async function () {
     }
 }
 
-async function updateTournamentCaps(name, team, cat, r, w) {
+async function updateTournamentCaps(name, team, cat, r, w, balls = 0, matches = 0) {
     const { data: existing } = await supabaseClient
         .from('top_performers')
         .select('*')
@@ -2441,6 +2973,8 @@ async function updateTournamentCaps(name, team, cat, r, w) {
         await supabaseClient.from('top_performers').update({
             runs: (existing.runs || 0) + r,
             wickets: (existing.wickets || 0) + w,
+            balls: (existing.balls || 0) + balls,
+            matches: (existing.matches || 0) + matches,
             team_name: team || existing.team_name
         }).eq('id', existing.id);
     } else {
@@ -2449,88 +2983,65 @@ async function updateTournamentCaps(name, team, cat, r, w) {
             team_name: team || 'Unknown',
             category: cat,
             runs: r,
-            wickets: w
+            wickets: w,
+            balls: balls,
+            matches: matches
         }]);
     }
 }
 
-async function syncPointsTableFromFixtures() {
-    console.log("🔄 Recalculating Points Table from all matches...");
+async function generateAutoCommentary(matchId, runVal, isWicket, extrasType, p1, p2, bowl) {
+    let text = "";
+    const pName = p1.name;
 
-    // 1. Fetch all completed fixtures
-    const { data: fixtures } = await supabaseClient.from('fixtures').select('*').eq('status', 'completed');
-    // 2. Fetch all teams
-    const { data: teams } = await supabaseClient.from('points_table').select('*');
+    if (isWicket) {
+        text = `☝️ OUT! ${pName} is gone! Fantastic delivery by ${bowl.name}. What a breakthrough!`;
+    } else if (runVal === 6) {
+        text = `🚀 SIXER! ${pName} clears the boundary effortlessly! That's out of the park!`;
+    } else if (runVal === 4) {
+        text = `⚡ FOUR! Beautifully timed by ${pName}. It races away to the fence!`;
+    } else if (extrasType === 'WD') {
+        text = `⬅️ Wide Ball. Extra pressure on ${bowl.name} now.`;
+    } else if (extrasType === 'NB') {
+        text = `🔴 No Ball! Free hit opportunity for ${pName}!`;
+    } else if (runVal === 0) {
+        text = `🧤 Dot ball. Good comeback by ${bowl.name}.`;
+    } else {
+        text = `${pName} pushes it for ${runVal} run(s). Good rotation of strike.`;
+    }
 
-    if (!fixtures || !teams) return;
+    try {
+        await supabaseClient.from('match_commentary').insert([{
+            match_id: matchId,
+            commentary_text: text,
+            ball_detail: `${liveMatchState.overs}.${liveMatchState.balls}`
+        }]);
+    } catch (e) {
+        console.warn("Commentary push failed (table check required):", e.message);
+    }
 
-    // Reset all team stats locally
-    const stats = {};
-    teams.forEach(t => {
-        stats[t.team_name] = {
-            played: 0, won: 0, lost: 0, points: 0,
-            runs_scored: 0, overs_faced: 0, runs_conceded: 0, overs_bowled: 0
-        };
-    });
-
-    // Loop through fixtures and sum stats
-    fixtures.forEach(f => {
-        const t1 = f.team1;
-        const t2 = f.team2;
-        if (!stats[t1] || !stats[t2]) return;
-
-        stats[t1].played += 1;
-        stats[t2].played += 1;
-        stats[t1].runs_scored += (f.t1_score || 0);
-        stats[t1].runs_conceded += (f.t2_score || 0);
-        stats[t2].runs_scored += (f.t2_score || 0);
-        stats[t2].runs_conceded += (f.t1_score || 0);
-
-        // Accurate NRR Calculation (Decimal Overs)
-        const getOversDecimal = (overs) => {
-            const val = parseFloat(overs) || 6.0;
-            const fullOvers = Math.floor(val);
-            const partialBalls = Math.round((val % 1) * 10);
-            return fullOvers + (partialBalls / 6);
-        };
-
-        const o1 = getOversDecimal(f.t1_overs);
-        const o2 = getOversDecimal(f.t2_overs);
-
-        stats[t1].overs_faced += o1;
-        stats[t1].overs_bowled += o2;
-        stats[t2].overs_faced += o2;
-        stats[t2].overs_bowled += o1;
-
-        if (f.winner === t1) {
-            stats[t1].won += 1;
-            stats[t1].points += 2;
-            stats[t2].lost += 1;
-        } else if (f.winner === t2) {
-            stats[t2].won += 1;
-            stats[t2].points += 2;
-            stats[t1].lost += 1;
-        } else if (f.winner === 'Draw') {
-            stats[t1].points += 1;
-            stats[t2].points += 1;
-        }
-    });
-
-    // Update Supabase for each team
-    for (const teamName of Object.keys(stats)) {
-        const s = stats[teamName];
-        const nrr = s.overs_faced > 0 ? ((s.runs_scored / s.overs_faced) - (s.runs_conceded / s.overs_bowled)) : 0;
-        await supabaseClient.from('points_table').update({
-            played: s.played,
-            won: s.won,
-            lost: s.lost,
-            points: s.points,
-            runs_scored: s.runs_scored,
-            runs_conceded: s.runs_conceded,
-            nrr: parseFloat(nrr.toFixed(3))
-        }).eq('team_name', teamName);
+    // Also show as notification
+    if (runVal >= 4 || isWicket) {
+        showLiveNotification(text);
+        broadcastMatchEvent(text);
     }
 }
+
+function showLiveNotification(msg) {
+    const toast = document.createElement('div');
+    toast.className = 'live-toast animate-fade';
+    toast.innerHTML = `<strong>LIVE ALERT:</strong> ${msg}`;
+    toast.style = `
+        position: fixed; top: 20px; right: 20px;
+        background: var(--primary); color: white;
+        padding: 15px 25px; border-radius: 12px;
+        z-index: 100000; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        font-weight: 700; border-left: 5px solid white;
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 4000);
+}
+
 
 // ================= PROFESSIONAL LIVE SCORING SYSTEM =================
 let liveMatchState = {
@@ -2696,8 +3207,20 @@ function updateScoringUI() {
     document.getElementById('score-bowl-overs').innerText = `${liveMatchState.bowler.overs}.${liveMatchState.bowler.balls}`;
     document.getElementById('score-bowl-reg').value = liveMatchState.bowler.reg;
 
-    document.getElementById('player-1-box').style.border = liveMatchState.striker === 1 ? '2px solid var(--secondary)' : '1px solid rgba(255,255,255,0.05)';
-    document.getElementById('player-2-box').style.border = liveMatchState.striker === 2 ? '2px solid var(--secondary)' : '1px solid rgba(255,255,255,0.05)';
+    const p1Box = document.getElementById('player-1-box');
+    const p2Box = document.getElementById('player-2-box');
+
+    if (p1Box) {
+        p1Box.style.border = liveMatchState.striker === 1 ? '2px solid var(--secondary)' : '1px solid rgba(255,255,255,0.05)';
+        if (liveMatchState.striker === 1) p1Box.classList.remove('player-inactive');
+        else p1Box.classList.add('player-inactive');
+    }
+
+    if (p2Box) {
+        p2Box.style.border = liveMatchState.striker === 2 ? '2px solid var(--secondary)' : '1px solid rgba(255,255,255,0.05)';
+        if (liveMatchState.striker === 2) p2Box.classList.remove('player-inactive');
+        else p2Box.classList.add('player-inactive');
+    }
 
     const timeline = document.getElementById('score-timeline');
     timeline.innerHTML = liveMatchState.timeline.map(b => `<div class="ball ${b == '4' ? 'boundary' : b == '6' ? 'six' : b.toLowerCase().includes('w') ? 'wicket' : ''}">${b}</div>`).join('');
@@ -2714,6 +3237,77 @@ async function fetchPlayerForScore(type) {
     if (type === 1) { liveMatchState.batsman1.name = data.player_name; liveMatchState.batsman1.reg = regNo; }
     else if (type === 2) { liveMatchState.batsman2.name = data.player_name; liveMatchState.batsman2.reg = regNo; }
     else { liveMatchState.bowler.name = data.player_name; liveMatchState.bowler.reg = regNo; }
+
+    // Close any open dropdowns
+    const dropId = type === 1 ? 'score-p1-dropdown' : type === 2 ? 'score-p2-dropdown' : 'score-bowl-dropdown';
+    const dropdown = document.getElementById(dropId);
+    if (dropdown) dropdown.style.display = 'none';
+
+    updateScoringUI();
+}
+
+function filterScoringPlayers(query, type) {
+    const dropId = type === 1 ? 'score-p1-dropdown' : type === 2 ? 'score-p2-dropdown' : 'score-bowl-dropdown';
+    const dropdown = document.getElementById(dropId);
+    const parentBox = type === 1 ? document.getElementById('player-1-box') : type === 2 ? document.getElementById('player-2-box') : null;
+
+    if (!query || query.length < 1) {
+        if (dropdown) dropdown.style.display = 'none';
+        if (parentBox) parentBox.classList.remove('search-active-context');
+        return;
+    }
+
+    if (parentBox) parentBox.classList.add('search-active-context');
+
+    if (!allPaidPlayersForAuction || allPaidPlayersForAuction.length === 0) {
+        fetchPaidPlayersForAutocomplete();
+        if (dropdown) {
+            dropdown.innerHTML = '<div style="padding: 10px; color: var(--text-dim);">Loading...</div>';
+            dropdown.style.display = 'block';
+        }
+        return;
+    }
+
+    query = query.toLowerCase().trim();
+    const filtered = allPaidPlayersForAuction.filter(p =>
+        (p.player_name && p.player_name.toLowerCase().includes(query)) ||
+        (p.registration_no && p.registration_no.toLowerCase().includes(query))
+    ).slice(0, 10);
+
+    if (dropdown) {
+        if (filtered.length === 0) {
+            dropdown.innerHTML = '<div style="padding: 10px; color: var(--text-dim);">No matches</div>';
+        } else {
+            dropdown.innerHTML = filtered.map(p => `
+                <div class="dropdown-item" onclick="selectScoringPlayer('${p.registration_no}', '${p.player_name.replace(/'/g, "\\'")}', ${type})">
+                    <img src="${p.photo_url || 'img.jpg'}">
+                    <div class="player-info">
+                        <div class="player-name">${p.player_name}</div>
+                        <div class="reg-no">REG: ${p.registration_no}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        dropdown.style.display = 'block';
+    }
+}
+
+function selectScoringPlayer(regNo, name, type) {
+    const regId = type === 1 ? 'score-p1-reg' : type === 2 ? 'score-p2-reg' : 'score-bowl-reg';
+    const dropId = type === 1 ? 'score-p1-dropdown' : type === 2 ? 'score-p2-dropdown' : 'score-bowl-dropdown';
+
+    const regInput = document.getElementById(regId);
+    if (regInput) regInput.value = regNo;
+
+    const dropdown = document.getElementById(dropId);
+    if (dropdown) dropdown.style.display = 'none';
+
+    const parentBox = type === 1 ? document.getElementById('player-1-box') : type === 2 ? document.getElementById('player-2-box') : null;
+    if (parentBox) parentBox.classList.remove('search-active-context');
+
+    if (type === 1) { liveMatchState.batsman1.name = name; liveMatchState.batsman1.reg = regNo; }
+    else if (type === 2) { liveMatchState.batsman2.name = name; liveMatchState.batsman2.reg = regNo; }
+    else { liveMatchState.bowler.name = name; liveMatchState.bowler.reg = regNo; }
 
     updateScoringUI();
 }
@@ -2780,6 +3374,15 @@ function handleScoreAction(val) {
 
     liveMatchState.timeline.push(val);
     if (liveMatchState.timeline.length > 8) liveMatchState.timeline.shift();
+
+    // 📡 GENERATE AUTO-COMMENTARY
+    const fixtureId = document.getElementById('score-fixture-id')?.value;
+    if (fixtureId) {
+        const strikerObj = liveMatchState.striker === 1 ? liveMatchState.batsman1 : liveMatchState.batsman2;
+        generateAutoCommentary(fixtureId, runs, isWicket,
+            isWide ? 'WD' : isNoBall ? 'NB' : '',
+            strikerObj, {}, liveMatchState.bowler);
+    }
 
     if (runs % 2 !== 0 && !isWide && !isNoBall) switchStrike();
 
@@ -3016,8 +3619,8 @@ async function finalizeLiveMatch() {
             if (m.top_bowl) await updateTournamentCaps(m.top_bowl, '', 'bowler', 0, -m.top_bowl_wkts);
         }
 
-        if (topBat) await updateTournamentCaps(topBat, '', 'batsman', topBatRuns, 0);
-        if (topBowl) await updateTournamentCaps(topBowl, '', 'bowler', 0, topBowlWkts);
+        if (topBat) await updateTournamentCaps(topBat, '', 'batsman', topBatRuns, 0, 0, 1);
+        if (topBowl) await updateTournamentCaps(topBowl, '', 'bowler', 0, topBowlWkts, 0, 1);
 
         showSuccessPopup("Match Finalized & Results Updated Successfully! 🏆");
 
@@ -4116,5 +4719,99 @@ async function cleanupOrphanedSquads() {
     } catch (err) {
         console.error("Cleanup Error:", err);
         alert("Cleanup failed: " + err.message);
+    }
+}
+
+// ================= SCORER MANAGEMENT =================
+
+async function fetchScorers() {
+    const list = document.getElementById('admin-scorers-list');
+    if (!list) return;
+
+    list.innerHTML = '<tr><td colspan="5" style="text-align: center;">Loading Scorers...</td></tr>';
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('scorers')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+            list.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-dim);">No scorer accounts found.</td></tr>';
+            return;
+        }
+
+        list.innerHTML = data.map(s => `
+            <tr class="animate-fade">
+                <td style="font-weight: 700;">${s.name || 'N/A'}</td>
+                <td style="color: var(--secondary); font-family: monospace;">${s.username}</td>
+                <td style="color: var(--text-dim);">${s.password}</td>
+                <td style="font-size: 0.8rem; color: var(--text-dim);">${new Date(s.created_at).toLocaleDateString()}</td>
+                <td>
+                    <button class="btn-scoring" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;" 
+                        onclick="deleteScorer('${s.id}')">Delete</button>
+                </td>
+            </tr>
+        `).join('');
+
+    } catch (err) {
+        console.error("Fetch Scorers Error:", err);
+        list.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #ef4444;">Error: ${err.message}</td></tr>`;
+    }
+}
+
+function openScorerModal() {
+    // Reset fields
+    document.getElementById('scorer-name').value = '';
+    document.getElementById('scorer-username').value = '';
+    document.getElementById('scorer-password').value = '';
+
+    document.getElementById('add-scorer-modal').style.display = 'flex';
+}
+
+async function saveNewScorer() {
+    const name = document.getElementById('scorer-name').value.trim();
+    const username = document.getElementById('scorer-username').value.trim();
+    const password = document.getElementById('scorer-password').value.trim();
+
+    if (!username || !password) {
+        alert("Username and Password are required!");
+        return;
+    }
+
+    try {
+        const { error } = await supabaseClient
+            .from('scorers')
+            .insert([{ name, username, password }]);
+
+        if (error) throw error;
+
+        alert("Scorer account created successfully! 🎉");
+        document.getElementById('add-scorer-modal').style.display = 'none';
+        fetchScorers();
+    } catch (err) {
+        console.error("Save Scorer Error:", err);
+        alert("Failed to create scorer: " + (err.message.includes("unique") ? "Username already exists!" : err.message));
+    }
+}
+
+async function deleteScorer(id) {
+    if (!confirm("Are you sure you want to delete this scorer account?")) return;
+
+    try {
+        const { error } = await supabaseClient
+            .from('scorers')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+
+        alert("Scorer account deleted.");
+        fetchScorers();
+    } catch (err) {
+        console.error("Delete Scorer Error:", err);
+        alert("Failed to delete scorer: " + err.message);
     }
 }
