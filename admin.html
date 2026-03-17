@@ -362,12 +362,14 @@
                 <header class="section-header">
                     <div>
                         <h2 class="gradient-text">Menu Manager</h2>
-                        <p style="color: var(--text-dim); font-size: 0.9rem;">Manage Desktop Navbar & Mobile Hamburger menu independently</p>
+                        <p style="color: var(--text-dim); font-size: 0.9rem;">Manage Desktop Navbar & Mobile Hamburger
+                            menu independently</p>
                     </div>
                 </header>
 
                 <!-- Tab Switcher -->
-                <div style="display: flex; gap: 10px; margin-bottom: 28px; border-bottom: 1px solid rgba(255,255,255,0.07); padding-bottom: 0;">
+                <div
+                    style="display: flex; gap: 10px; margin-bottom: 28px; border-bottom: 1px solid rgba(255,255,255,0.07); padding-bottom: 0;">
                     <button id="menu-tab-desktop-btn" onclick="switchMenuTab('desktop')"
                         style="padding:12px 26px;border-radius:12px 12px 0 0;border:1.5px solid var(--secondary);border-bottom:none;background:rgba(0,242,255,0.12);color:var(--secondary);font-weight:700;cursor:pointer;font-size:0.92rem;margin-bottom:-1px;">
                         🖥️ Desktop Navbar
@@ -381,46 +383,56 @@
                 <!-- Desktop Navbar Panel -->
                 <div id="menu-tab-desktop-panel">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-                        <p style="color:var(--text-dim);font-size:0.85rem;margin:0;">Links visible in the <strong style="color:white;">top navbar</strong> on all pages.</p>
-                        <button class="btn btn-secondary" onclick="addMenuRow()" style="padding:9px 20px;">+ Add Link</button>
+                        <p style="color:var(--text-dim);font-size:0.85rem;margin:0;">Links visible in the <strong
+                                style="color:white;">top navbar</strong> on all pages.</p>
+                        <button class="btn btn-secondary" onclick="addMenuRow()" style="padding:9px 20px;">+ Add
+                            Link</button>
                     </div>
                     <div class="table-wrapper">
                         <table class="premium-table">
-                            <thead><tr>
-                                <th style="width:65px;">Order</th>
-                                <th>Label</th>
-                                <th>Page / URL</th>
-                                <th style="width:120px;">Status</th>
-                                <th style="width:55px;">Del</th>
-                            </tr></thead>
+                            <thead>
+                                <tr>
+                                    <th style="width:65px;">Order</th>
+                                    <th>Label</th>
+                                    <th>Page / URL</th>
+                                    <th style="width:120px;">Status</th>
+                                    <th style="width:55px;">Del</th>
+                                </tr>
+                            </thead>
                             <tbody id="admin-menu-list"><!-- JS --></tbody>
                         </table>
                     </div>
                     <div style="margin-top:22px;text-align:right;">
-                        <button class="btn btn-red-blink" onclick="saveMenu()" style="padding:13px 34px;">🚀 Publish Navbar</button>
+                        <button class="btn btn-red-blink" onclick="saveMenu()" style="padding:13px 34px;">🚀 Publish
+                            Navbar</button>
                     </div>
                 </div>
 
                 <!-- Mobile Hamburger Panel -->
                 <div id="menu-tab-mobile-panel" style="display:none;">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-                        <p style="color:var(--text-dim);font-size:0.85rem;margin:0;">Links visible in the <strong style="color:white;">☰ hamburger menu</strong> on mobile.</p>
-                        <button class="btn btn-secondary" onclick="addMobileMenuRow()" style="padding:9px 20px;">+ Add Link</button>
+                        <p style="color:var(--text-dim);font-size:0.85rem;margin:0;">Links visible in the <strong
+                                style="color:white;">☰ hamburger menu</strong> on mobile.</p>
+                        <button class="btn btn-secondary" onclick="addMobileMenuRow()" style="padding:9px 20px;">+ Add
+                            Link</button>
                     </div>
                     <div class="table-wrapper">
                         <table class="premium-table">
-                            <thead><tr>
-                                <th style="width:65px;">Order</th>
-                                <th>Label</th>
-                                <th>Page / URL</th>
-                                <th style="width:120px;">Status</th>
-                                <th style="width:55px;">Del</th>
-                            </tr></thead>
+                            <thead>
+                                <tr>
+                                    <th style="width:65px;">Order</th>
+                                    <th>Label</th>
+                                    <th>Page / URL</th>
+                                    <th style="width:120px;">Status</th>
+                                    <th style="width:55px;">Del</th>
+                                </tr>
+                            </thead>
                             <tbody id="mobile-menu-list"><!-- JS --></tbody>
                         </table>
                     </div>
                     <div style="margin-top:22px;text-align:right;">
-                        <button class="btn btn-red-blink" onclick="saveMobileMenu()" style="padding:13px 34px;">🚀 Publish Mobile Menu</button>
+                        <button class="btn btn-red-blink" onclick="saveMobileMenu()" style="padding:13px 34px;">🚀
+                            Publish Mobile Menu</button>
                     </div>
                 </div>
             </div>
@@ -881,7 +893,9 @@
             <div id="sponsors-section" class="admin-section animate-fade">
                 <header class="section-header">
                     <h2 class="gradient-text">🎫 Sponsor Management</h2>
-                    <button class="btn" onclick="openAddSponsorModal()">+ Add New Sponsor</button>
+                    <button class="btn"
+                        onclick="(function(){ var f=document.getElementById('sponsor-form'); if(f) f.reset(); var sid=document.getElementById('sponsor-id'); if(sid) sid.value=''; var sa=document.getElementById('sponsor-active'); if(sa) sa.checked=true; var m=document.getElementById('sponsor-modal'); if(m) m.style.display='flex'; else alert('Sponsor modal not found!'); })()">+
+                        Add New Sponsor</button>
                 </header>
                 <div class="glass" style="padding: 20px;">
                     <div class="table-wrapper">
@@ -1798,49 +1812,44 @@
                 <label>Username</label>
                 <input type="text" id="scorer-username" class="table-input" placeholder="e.g. scorer1">
             </div>
-            <!-- Sponsor Modal -->
-            <div id="sponsor-modal" class="modal-backdrop" style="display: none; z-index: 6000;">
-                <div class="glass"
-                    style="width: 95%; max-width: 500px; padding: 40px; border-radius: 30px; position: relative;">
-                    <button onclick="closeSponsorModal()"
-                        style="position: absolute; top: 20px; right: 20px; background: none; border: none; color: var(--text-dim); font-size: 1.5rem; cursor: pointer;">✕</button>
-                    <h2 class="gradient-text" style="font-size: 1.8rem; margin-bottom: 25px;">🎫 Add/Edit Sponsor</h2>
-                    <form id="sponsor-form" onsubmit="saveSponsor(event)">
-                        <input type="hidden" id="sponsor-id">
-                        <div class="form-group">
-                            <label>Partner Name</label>
-                            <input type="text" id="sponsor-name" class="table-input" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Logo URL (or Base64)</label>
-                            <input type="text" id="sponsor-logo" class="table-input" placeholder="https://...">
-                        </div>
-                        <div class="form-group">
-                            <label>Priority (Higher shows first)</label>
-                            <input type="number" id="sponsor-priority" class="table-input" value="0">
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 25px;">
-                            <label class="switch">
-                                <input type="checkbox" id="sponsor-active" checked>
-                                <span class="slider round"></span>
-                            </label>
-                            <span>Mark as Active Partner</span>
-                        </div>
-                        <button type="submit" class="btn" style="width: 100%;">Save Partner 🚀</button>
-                    </form>
-                </div>
-            </div>
-
-            <div class="form-group" style="margin-bottom: 25px;">
-                <label>Password</label>
-                <input type="text" id="scorer-password" class="table-input" placeholder="e.g. pass123">
-            </div>
-
             <div style="display: flex; gap: 15px;">
                 <button onclick="document.getElementById('add-scorer-modal').style.display='none'" class="btn-secondary"
                     style="flex: 1;">Cancel</button>
                 <button onclick="saveNewScorer()" class="btn" style="flex: 1;">Create Account 👤</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Sponsor Modal -->
+    <div id="sponsor-modal" class="modal-backdrop" style="display: none; z-index: 6000;">
+        <div class="glass"
+            style="width: 95%; max-width: 500px; padding: 40px; border-radius: 30px; position: relative;">
+            <button onclick="closeSponsorModal()"
+                style="position: absolute; top: 20px; right: 20px; background: none; border: none; color: var(--text-dim); font-size: 1.5rem; cursor: pointer;">✕</button>
+            <h2 class="gradient-text" style="font-size: 1.8rem; margin-bottom: 25px;">🎫 Add/Edit Sponsor</h2>
+            <form id="sponsor-form" onsubmit="saveSponsor(event)">
+                <input type="hidden" id="sponsor-id">
+                <div class="form-group">
+                    <label>Partner Name</label>
+                    <input type="text" id="sponsor-name" class="table-input" required>
+                </div>
+                <div class="form-group">
+                    <label>Logo URL (or Base64)</label>
+                    <input type="text" id="sponsor-logo" class="table-input" placeholder="https://...">
+                </div>
+                <div class="form-group">
+                    <label>Priority (Higher shows first)</label>
+                    <input type="number" id="sponsor-priority" class="table-input" value="0">
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 25px;">
+                    <label class="switch">
+                        <input type="checkbox" id="sponsor-active" checked>
+                        <span class="slider round"></span>
+                    </label>
+                    <span>Mark as Active Partner</span>
+                </div>
+                <button type="submit" class="btn" style="width: 100%;">Save Partner 🚀</button>
+            </form>
         </div>
     </div>
 
