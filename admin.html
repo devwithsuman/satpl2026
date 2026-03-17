@@ -32,17 +32,20 @@
                     Dashboard</button>
                 <button onclick="showSection('registrations')" id="nav-registrations">📝 Registrations</button>
                 <button onclick="showSection('hero')">📡 Match Center</button>
+                <button onclick="showSection('sponsors')">🎫 Sponsor Manager</button>
                 <button onclick="showSection('scoring')">🏏 Live Scoring</button>
                 <button onclick="showSection('announcements')">📢 News Manager</button>
                 <button onclick="showSection('fixtures')">📅 Schedule Manager</button>
                 <button onclick="showSection('results')">📊 Results Manager</button>
                 <button onclick="showSection('leaderboard')">🏆 Leaderboard</button>
+                <button onclick="showSection('teams')">🛡️ Team Management</button>
                 <button onclick="showSection('points')">📊 Points Table</button>
                 <button onclick="showSection('rosters')">🏏 Squads</button>
                 <button onclick="showSection('auction')">🔨 Auction Control</button>
                 <button onclick="showSection('auction-results')">📋 Auction Results</button>
                 <button onclick="showSection('gallery')">🖼️ Gallery</button>
                 <button onclick="showSection('menu')">🔗 Menu Manager</button>
+                <button onclick="showSection('scorers')" id="nav-scorers">👥 Scorer Management</button>
                 <button onclick="showSection('settings')">⚙️ Settings</button>
             </nav>
             <button onclick="logout()" class="btn-secondary" style="margin-top: auto;">Logout</button>
@@ -358,31 +361,67 @@
             <div id="menu-section" class="admin-section animate-fade">
                 <header class="section-header">
                     <div>
-                        <h2 class="gradient-text">Navigation Menu Manager</h2>
-                        <p style="color: var(--text-dim); font-size: 0.9rem;">Manage top website links (Add/Remove)</p>
+                        <h2 class="gradient-text">Menu Manager</h2>
+                        <p style="color: var(--text-dim); font-size: 0.9rem;">Manage Desktop Navbar & Mobile Hamburger menu independently</p>
                     </div>
-                    <button class="btn" onclick="addMenuRow()">+ Add New Link</button>
                 </header>
 
-                <div class="table-wrapper">
-                    <table class="premium-table">
-                        <thead>
-                            <tr>
-                                <th style="width: 80px;">Order</th>
-                                <th>Display Label</th>
-                                <th>Link URL (e.g. index.html)</th>
-                                <th style="width: 150px;">Status</th>
-                                <th style="width: 100px;">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="admin-menu-list">
-                            <!-- Populated by JS -->
-                        </tbody>
-                    </table>
+                <!-- Tab Switcher -->
+                <div style="display: flex; gap: 10px; margin-bottom: 28px; border-bottom: 1px solid rgba(255,255,255,0.07); padding-bottom: 0;">
+                    <button id="menu-tab-desktop-btn" onclick="switchMenuTab('desktop')"
+                        style="padding:12px 26px;border-radius:12px 12px 0 0;border:1.5px solid var(--secondary);border-bottom:none;background:rgba(0,242,255,0.12);color:var(--secondary);font-weight:700;cursor:pointer;font-size:0.92rem;margin-bottom:-1px;">
+                        🖥️ Desktop Navbar
+                    </button>
+                    <button id="menu-tab-mobile-btn" onclick="switchMenuTab('mobile')"
+                        style="padding:12px 26px;border-radius:12px 12px 0 0;border:1.5px solid transparent;border-bottom:none;background:transparent;color:var(--text-dim);font-weight:600;cursor:pointer;font-size:0.92rem;margin-bottom:-1px;transition:all .3s;">
+                        📱 Mobile Hamburger
+                    </button>
                 </div>
-                <div style="margin-top: 30px; text-align: right;">
-                    <button class="btn btn-red-blink" onclick="saveMenu()" style="padding: 15px 40px;">Publish Menu
-                        Updates 🚀</button>
+
+                <!-- Desktop Navbar Panel -->
+                <div id="menu-tab-desktop-panel">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                        <p style="color:var(--text-dim);font-size:0.85rem;margin:0;">Links visible in the <strong style="color:white;">top navbar</strong> on all pages.</p>
+                        <button class="btn btn-secondary" onclick="addMenuRow()" style="padding:9px 20px;">+ Add Link</button>
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="premium-table">
+                            <thead><tr>
+                                <th style="width:65px;">Order</th>
+                                <th>Label</th>
+                                <th>Page / URL</th>
+                                <th style="width:120px;">Status</th>
+                                <th style="width:55px;">Del</th>
+                            </tr></thead>
+                            <tbody id="admin-menu-list"><!-- JS --></tbody>
+                        </table>
+                    </div>
+                    <div style="margin-top:22px;text-align:right;">
+                        <button class="btn btn-red-blink" onclick="saveMenu()" style="padding:13px 34px;">🚀 Publish Navbar</button>
+                    </div>
+                </div>
+
+                <!-- Mobile Hamburger Panel -->
+                <div id="menu-tab-mobile-panel" style="display:none;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                        <p style="color:var(--text-dim);font-size:0.85rem;margin:0;">Links visible in the <strong style="color:white;">☰ hamburger menu</strong> on mobile.</p>
+                        <button class="btn btn-secondary" onclick="addMobileMenuRow()" style="padding:9px 20px;">+ Add Link</button>
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="premium-table">
+                            <thead><tr>
+                                <th style="width:65px;">Order</th>
+                                <th>Label</th>
+                                <th>Page / URL</th>
+                                <th style="width:120px;">Status</th>
+                                <th style="width:55px;">Del</th>
+                            </tr></thead>
+                            <tbody id="mobile-menu-list"><!-- JS --></tbody>
+                        </table>
+                    </div>
+                    <div style="margin-top:22px;text-align:right;">
+                        <button class="btn btn-red-blink" onclick="saveMobileMenu()" style="padding:13px 34px;">🚀 Publish Mobile Menu</button>
+                    </div>
                 </div>
             </div>
             <div id="leaderboard-section" class="admin-section animate-fade">
@@ -413,6 +452,41 @@
                 </div>
             </div>
 
+            <!-- Team Management Section (New) -->
+            <div id="teams-section" class="admin-section animate-fade">
+                <header class="section-header">
+                    <div>
+                        <h2 class="gradient-text">Team Management</h2>
+                        <p style="color: var(--text-dim); font-size: 0.9rem;">Manage team branding, logos, and
+                            owner/captain details</p>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn-secondary" onclick="addNewTeamRow()">+ Add New Team</button>
+                        <button class="btn" onclick="saveTeamDetails()">Save Team Branding</button>
+                    </div>
+                </header>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 80px;">Group</th>
+                                <th>Team Name</th>
+                                <th>Logo</th>
+                                <th>Owners</th>
+                                <th>Captain Name</th>
+                                <th>Captain Photo</th>
+                                <th style="width: 120px;">Owner Pass</th>
+                                <th style="width: 80px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-teams-list">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <div id="points-section" class="admin-section animate-fade">
                 <header class="section-header">
                     <div>
@@ -434,8 +508,6 @@
                             <tr>
                                 <th style="width: 80px;">Group</th>
                                 <th>Team Name</th>
-                                <th>Logo (Link)</th>
-                                <th>Owner Name</th>
                                 <th>Played</th>
                                 <th>Won</th>
                                 <th>Lost</th>
@@ -446,7 +518,6 @@
                                 <th>NRR</th>
                                 <th>Points</th>
                                 <th style="width: 100px;">Budget</th>
-                                <th style="width: 120px;">Owner Pass</th>
                                 <th style="width: 80px;">Action</th>
                             </tr>
                         </thead>
@@ -455,6 +526,9 @@
                         </tbody>
                     </table>
                 </div>
+                <datalist id="players-datalist">
+                    <!-- Populated by JS -->
+                </datalist>
             </div>
 
             <div id="announcements-section" class="admin-section animate-fade">
@@ -803,6 +877,31 @@
                     </table>
                 </div>
             </div>
+            <!-- Sponsors Manager -->
+            <div id="sponsors-section" class="admin-section animate-fade">
+                <header class="section-header">
+                    <h2 class="gradient-text">🎫 Sponsor Management</h2>
+                    <button class="btn" onclick="openAddSponsorModal()">+ Add New Sponsor</button>
+                </header>
+                <div class="glass" style="padding: 20px;">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Logo</th>
+                                    <th>Name</th>
+                                    <th>Priority</th>
+                                    <th>Active</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sponsors-table-body">
+                                <!-- Dynamic sponsors -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
 
             <div id="settings-section" class="admin-section animate-fade">
                 <header class="section-header">
@@ -947,11 +1046,15 @@
                             <div class="player-entry glass" id="player-1-box"
                                 style="padding: 15px; border: 1px solid rgba(255,255,255,0.05);">
                                 <div
-                                    style="display: flex; gap: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; margin-bottom: 10px;">
-                                    <input type="text" id="score-p1-reg" class="table-input" placeholder="Strike Reg No"
-                                        style="height: 35px; font-size: 0.8rem;">
-                                    <button onclick="fetchPlayerForScore(1)" class="btn"
-                                        style="padding: 0 10px;">🔍</button>
+                                    style="position: relative; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; margin-bottom: 10px;">
+                                    <div style="display: flex; gap: 10px;">
+                                        <input type="text" id="score-p1-reg" class="table-input"
+                                            placeholder="Name or Reg No" style="height: 35px; font-size: 0.8rem;"
+                                            oninput="filterScoringPlayers(this.value, 1)">
+                                        <button onclick="fetchPlayerForScore(1)" class="btn"
+                                            style="padding: 0 10px;">🔍</button>
+                                    </div>
+                                    <div id="score-p1-dropdown" class="suggestion-dropdown"></div>
                                 </div>
                                 <div id="score-p1-name" style="font-weight: 800; color: var(--secondary);">Striker Name
                                 </div>
@@ -959,13 +1062,17 @@
                                         id="score-p1-runs">0</span> (<span id="score-p1-balls">0</span>)</div>
                             </div>
                             <div class="player-entry glass" id="player-2-box"
-                                style="padding: 15px; border: 1px solid rgba(255,255,255,0.05); opacity: 0.7;">
+                                style="padding: 15px; border: 1px solid rgba(255,255,255,0.05);">
                                 <div
-                                    style="display: flex; gap: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; margin-bottom: 10px;">
-                                    <input type="text" id="score-p2-reg" class="table-input"
-                                        placeholder="Non-Strike Reg No" style="height: 35px; font-size: 0.8rem;">
-                                    <button onclick="fetchPlayerForScore(2)" class="btn"
-                                        style="padding: 0 10px;">🔍</button>
+                                    style="position: relative; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; margin-bottom: 10px;">
+                                    <div style="display: flex; gap: 10px;">
+                                        <input type="text" id="score-p2-reg" class="table-input"
+                                            placeholder="Name or Reg No" style="height: 35px; font-size: 0.8rem;"
+                                            oninput="filterScoringPlayers(this.value, 2)">
+                                        <button onclick="fetchPlayerForScore(2)" class="btn"
+                                            style="padding: 0 10px;">🔍</button>
+                                    </div>
+                                    <div id="score-p2-dropdown" class="suggestion-dropdown"></div>
                                 </div>
                                 <div id="score-p2-name" style="font-weight: 800; color: white;">Non-Striker Name</div>
                                 <div style="font-size: 1.2rem; font-weight: 900; margin-top: 5px;"><span
@@ -976,12 +1083,15 @@
                         <!-- Bowling Stats -->
                         <div
                             style="margin-top: 20px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
-                            <div style="display: flex; gap: 10px; align-items: center;">
-                                <input type="text" id="score-bowl-reg" class="table-input" placeholder="Bowler Reg No"
-                                    style="height: 35px; width: 120px;">
+                            <div style="display: flex; gap: 10px; align-items: center; position: relative;">
+                                <input type="text" id="score-bowl-reg" class="table-input" placeholder="Name/Reg No"
+                                    style="height: 35px; width: 150px;"
+                                    oninput="filterScoringPlayers(this.value, 'bowl')">
                                 <button onclick="fetchPlayerForScore('bowl')" class="btn"
                                     style="padding: 0 10px;">🔍</button>
                                 <span id="score-bowl-name" style="font-weight: 700;">Bowler Name</span>
+                                <div id="score-bowl-dropdown" class="suggestion-dropdown"
+                                    style="top: 40px; width: 250px;"></div>
                             </div>
                             <div style="font-weight: 900;"><span id="score-bowl-wkts">0</span> - <span
                                     id="score-bowl-runs">0</span> (<span id="score-bowl-overs">0.0</span>)</div>
@@ -1022,51 +1132,94 @@
                                     <input type="number" id="score-max-wkts" class="table-input" value="10">
                                 </div>
                             </div>
-                            <div
-                                style="margin-bottom:15px; background: rgba(0, 242, 255, 0.05); padding: 15px; border-radius: 12px; border: 1px solid rgba(0, 242, 255, 0.2);">
-                                <label
-                                    style="display: block; margin-bottom: 10px; color: var(--secondary); font-weight: 800;">🏆
-                                    Finalize Match Result</label>
-                                <select id="score-winner-select" class="table-input" style="margin-bottom:10px;">
-                                    <option value="">Select Winner Team</option>
-                                    <!-- Populated dynamically -->
-                                </select>
-                                <div
-                                    style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
-                                    <input type="text" id="score-top-bat" class="table-input"
-                                        placeholder="Best Batsman">
-                                    <input type="number" id="score-top-bat-runs" class="table-input" placeholder="Runs">
-                                </div>
-                                <div
-                                    style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
-                                    <input type="text" id="score-top-bowl" class="table-input"
-                                        placeholder="Best Bowler">
-                                    <input type="number" id="score-top-bowl-wkts" class="table-input"
-                                        placeholder="Wkts">
-                                </div>
-                                <button onclick="finalizeLiveMatch()" class="btn"
-                                    style="width: 100%; background: var(--secondary); color: var(--bg-dark); font-weight: 900;">SAVE
-                                    FINAL RESULT 🏁</button>
-                            </div>
-                            <button onclick="startSecondInnings()" class="btn-scoring strike-btn"
-                                style="width: 100%; margin-bottom: 10px; font-size: 0.9rem;">🔄 Start 2nd Innings
-                                (Chase)</button>
-                            <button onclick="window.open('scorecard.html','_blank')" class="btn-primary"
-                                style="width: 100%; margin-bottom: 10px; background: var(--secondary); color: var(--bg-dark); border-color: var(--secondary);">View
-                                Scorecard 📊</button>
-                            <button onclick="resetInnings()" class="btn-secondary"
-                                style="width: 100%; margin-bottom: 10px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: #ef4444;">Reset
-                                Innings</button>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                            <!-- 🔄 PRIMARY LIVE SYNC BUTTON -->
+                            <button onclick="saveLiveScore()" class="btn btn-sync"
+                                style="width: 100%; padding: 18px; margin-bottom: 25px;">SYNC LIVE SCORE TO WEBSITE
+                                📡</button>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
                                 <button onclick="undoLastBall()" class="btn-scoring"
                                     style="font-size: 0.9rem; padding: 10px;">↩️ Undo</button>
                                 <button onclick="redoLastBall()" class="btn-scoring"
                                     style="font-size: 0.9rem; padding: 10px;">Redo ↪️</button>
                             </div>
-                            <button onclick="saveLiveScore()" class="btn"
-                                style="width: 100%; padding: 15px; font-weight: 900;">Push Update to Website 🚀</button>
+
+                            <button onclick="window.open('scorecard.html','_blank')" class="btn-primary"
+                                style="width: 100%; margin-bottom: 10px; background: var(--secondary); color: var(--bg-dark); border-color: var(--secondary);">View
+                                Scorecard 📊</button>
+
+                            <button onclick="resetInnings()" class="btn-secondary"
+                                style="width: 100%; margin-bottom: 30px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: #ef4444;">Reset
+                                Innings</button>
+
+                            <!-- 🏆 FINAL MATCH RESULT SECTION -->
+                            <div
+                                style="margin-top:20px; background: rgba(0, 242, 255, 0.03); padding: 20px; border-radius: 16px; border: 1.5px dashed rgba(0, 242, 255, 0.3);">
+                                <label
+                                    style="display: block; margin-bottom: 15px; color: var(--secondary); font-weight: 900; text-transform: uppercase; letter-spacing: 1px;">🏆
+                                    Finalize Match Result</label>
+
+                                <select id="score-winner-select" class="table-input"
+                                    style="margin-bottom:15px; background: #0f172a; border-color: rgba(255,255,255,0.1);">
+                                    <option value="">Select Winner Team</option>
+                                    <!-- Populated dynamically -->
+                                </select>
+
+                                <div
+                                    style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                                    <input type="text" id="score-top-bat" class="table-input" placeholder="Best Batsman"
+                                        style="background: #0f172a;">
+                                    <input type="number" id="score-top-bat-runs" class="table-input" placeholder="Runs"
+                                        style="background: #0f172a;">
+                                </div>
+
+                                <div
+                                    style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
+                                    <input type="text" id="score-top-bowl" class="table-input" placeholder="Best Bowler"
+                                        style="background: #0f172a;">
+                                    <input type="number" id="score-top-bowl-wkts" class="table-input" placeholder="Wkts"
+                                        style="background: #0f172a;">
+                                </div>
+
+                                <button onclick="finalizeLiveMatch()" class="btn"
+                                    style="width: 100%; background: var(--secondary); color: var(--bg-dark); font-weight: 900; box-shadow: 0 0 20px rgba(0, 242, 255, 0.2);">SAVE
+                                    FINAL RESULT 🏁</button>
+                            </div>
+
+                            <button onclick="startSecondInnings()" class="btn-scoring strike-btn"
+                                style="width: 100%; margin-top: 20px; font-size: 0.9rem;">🔄 Start 2nd Innings
+                                (Chase)</button>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Scorer Management Section -->
+            <div id="scorers-section" class="admin-section animate-fade">
+                <header class="section-header">
+                    <div>
+                        <h2 class="gradient-text">Scorer Management</h2>
+                        <p style="color: var(--text-dim); font-size: 0.9rem;">Create and manage dedicated scorer
+                            accounts</p>
+                    </div>
+                    <button class="btn" onclick="openScorerModal()">+ Add New Scorer</button>
+                </header>
+
+                <div class="table-wrapper">
+                    <table class="premium-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Username</th>
+                                <th>Password</th>
+                                <th>Created At</th>
+                                <th style="width: 120px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-scorers-list">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
@@ -1508,6 +1661,7 @@
         </div>
     </div>
 
+
     <!-- Team Details Preview Modal -->
     <div id="team-details-modal" class="modal-backdrop" style="display: none; z-index: 3000;">
         <div class="glass modal-content animate-fade"
@@ -1622,6 +1776,70 @@
                 <button onclick="document.getElementById('edit-auction-modal').style.display='none'"
                     class="btn-secondary" style="flex: 1;">Cancel</button>
                 <button onclick="saveAuctionEdit()" class="btn" style="flex: 1;">Save Changes ✨</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Scorer Modal -->
+    <div id="add-scorer-modal" class="modal-backdrop" style="display: none; z-index: 5000;">
+        <div class="glass modal-content animate-fade" style="max-width: 450px; padding: 30px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+                <h2 class="gradient-text">Add New Scorer</h2>
+                <button onclick="document.getElementById('add-scorer-modal').style.display='none'"
+                    style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer;">&times;</button>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label>Scorer Name</label>
+                <input type="text" id="scorer-name" class="table-input" placeholder="e.g. John Doe">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label>Username</label>
+                <input type="text" id="scorer-username" class="table-input" placeholder="e.g. scorer1">
+            </div>
+            <!-- Sponsor Modal -->
+            <div id="sponsor-modal" class="modal-backdrop" style="display: none; z-index: 6000;">
+                <div class="glass"
+                    style="width: 95%; max-width: 500px; padding: 40px; border-radius: 30px; position: relative;">
+                    <button onclick="closeSponsorModal()"
+                        style="position: absolute; top: 20px; right: 20px; background: none; border: none; color: var(--text-dim); font-size: 1.5rem; cursor: pointer;">✕</button>
+                    <h2 class="gradient-text" style="font-size: 1.8rem; margin-bottom: 25px;">🎫 Add/Edit Sponsor</h2>
+                    <form id="sponsor-form" onsubmit="saveSponsor(event)">
+                        <input type="hidden" id="sponsor-id">
+                        <div class="form-group">
+                            <label>Partner Name</label>
+                            <input type="text" id="sponsor-name" class="table-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Logo URL (or Base64)</label>
+                            <input type="text" id="sponsor-logo" class="table-input" placeholder="https://...">
+                        </div>
+                        <div class="form-group">
+                            <label>Priority (Higher shows first)</label>
+                            <input type="number" id="sponsor-priority" class="table-input" value="0">
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 25px;">
+                            <label class="switch">
+                                <input type="checkbox" id="sponsor-active" checked>
+                                <span class="slider round"></span>
+                            </label>
+                            <span>Mark as Active Partner</span>
+                        </div>
+                        <button type="submit" class="btn" style="width: 100%;">Save Partner 🚀</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 25px;">
+                <label>Password</label>
+                <input type="text" id="scorer-password" class="table-input" placeholder="e.g. pass123">
+            </div>
+
+            <div style="display: flex; gap: 15px;">
+                <button onclick="document.getElementById('add-scorer-modal').style.display='none'" class="btn-secondary"
+                    style="flex: 1;">Cancel</button>
+                <button onclick="saveNewScorer()" class="btn" style="flex: 1;">Create Account 👤</button>
             </div>
         </div>
     </div>
