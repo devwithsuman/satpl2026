@@ -126,6 +126,8 @@
             flex-direction: column;
             align-items: center;
             gap: 12px;
+            min-width: 0;
+            /* Prevents column from expanding beyond 1fr */
         }
 
         .team-logo-wrap {
@@ -138,6 +140,7 @@
             align-items: center;
             justify-content: center;
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+            flex-shrink: 0;
         }
 
         .team-logo-wrap img {
@@ -147,9 +150,13 @@
         }
 
         .team-name {
-            font-size: 1.1rem;
+            font-size: 1rem;
             font-weight: 800;
-            white-space: nowrap;
+            line-height: 1.2;
+            text-align: center;
+            width: 100%;
+            word-wrap: break-word;
+            /* Allow long names to wrap */
         }
 
         .vs-wrap {
@@ -222,6 +229,8 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            min-width: 0;
+            word-break: break-all;
         }
 
         .team-score-val {
@@ -440,7 +449,12 @@
                 } else if (isCompleted) {
                     statusBadge = `<span class="status-pill status-completed">Result</span>`;
                 } else {
-                    statusBadge = `<span>${f.match_time.substring(0, 5)} IST</span>`;
+                    const [h, m] = f.match_time.split(':');
+                    let hr = parseInt(h);
+                    const ampm = hr >= 12 ? 'PM' : 'AM';
+                    hr = hr % 12 || 12;
+                    const time12 = `${hr.toString().padStart(2, '0')}:${m} ${ampm}`;
+                    statusBadge = `<span>${time12} IST</span>`;
                 }
 
                 // Scoreboard Logic
