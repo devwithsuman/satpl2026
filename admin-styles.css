@@ -398,6 +398,46 @@ td {
     box-shadow: 0 0 20px var(--primary-glow) !important;
 }
 
+/* Points Table Photo Upload Styles */
+.photo-upload-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 5px;
+}
+
+.mini-preview {
+    width: 35px;
+    height: 35px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.row-photo-preview {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.photo-upload-label {
+    font-size: 0.6rem;
+    background: var(--glass-bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid var(--glass-border);
+}
+
+.photo-upload-label input {
+    display: none;
+}
+
 .badge-input {
     background: var(--primary) !important;
     color: white !important;
@@ -689,5 +729,234 @@ input:checked+.slider:before {
 
     100% {
         opacity: 1;
+    }
+}
+
+@keyframes slideDownFade {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Suggestion Dropdown Styles - PREMIUM */
+.suggestion-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #0f172a !important;
+    /* Extremely solid background */
+    border: 1.5px solid rgba(0, 242, 255, 0.8) !important;
+    border-radius: 16px;
+    margin-top: 10px;
+    max-height: 350px;
+    overflow-y: auto;
+    z-index: 999999 !important;
+    /* Ultimate z-index */
+    box-shadow: 0 40px 80px rgba(0, 0, 0, 1), 0 0 50px rgba(0, 242, 255, 0.3);
+    display: none;
+    opacity: 1 !important;
+    visibility: visible !important;
+    animation: slideDownFade 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 10px;
+}
+
+/* Professional Scrollbar */
+.suggestion-dropdown::-webkit-scrollbar {
+    width: 6px;
+}
+
+.suggestion-dropdown::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.suggestion-dropdown::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+}
+
+.suggestion-dropdown::-webkit-scrollbar-thumb:hover {
+    background: var(--secondary);
+}
+
+.dropdown-item {
+    margin-bottom: 8px;
+    padding: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    background: #1e293b !important;
+    /* Solid dark sub-background */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    transition: all 0.2s ease;
+    color: #ffffff !important;
+    opacity: 1 !important;
+}
+
+.dropdown-item:last-child {
+    margin-bottom: 0;
+}
+
+.dropdown-item:hover {
+    background: #2563eb !important;
+    /* Highlight on hover */
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: translateX(8px);
+}
+
+.dropdown-item img {
+    width: 48px !important;
+    height: 48px !important;
+    border-radius: 12px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    object-fit: cover;
+    background: #000;
+}
+
+.dropdown-item .player-name {
+    font-weight: 900;
+    font-size: 1.1rem;
+    color: #ffffff !important;
+    margin-bottom: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.dropdown-item .reg-no {
+    font-size: 0.85rem;
+    color: #00f2ff !important;
+    font-weight: 800;
+    background: rgba(0, 242, 255, 0.15);
+    padding: 3px 10px;
+    border-radius: 6px;
+    display: inline-block;
+}
+
+/* Stacking Context Management */
+.search-active-context {
+    z-index: 99999 !important;
+    position: relative !important;
+}
+
+/* Inactive State styling without global opacity */
+.player-inactive {
+    filter: grayscale(0.5) contrast(0.8);
+    background: rgba(0, 0, 0, 0.2) !important;
+}
+
+.player-inactive *:not(.suggestion-dropdown):not(.dropdown-item):not(.dropdown-item *) {
+    opacity: 0.5;
+}
+/* 📡 LIVE SYNC BUTTON PREMIUM STYLE */
+@keyframes syncPulse {
+    0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); transform: scale(1); }
+    70% { box-shadow: 0 0 0 15px rgba(34, 197, 94, 0); transform: scale(1.02); }
+    100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); transform: scale(1); }
+}
+
+.btn-sync {
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
+    color: white !important;
+    border: 1.5px solid rgba(255, 255, 255, 0.3) !important;
+    font-size: 1.1rem !important;
+    font-weight: 900 !important;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3) !important;
+    animation: syncPulse 2.5s infinite ease-in-out;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-sync:hover {
+    filter: brightness(1.2);
+    box-shadow: 0 8px 30px rgba(34, 197, 94, 0.6) !important;
+}
+
+.btn-sync:active {
+    transform: scale(0.95);
+}
+
+/* ============================================
+   ADMIN & SCORER PANEL MOBILE FIXES
+   ============================================ */
+
+/* Override: make modals scroll from bottom on mobile */
+@media (max-width: 768px) {
+    /* Main layout already handled: sidebar goes horizontal */
+    .admin-container { flex-direction: column; }
+
+    .sidebar {
+        width: 100%;
+        padding: 8px 12px;
+        flex-direction: row;
+        overflow-x: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--glass-border);
+        position: sticky;
+        top: 0;
+        z-index: 200;
+        background: rgba(5, 8, 22, 0.98);
+        scrollbar-width: none;
+    }
+    .sidebar::-webkit-scrollbar { display: none; }
+    .sidebar > div:first-child { display: none; }
+    .sidebar-nav { display: flex; gap: 6px; padding-bottom: 2px; flex-direction: row; }
+    .sidebar button { white-space: nowrap; padding: 9px 13px; margin-bottom: 0; font-size: 0.78rem; flex-shrink: 0; }
+
+    .main-content { padding: 20px 12px; }
+    .section-header { flex-direction: column !important; gap: 12px; align-items: flex-start !important; margin-bottom: 20px; }
+    .dashboard-grid { grid-template-columns: 1fr; gap: 16px; }
+
+    /* Scoring layout */
+    .score-admin-flex { flex-direction: column; padding: 15px; gap: 12px; }
+    .vs-divider { font-size: 1.5rem; padding: 5px 0; }
+    .score-input { font-size: 1.8rem !important; width: 100px !important; padding: 8px !important; }
+
+    /* Table scroll */
+    .table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { min-width: 550px; }
+    td, th { padding: 10px 8px; font-size: 0.82rem; }
+
+    /* Modals bottom-sheet */
+    .modal-backdrop { align-items: flex-end !important; padding: 0 !important; }
+    .modal-backdrop .glass, .modal-content {
+        width: 100% !important;
+        max-width: 100% !important;
+        border-radius: 24px 24px 0 0 !important;
+        max-height: 95vh !important;
+        overflow-y: auto !important;
+        padding: 30px 20px !important;
+    }
+
+    /* Scoring grid */
+    .grid[style*="2fr 1fr"] { grid-template-columns: 1fr !important; }
+    .grid[style*="grid-template-columns"] { grid-template-columns: 1fr !important; }
+}
+
+@media (max-width: 480px) {
+    .sidebar button { padding: 8px 10px; font-size: 0.72rem; }
+    .main-content { padding: 15px 10px; }
+    td, th { padding: 8px 6px; font-size: 0.78rem; }
+
+    /* Scoring buttons */
+    .btn-scoring { padding: 12px 8px; font-size: 0.95rem; border-radius: 10px; }
+    .score-input { font-size: 1.5rem !important; width: 80px !important; }
+
+    /* Section header title */
+    .section-header h2 { font-size: 1.4rem !important; }
+    .section-header .btn, .section-header .btn-secondary { width: 100%; text-align: center; }
+
+    /* Fix edit modal width */
+    .modal-backdrop .glass {
+        padding: 20px 14px !important;
     }
 }
