@@ -4815,9 +4815,16 @@ async function openEditSponsorModal(id) {
 async function saveSponsor(e) {
     e.preventDefault();
     const id = document.getElementById('sponsor-id').value;
+    let websiteUrl = document.getElementById('sponsor-website').value?.trim() || null;
+    
+    // Normalize URL to be absolute
+    if (websiteUrl && !/^https?:\/\//i.test(websiteUrl)) {
+        websiteUrl = 'https://' + websiteUrl;
+    }
+
     const sponsorData = {
         name: document.getElementById('sponsor-name').value,
-        website_url: document.getElementById('sponsor-website').value || null,
+        website_url: websiteUrl,
         logo_url: document.getElementById('sponsor-logo').value || null,
         priority: parseInt(document.getElementById('sponsor-priority').value) || 0,
         is_active: document.getElementById('sponsor-active').checked
