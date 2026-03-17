@@ -2,8 +2,8 @@
 var SUPABASE_URL = "https://lsikcaybolgsfimwtkdv.supabase.co";
 var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzaWtjYXlib2xnc2ZpbXd0a2R2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyMjAxMjgsImV4cCI6MjA4Njc5NjEyOH0.e-O0trZ6jvkj-If6MtnYKMTQsmL1vPlEsyajZRLCxqk";
 
-// Detect if we are on an admin-related page
-var isAdminPage = window.location.pathname.toLowerCase().includes('admin');
+// Detect if we are on an admin or scorer page
+var isAdminPage = window.location.pathname.toLowerCase().includes('admin') || window.location.pathname.toLowerCase().includes('scorer');
 
 var supabaseOptions = {
     auth: {
