@@ -1556,81 +1556,7 @@ async function init() {
     try {
         await checkAuth();
         console.log("✅ Admin Authenticated");
-        // ================= SPONSOR MANAGEMENT =================
-
-        async function fetchSponsors() {
-            const { data, error } = await supabaseClient.from('sponsors').select('*').order('priority', { ascending: false });
-            if (error) return console.error(error);
-
-            const tbody = document.getElementById('sponsors-table-body');
-            if (!tbody) return;
-
-            tbody.innerHTML = data.map(s => `
-        <tr>
-            <td>${s.logo_url ? `<img src="${s.logo_url}" style="height: 40px; border-radius: 5px;">` : '---'}</td>
-            <td><strong>${s.name}</strong></td>
-            <td>${s.priority}</td>
-            <td><span class="status-badge ${s.is_active ? 'paid' : 'pending'}">${s.is_active ? 'Active' : 'Inactive'}</span></td>
-            <td>
-                <button class="btn-secondary" onclick="openEditSponsorModal('${s.id}')">Edit</button>
-                <button class="btn-scoring" style="background: rgba(239,68,68,0.1); color: #ef4444;" onclick="deleteSponsor('${s.id}')">Delete</button>
-            </td>
-        </tr>
-    `).join('');
-        }
-
-        window.openAddSponsorModal = function () {
-            document.getElementById('sponsor-form').reset();
-            document.getElementById('sponsor-id').value = '';
-            document.getElementById('sponsor-modal').style.display = 'flex';
-        };
-
-        window.closeSponsorModal = function () {
-            document.getElementById('sponsor-modal').style.display = 'none';
-        };
-
-        window.openEditSponsorModal = async function (id) {
-            const { data } = await supabaseClient.from('sponsors').select('*').eq('id', id).single();
-            if (data) {
-                document.getElementById('sponsor-id').value = data.id;
-                document.getElementById('sponsor-name').value = data.name;
-                document.getElementById('sponsor-logo').value = data.logo_url || '';
-                document.getElementById('sponsor-priority').value = data.priority || 0;
-                document.getElementById('sponsor-active').checked = data.is_active;
-                document.getElementById('sponsor-modal').style.display = 'flex';
-            }
-        };
-
-        window.saveSponsor = async function (e) {
-            e.preventDefault();
-            const id = document.getElementById('sponsor-id').value;
-            const sponsorData = {
-                name: document.getElementById('sponsor-name').value,
-                logo_url: document.getElementById('sponsor-logo').value,
-                priority: parseInt(document.getElementById('sponsor-priority').value) || 0,
-                is_active: document.getElementById('sponsor-active').checked
-            };
-
-            let error;
-            if (id) {
-                ({ error } = await supabaseClient.from('sponsors').update(sponsorData).eq('id', id));
-            } else {
-                ({ error } = await supabaseClient.from('sponsors').insert([sponsorData]));
-            }
-
-            if (error) alert("Error: " + error.message);
-            else {
-                closeSponsorModal();
-                fetchSponsors();
-            }
-        };
-
-        window.deleteSponsor = async function (id) {
-            if (!confirm("Are you sure you want to delete this partner?")) return;
-            const { error } = await supabaseClient.from('sponsors').delete().eq('id', id);
-            if (error) alert("Error: " + error.message);
-            else fetchSponsors();
-        };
+        // Sponsor functions are now globally defined below init()
 
         // ================= REAL-TIME BROADCAST (Phase 6) =================
 
@@ -4813,5 +4739,92 @@ async function deleteScorer(id) {
     } catch (err) {
         console.error("Delete Scorer Error:", err);
         alert("Failed to delete scorer: " + err.message);
+    }
+}
+
+// ================= SPONSOR MANAGEMENT (GLOBAL) =================
+
+async function fetchSponsors() {
+    const { data, error } = await supabaseClient.from('sponsors').select('*').order('priority', { ascending: false });
+    if (error) return console.error('Sponsor fetch error:', error);
+
+    const tbody = document.getElementById('sponsors-table-body');
+    if (!tbody) return;
+
+    if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: var(--text-dim); padding: 40px;">No sponsors added yet. Click "+ Add New Sponsor" to get started.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = data.map(s => `
+        <tr>
+            <td>${s.logo_url ? `<img src="${s.logo_url}" style="height: 40px; border-radius: 5px; object-fit: contain;">` : '---'}</td>
+            <td><strong>${s.name}</strong></td>
+            <td>${s.priority}</td>
+            <td><span class="status-badge ${s.is_active ? 'paid' : 'pending'}">${s.is_active ? 'Active' : 'Inactive'}</span></td>
+            <td>
+                <button class="btn-secondary" style="margin-right:5px;" onclick="openEditSponsorModal('${s.id}')">Edit</button>
+                <button class="btn-scoring" style="background: rgba(239,68,68,0.1); color: #ef4444;" onclick="deleteSponsor('${s.id}')">Delete</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function openAddSponsorModal() {
+    document.getElementById('sponsor-form').reset();
+    document.getElementById('sponsor-id').value = '';
+    document.getElementById('sponsor-active').checked = true;
+    document.getElementById('sponsor-modal').style.display = 'flex';
+}
+
+function closeSponsorModal() {
+    document.getElementById('sponsor-modal').style.display = 'none';
+}
+
+async function openEditSponsorModal(id) {
+    const { data } = await supabaseClient.from('sponsors').select('*').eq('id', id).single();
+    if (data) {
+        document.getElementById('sponsor-id').value = data.id;
+        document.getElementById('sponsor-name').value = data.name;
+        document.getElementById('sponsor-logo').value = data.logo_url || '';
+        document.getElementById('sponsor-priority').value = data.priority || 0;
+        document.getElementById('sponsor-active').checked = data.is_active;
+        document.getElementById('sponsor-modal').style.display = 'flex';
+    }
+}
+
+async function saveSponsor(e) {
+    e.preventDefault();
+    const id = document.getElementById('sponsor-id').value;
+    const sponsorData = {
+        name: document.getElementById('sponsor-name').value,
+        logo_url: document.getElementById('sponsor-logo').value || null,
+        priority: parseInt(document.getElementById('sponsor-priority').value) || 0,
+        is_active: document.getElementById('sponsor-active').checked
+    };
+
+    let error;
+    if (id) {
+        ({ error } = await supabaseClient.from('sponsors').update(sponsorData).eq('id', id));
+    } else {
+        ({ error } = await supabaseClient.from('sponsors').insert([sponsorData]));
+    }
+
+    if (error) {
+        alert("Error saving sponsor: " + error.message);
+    } else {
+        showToast("Sponsor saved successfully!", "success");
+        closeSponsorModal();
+        fetchSponsors();
+    }
+}
+
+async function deleteSponsor(id) {
+    if (!confirm("Are you sure you want to delete this sponsor?")) return;
+    const { error } = await supabaseClient.from('sponsors').delete().eq('id', id);
+    if (error) alert("Error: " + error.message);
+    else {
+        showToast("Sponsor deleted.", "success");
+        fetchSponsors();
     }
 }
