@@ -2488,7 +2488,11 @@ async function fetchGallery() {
             <td>
                 <img src="${photo.image_url}" style="width: 80px; height: 50px; object-fit: cover; border-radius: 8px; border: 1px solid var(--glass-border);">
             </td>
-            <td style="font-size: 0.8rem; color: var(--text-dim); max-width: 200px; overflow: hidden; text-overflow: ellipsis;">
+            <td>
+                <div style="font-weight: 700; color: white;">${photo.name || '---'}</div>
+                <div style="font-size: 0.75rem; color: var(--secondary);">${photo.designation || '---'}</div>
+            </td>
+            <td style="font-size: 0.8rem; color: var(--text-dim); max-width: 150px; overflow: hidden; text-overflow: ellipsis;">
                 ${photo.image_url}
             </td>
             <td style="font-size: 0.85rem;">${new Date(photo.created_at).toLocaleDateString()}</td>
@@ -2510,6 +2514,8 @@ function openGalleryModal(isEdit = false) {
     if (!isEdit) {
         document.getElementById('gallery-photo-input').value = '';
         document.getElementById('gallery-link-input').value = '';
+        document.getElementById('gallery-name').value = '';
+        document.getElementById('gallery-role').value = '';
         document.getElementById('gallery-photo-preview').innerHTML = '<span style="color: var(--text-dim); font-size: 0.8rem;">Photo Preview</span>';
         galleryPhotoFile = null;
         switchGalleryTab('upload');
@@ -2526,6 +2532,10 @@ function editGalleryPhoto(photo) {
 
     // Set orientation
     document.querySelector(`input[name = "gallery-orientation"][value = "${photo.orientation || 'landscape'}"]`).checked = true;
+
+    // Set name and designation
+    document.getElementById('gallery-name').value = photo.name || '';
+    document.getElementById('gallery-role').value = photo.designation || '';
 
     // Show preview of existing
     document.getElementById('gallery-photo-preview').innerHTML = `<img src="${photo.image_url}" style="max-width: 100%; max-height: 200px; border-radius: 8px;">`;
@@ -2588,6 +2598,8 @@ async function saveGalleryPhoto(event) {
     const btn = document.getElementById('gallerySubmitBtn');
     const originalText = btn.innerText;
     const orientation = document.querySelector('input[name="gallery-orientation"]:checked').value;
+    const name = document.getElementById('gallery-name').value.trim();
+    const designation = document.getElementById('gallery-role').value.trim();
     const editId = document.getElementById('edit-gallery-id').value;
 
     if (!editId) {
@@ -2607,7 +2619,7 @@ async function saveGalleryPhoto(event) {
             if (activeGalleryTab === 'upload') {
                 const timestamp = Date.now();
                 const ext = galleryPhotoFile.name.split('.').pop();
-                const fileName = `gallery_${timestamp}.${ext} `;
+                const fileName = `gallery_${timestamp}.${ext}`;
 
                 const { data: uploadData, error: uploadError } = await supabaseClient.storage
                     .from('player-photos')
@@ -2620,6 +2632,15 @@ async function saveGalleryPhoto(event) {
                     .getPublicUrl(fileName);
 
                 imageUrl = publicUrlData.publicUrl;
+            } else if (activeGalleryTab === 'link') {
+                imageUrl = document.getElementById('gallery-link-input').value.trim();
+                // Auto-convert Google Drive links
+                if (imageUrl.includes('drive.google.com')) {
+                    const match = imageUrl.match(/\/d\/([^\/]+)/);
+                    if (match && match[1]) {
+                        imageUrl = `https://drive.google.com/uc?id=${match[1]}&export=download`;
+                    }
+                }
             }
 
             const { error: dbError } = await window.safeSupabaseCall(() =>
@@ -2627,7 +2648,9 @@ async function saveGalleryPhoto(event) {
                     .from('gallery')
                     .insert([{
                         image_url: imageUrl,
-                        orientation: orientation
+                        orientation: orientation,
+                        name: name,
+                        designation: designation
                     }])
             );
 
@@ -2635,13 +2658,17 @@ async function saveGalleryPhoto(event) {
             alert("✅ Photo added to gallery!");
         } else {
             // --- EDIT EXISTING PHOTO ---
-            let updates = { orientation: orientation };
+            let updates = { 
+                orientation: orientation,
+                name: name,
+                designation: designation
+            };
 
             // Check if user provided a new image
             if (activeGalleryTab === 'upload' && galleryPhotoFile) {
                 const timestamp = Date.now();
                 const ext = galleryPhotoFile.name.split('.').pop();
-                const fileName = `gallery_${timestamp}.${ext} `;
+                const fileName = `gallery_${timestamp}.${ext}`;
 
                 const { data: uploadData, error: uploadError } = await supabaseClient.storage
                     .from('player-photos')
@@ -2655,7 +2682,15 @@ async function saveGalleryPhoto(event) {
 
                 updates.image_url = publicUrlData.publicUrl;
             } else if (activeGalleryTab === 'link' && document.getElementById('gallery-link-input').value.trim()) {
-                updates.image_url = document.getElementById('gallery-link-input').value.trim();
+                let linkUrl = document.getElementById('gallery-link-input').value.trim();
+                // Auto-convert Google Drive links
+                if (linkUrl.includes('drive.google.com')) {
+                    const match = linkUrl.match(/\/d\/([^\/]+)/);
+                    if (match && match[1]) {
+                        linkUrl = `https://drive.google.com/uc?id=${match[1]}&export=download`;
+                    }
+                }
+                updates.image_url = linkUrl;
             }
 
             const { error: dbError } = await window.safeSupabaseCall(() =>
