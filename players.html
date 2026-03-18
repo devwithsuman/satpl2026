@@ -362,7 +362,6 @@
             }
         }
 
-        /* Mobile Adjustments */
         @media (max-width: 600px) {
             .search-box {
                 flex-direction: column;
@@ -375,6 +374,165 @@
             .player-name {
                 font-size: 1.2rem;
             }
+        }
+        /* Mobile Adjustments */
+
+        /* Player Card Generator Modal */
+        .card-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            backdrop-filter: blur(15px);
+        }
+
+        .card-modal-content {
+            background: #0a0a14;
+            padding: 30px;
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+            position: relative;
+        }
+
+        /* The actual shareable card */
+        .shareable-card {
+            width: 400px;
+            height: 600px;
+            margin: 0 auto 25px;
+            background: #080810;
+            border-radius: 20px;
+            position: relative;
+            overflow: hidden;
+            border: 4px solid var(--secondary);
+            box-shadow: 0 0 50px rgba(0, 242, 255, 0.2);
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .card-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(to top, #080810 0%, transparent 60%);
+            z-index: 2;
+        }
+
+        .card-player-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        .card-content {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 30px;
+            z-index: 3;
+            text-align: left;
+        }
+
+        .card-team-logo {
+            position: absolute;
+            top: 25px;
+            right: 25px;
+            width: 60px;
+            height: 60px;
+            z-index: 4;
+            border-radius: 50%;
+            border: 2px solid var(--secondary);
+            background: rgba(0,0,0,0.5);
+            padding: 5px;
+        }
+
+        .card-reg {
+            font-size: 0.8rem;
+            color: var(--secondary);
+            font-weight: 800;
+            letter-spacing: 3px;
+            margin-bottom: 5px;
+        }
+
+        .card-name {
+            font-size: 2.2rem;
+            font-weight: 900;
+            color: white;
+            line-height: 1;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
+
+        .card-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 15px;
+        }
+
+        .card-stat-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-stat-label {
+            font-size: 0.65rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .card-stat-value {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: white;
+        }
+
+        .card-sold-price {
+            margin-top: 15px;
+            background: linear-gradient(90deg, var(--secondary), var(--primary));
+            padding: 10px 15px;
+            border-radius: 10px;
+            color: #000;
+            font-weight: 900;
+            text-align: center;
+        }
+
+        .share-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        #download-card-btn {
+            background: var(--secondary);
+            color: #000;
+            font-weight: 800;
+            padding: 12px 25px;
+            border-radius: 50px;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
     </style>
 </head>
@@ -454,6 +612,57 @@
         </div>
     </div>
 
+    <!-- Player Card Modal -->
+    <div id="card-modal" class="card-modal" onclick="closeCardModal()">
+        <div class="card-modal-content animate-fade" onclick="event.stopPropagation()">
+            <button onclick="closeCardModal()"
+                style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer;">&times;</button>
+            <h3 class="gradient-text" style="margin-bottom: 20px;">Premium Player Card</h3>
+
+            <!-- The Card itself -->
+            <div id="capture-area">
+                <div class="shareable-card" id="player-share-card">
+                    <img src="img.svg" class="card-player-img" id="card-img">
+                    <div class="card-overlay"></div>
+                    <img src="img.svg" class="card-team-logo" id="card-team-logo">
+
+                    <div class="card-content">
+                        <div class="card-reg" id="card-reg-no">OSATPL001</div>
+                        <div class="card-name" id="card-player-name">PLAYER NAME</div>
+                        
+                        <div style="font-size: 0.8rem; font-weight: 700; color: var(--secondary);" id="card-team-display">TEAM NAME</div>
+
+                        <div class="card-stats">
+                            <div class="card-stat-item">
+                                <span class="card-stat-label">Role</span>
+                                <span class="card-stat-value" id="card-role">All Rounder</span>
+                            </div>
+                            <div class="card-stat-item">
+                                <span class="card-stat-label">Season</span>
+                                <span class="card-stat-value">2026</span>
+                            </div>
+                        </div>
+
+                        <div class="card-sold-price">
+                             SOLD: ₹<span id="card-price">500</span>
+                        </div>
+                        
+                        <div style="margin-top: 15px; font-size: 0.6rem; color: #555; text-align: center; font-weight: 700; letter-spacing: 2px;">
+                            Official SATPL 2026 Player Card
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="share-actions">
+                <button id="download-card-btn" onclick="captureCard()">
+                    <span>📥</span> Download Card
+                </button>
+            </div>
+            <p style="margin-top: 15px; font-size: 0.8rem; color: var(--text-dim);">Share this card with your friends on WhatsApp or Facebook!</p>
+        </div>
+    </div>
+
     <footer
         style="padding: 60px 20px; text-align: center; color: var(--text-dim); border-top: 1px solid rgba(255, 255, 255, 0.05); margin-top: 80px; background: rgba(0,0,0,0.2);">
         <img src="img.svg" style="height: 40px; opacity: 0.5; margin-bottom: 20px;">
@@ -461,6 +670,7 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <script src="supabase-config.js"></script>
     <script src="nav-loader.js"></script>
     <script>
@@ -570,6 +780,10 @@
                                 <span class="price-label" style="margin:0;">SOLD PRICE ${isHighValue ? '🔥' : ''}</span>
                                 <span class="price-value sold-text" style="font-size: 1.1rem;">₹${(p.auction_price || 0).toLocaleString()}</span>
                             </div>
+                            <button class="btn" style="margin-top: 15px; width: 100%; font-size: 0.8rem; padding: 10px;" 
+                                onclick="openCardModal('${p.registration_no}', '${p.player_name.replace(/'/g, "\\'")}', '${p.team_name}', '${(p.auction_price || 0)}', '${skills[0] || 'All Rounder'}', '${photoUrl}')">
+                                ✨ Share Player Card
+                            </button>
                         </div>
                     `;
                 } else if (status === 'unsold') {
@@ -631,6 +845,84 @@
             });
 
             renderPlayers(filtered);
+        }
+
+        // --- Player Card Generator Functions ---
+        async function openCardModal(regNo, name, team, price, role, photo) {
+            const modal = document.getElementById('card-modal');
+            
+            // Populate basic info
+            document.getElementById('card-player-name').innerText = name;
+            document.getElementById('card-reg-no').innerText = regNo || 'OSATPL-26';
+            document.getElementById('card-team-display').innerText = team || 'SATPL 2026';
+            document.getElementById('card-price').innerText = parseInt(price).toLocaleString();
+            document.getElementById('card-role').innerText = role;
+            document.getElementById('card-img').src = photo || 'img.svg';
+            
+            // Default logo
+            document.getElementById('card-team-logo').src = 'logo.png';
+
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+
+            // Fetch high-res team logo from DB
+            if (team) {
+                const { data } = await window.safeSupabaseCall(() =>
+                    supabaseClient
+                        .from('points_table')
+                        .select('logo_url')
+                        .ilike('team_name', team)
+                        .maybeSingle()
+                );
+                if (data && data.logo_url) {
+                    document.getElementById('card-team-logo').src = data.logo_url;
+                }
+            }
+        }
+
+        function closeCardModal() {
+            document.getElementById('card-modal').style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        async function captureCard() {
+            const btn = document.getElementById('download-card-btn');
+            const captureArea = document.getElementById('capture-area');
+            
+            btn.innerHTML = '⏳ Generating...';
+            btn.disabled = true;
+
+            try {
+                // Ensure images are loaded
+                const images = captureArea.getElementsByTagName('img');
+                await Promise.all([...images].map(img => {
+                    if (img.complete) return Promise.resolve();
+                    return new Promise(resolve => { img.onload = img.onerror = resolve; });
+                }));
+
+                const canvas = await html2canvas(captureArea, {
+                    scale: 2, // 2x resolution
+                    backgroundColor: '#080810',
+                    useCORS: true,
+                    logging: false
+                });
+
+                const link = document.createElement('a');
+                link.download = `SATPL_PlayerCard_${document.getElementById('card-player-name').innerText}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                
+                btn.innerHTML = '✅ Downloaded!';
+                setTimeout(() => {
+                    btn.innerHTML = '<span>📥</span> Download Card';
+                    btn.disabled = false;
+                }, 2000);
+            } catch (err) {
+                console.error("Card Capture Error:", err);
+                alert("Could not generate image. Please try again.");
+                btn.innerHTML = '<span>❌</span> Error';
+                btn.disabled = false;
+            }
         }
 
         // Lightbox Logic
