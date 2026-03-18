@@ -1361,6 +1361,7 @@ footer {
     flex-shrink: 0;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
     cursor: pointer;
+    position: relative; /* Added for label positioning */
 }
 
 .gallery-item.landscape {
@@ -1369,6 +1370,40 @@ footer {
 
 .gallery-item.portrait {
     width: 280px;
+}
+
+.gallery-label {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 20px 15px 15px;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 20%, transparent);
+    color: white;
+    transform: translateY(100%);
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    z-index: 2;
+    text-align: center;
+}
+
+.gallery-item:hover .gallery-label {
+    transform: translateY(0);
+}
+
+.gallery-label h4 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 800;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.gallery-label p {
+    margin: 3px 0 0;
+    font-size: 0.75rem;
+    color: var(--secondary);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-weight: 700;
 }
 
 .gallery-item:hover {
