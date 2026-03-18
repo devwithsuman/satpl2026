@@ -641,6 +641,10 @@
                                 <span class="card-stat-label">Season</span>
                                 <span class="card-stat-value">2026</span>
                             </div>
+                            <div class="card-stat-item" style="margin-top: 5px;">
+                                <span class="card-stat-label">Base Price</span>
+                                <span class="card-stat-value" style="font-size: 1rem;">₹<span id="card-base-price">150</span></span>
+                            </div>
                         </div>
 
                         <div class="card-sold-price">
@@ -694,14 +698,15 @@
             // 2. Fetch all team assignments
             const { data: squad } = await supabaseClient
                 .from('team_players')
-                .select('reg_no, team_name');
+                .select('reg_no, team_name, team_id');
 
-            // 3. Map team names to players
+            // 3. Map team names and IDs to players
             allPlayers = (players || []).map(p => {
                 const assignment = squad ? squad.find(s => s.reg_no === p.registration_no) : null;
                 return {
                     ...p,
-                    team_name: assignment ? assignment.team_name : null
+                    team_name: assignment ? assignment.team_name : null,
+                    team_id: assignment ? assignment.team_id : null
                 };
             });
 
@@ -781,7 +786,7 @@
                                 <span class="price-value sold-text" style="font-size: 1.1rem;">₹${(p.auction_price || 0).toLocaleString()}</span>
                             </div>
                             <button class="btn" style="margin-top: 15px; width: 100%; font-size: 0.8rem; padding: 10px;" 
-                                onclick="openCardModal('${p.registration_no}', '${p.player_name.replace(/'/g, "\\'")}', '${p.team_name}', '${(p.auction_price || 0)}', '${skills[0] || 'All Rounder'}', '${photoUrl}')">
+                                onclick="openCardModal('${p.registration_no}', '${p.player_name.replace(/'/g, "\\'")}', '${p.team_id || ''}', '${p.team_name || ''}', '${p.base_price || 150}', '${(p.auction_price || 0)}', '${skills[0] || 'All Rounder'}', '${photoUrl}')">
                                 ✨ Share Player Card
                             </button>
                         </div>
@@ -848,14 +853,15 @@
         }
 
         // --- Player Card Generator Functions ---
-        async function openCardModal(regNo, name, team, price, role, photo) {
+        async function openCardModal(regNo, name, teamId, teamName, basePrice, soldPrice, role, photo) {
             const modal = document.getElementById('card-modal');
             
             // Populate basic info
             document.getElementById('card-player-name').innerText = name;
             document.getElementById('card-reg-no').innerText = regNo || 'OSATPL-26';
-            document.getElementById('card-team-display').innerText = team || 'SATPL 2026';
-            document.getElementById('card-price').innerText = parseInt(price).toLocaleString();
+            document.getElementById('card-team-display').innerText = teamName || 'SATPL 2026';
+            document.getElementById('card-base-price').innerText = parseInt(basePrice).toLocaleString();
+            document.getElementById('card-price').innerText = parseInt(soldPrice).toLocaleString();
             document.getElementById('card-role').innerText = role;
             document.getElementById('card-img').src = photo || 'img.svg';
             
@@ -865,15 +871,13 @@
             modal.style.display = 'flex';
             document.body.style.overflow = 'hidden';
 
-            // Fetch high-res team logo from DB
-            if (team) {
-                const { data } = await window.safeSupabaseCall(() =>
-                    supabaseClient
-                        .from('points_table')
-                        .select('logo_url')
-                        .ilike('team_name', team)
-                        .maybeSingle()
-                );
+            // Fetch high-res team logo from DB using teamId or teamName
+            if (teamId || teamName) {
+                let query = supabaseClient.from('points_table').select('logo_url');
+                if (teamId) query = query.eq('id', teamId);
+                else query = query.ilike('team_name', teamName);
+
+                const { data } = await window.safeSupabaseCall(() => query.maybeSingle());
                 if (data && data.logo_url) {
                     document.getElementById('card-team-logo').src = data.logo_url;
                 }
