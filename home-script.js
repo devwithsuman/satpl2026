@@ -803,7 +803,7 @@ async function loadGallery() {
         const { data, error } = await window.safeSupabaseCall(() =>
             supabaseClient
                 .from('gallery')
-                .select('image_url, orientation')
+                .select('image_url, orientation, name, designation')
                 .order('created_at', { ascending: false })
         );
 
@@ -822,8 +822,14 @@ async function loadGallery() {
         }
 
         const galleryHtml = galleryItems.map(item => `
-            <div class="gallery-item ${item.orientation || 'landscape'}" onclick="openLightbox('${item.image_url}')">
-                <img src="${item.image_url}" alt="Tournament Photo">
+            <div class="gallery-item ${item.orientation || 'landscape'}" onclick="openLightbox('${item.image_url}', '${item.name || ''}', '${item.designation || ''}')">
+                <img src="${item.image_url}" alt="${item.name || 'Tournament Photo'}">
+                ${(item.name || item.designation) ? `
+                <div class="gallery-label">
+                    ${item.name ? `<h4>${item.name}</h4>` : ''}
+                    ${item.designation ? `<p>${item.designation}</p>` : ''}
+                </div>
+                ` : ''}
             </div>
         `).join('');
 
@@ -834,11 +840,24 @@ async function loadGallery() {
     }
 }
 
-function openLightbox(url) {
+function openLightbox(url, name = '', role = '') {
     const lightbox = document.getElementById('image-lightbox');
     const img = document.getElementById('lightbox-img');
+    const caption = document.getElementById('lightbox-caption');
+    const nameEl = document.getElementById('lightbox-name');
+    const roleEl = document.getElementById('lightbox-role');
+
     if (lightbox && img) {
         img.src = url;
+        
+        if (name || role) {
+            if (nameEl) nameEl.innerText = name;
+            if (roleEl) roleEl.innerText = role;
+            if (caption) caption.style.display = 'block';
+        } else {
+            if (caption) caption.style.display = 'none';
+        }
+
         lightbox.style.display = 'flex';
         document.body.style.overflow = 'hidden'; // Stop scrolling
     }
