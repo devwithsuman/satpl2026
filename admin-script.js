@@ -1,3 +1,43 @@
+// ================= CUSTOM CONFIRM DIALOG (works on file:// protocol) =================
+function showConfirm(title, message, onYes) {
+    // Remove any existing confirm modal
+    const existing = document.getElementById('__custom-confirm-modal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = '__custom-confirm-modal';
+    modal.style.cssText = `
+        position: fixed; inset: 0; z-index: 99999;
+        background: rgba(0,0,0,0.75); backdrop-filter: blur(6px);
+        display: flex; align-items: center; justify-content: center;
+    `;
+    modal.innerHTML = `
+        <div style="background: #0d1117; border: 2px solid #00f2ff; border-radius: 18px;
+                    padding: 35px 40px; max-width: 480px; width: 90%; text-align: center;
+                    box-shadow: 0 0 50px rgba(0,242,255,0.2);">
+            <div style="font-size: 2.5rem; margin-bottom: 12px;">⚠️</div>
+            <h3 style="color: #fff; font-size: 1.3rem; font-weight: 800; margin: 0 0 12px 0;">${title}</h3>
+            <p style="color: #9ca3af; font-size: 0.95rem; line-height: 1.5; margin: 0 0 28px 0;">${message}</p>
+            <div style="display: flex; gap: 12px; justify-content: center;">
+                <button id="__confirm-yes" style="background: linear-gradient(135deg, #ef4444, #dc2626);
+                    color: white; border: none; padding: 12px 32px; border-radius: 10px;
+                    font-weight: 800; font-size: 1rem; cursor: pointer;">✅ Yes, Confirm</button>
+                <button id="__confirm-no" style="background: rgba(255,255,255,0.08);
+                    color: #9ca3af; border: 1px solid #374151; padding: 12px 32px; border-radius: 10px;
+                    font-weight: 700; font-size: 1rem; cursor: pointer;">❌ Cancel</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    document.getElementById('__confirm-yes').onclick = () => {
+        modal.remove();
+        onYes();
+    };
+    document.getElementById('__confirm-no').onclick = () => modal.remove();
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+}
+
 // ================= AUTH CHECK & SESSION MANAGEMENT =================
 let lastActivityTime = Date.now();
 const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
@@ -67,6 +107,7 @@ function showSection(sectionId) {
         }
         if (sectionId === 'scorers') { fetchScorers(); fetchPaidPlayersForAutocomplete(); }
         if (sectionId === 'news') fetchNews();
+        if (sectionId === 'settings') loadSettings();
     }
 }
 
@@ -205,7 +246,7 @@ function quickScore(runs) {
     const scoreVal = document.getElementById(is2ndInning ? "hero-team2-score" : "hero-team1-score");
     const currentScore = parseInt(scoreVal.value) || 0;
     scoreVal.value = currentScore + runs;
-    quickBall(); 
+    quickBall();
 }
 
 function quickWicket() {
@@ -242,23 +283,32 @@ function quickBall() {
 }
 
 async function start2ndInningAdmin() {
-    if (!confirm("Start 2nd Innings? This will set the target and lock Team 1 score.")) return;
-    
-    const t1Score = parseInt(document.getElementById('hero-team1-score').value) || 0;
-    const badge = document.getElementById('hero-badge');
-    const target = document.getElementById('hero-target');
-    
-    badge.value = `TARGET: ${t1Score + 1}`;
-    target.value = t1Score + 1;
-    
-    // Clear Team 2 fields for start
-    document.getElementById('hero-team2-score').value = 0;
-    if (document.getElementById('hero-t2-wickets')) document.getElementById('hero-t2-wickets').value = 0;
-    if (document.getElementById('hero-t2-overs')) document.getElementById('hero-t2-overs').value = 0;
-    if (document.getElementById('hero-t2-balls')) document.getElementById('hero-t2-balls').value = 0;
-    
-    document.getElementById('admin-2nd-inning-btn').style.display = 'none';
-    showToast("2nd Innings Started! Click 'Update Live Feed' to broadcast.", "success");
+    const t1Score = parseInt(document.getElementById('hero-team1-score')?.value) || 0;
+    showConfirm(
+        "🏁 Start 2nd Innings?",
+        `Team 1 scored ${t1Score} runs. This will set the target to ${t1Score + 1} and start Team 2's innings.`,
+        () => {
+            const badge = document.getElementById('hero-badge');
+            const target = document.getElementById('hero-target');
+
+            if (badge) badge.value = `TARGET: ${t1Score + 1}`;
+            if (target) target.value = t1Score + 1;
+
+            // Clear Team 2 fields for start
+            const t2score = document.getElementById('hero-team2-score');
+            const t2wkts = document.getElementById('hero-t2-wickets');
+            const t2overs = document.getElementById('hero-t2-overs');
+            const t2balls = document.getElementById('hero-t2-balls');
+            if (t2score) t2score.value = 0;
+            if (t2wkts) t2wkts.value = 0;
+            if (t2overs) t2overs.value = 0;
+            if (t2balls) t2balls.value = 0;
+
+            const btn = document.getElementById('admin-2nd-inning-btn');
+            if (btn) btn.style.display = 'none';
+            showToast("✅ 2nd Innings Started! Click 'Update Live Feed' to broadcast.", "success");
+        }
+    );
 }
 
 // ================= NAVIGATION MENU =================
@@ -909,6 +959,7 @@ async function fetchAdminTeams() {
                 </div>
             </td>
             <td><input type="text" value="${team.owner_password || ''}" class="table-input pass-input"></td>
+            <td><input type="color" value="${team.team_color || '#00f2ff'}" class="table-input color-input" style="width: 50px; height: 35px; padding: 2px; border: none; background: none;"></td>
             <td>
                 <button onclick="previewTeam('${team.id}')" class="btn-secondary" style="padding: 5px; min-width: 35px; border-radius: 8px;" title="Quick View">👁️</button>
                 <button onclick="deleteTeam('${team.id}')" class="btn-secondary" style="padding: 5px; min-width: 35px; color: #ff4d8d;">🗑️</button>
@@ -1011,7 +1062,8 @@ async function saveTeamDetails() {
                 owner_photo: activeOwners[0]?.photo || '',
                 captain_name: row.querySelector(".captain-name-input").value,
                 captain_photo: captainPhotoUrl,
-                owner_password: row.querySelector(".pass-input").value
+                owner_password: row.querySelector(".pass-input").value,
+                team_color: row.querySelector(".color-input").value
             };
         }));
 
@@ -1503,6 +1555,7 @@ function handleQRUpload(input) {
     }
 }
 
+
 async function saveSettings() {
     let qrUrl = null;
 
@@ -1524,6 +1577,7 @@ async function saveSettings() {
             .getPublicUrl(fileName);
         qrUrl = data.publicUrl;
     }
+
 
     // 2. Save Data
     const settings = {
@@ -1553,6 +1607,75 @@ async function saveSettings() {
         qrFile = null;
         loadSettings();
     }
+}
+
+let noticeFile = null;
+let noticeCropper = null;
+let noticeCroppedBlob = null;
+let noticeImageToRemove = false;
+
+function handleNoticeImageUpload(input) {
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const cropperModal = document.getElementById('cropper-modal');
+            const cropperImage = document.getElementById('cropper-image');
+            cropperImage.src = e.target.result;
+            cropperModal.style.display = 'flex';
+
+            if (noticeCropper) noticeCropper.destroy();
+            noticeCropper = new Cropper(cropperImage, {
+                aspectRatio: 1.777, // 16:9 default
+                viewMode: 2,
+                responsive: true
+            });
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function setCropRatio(ratio) {
+    if (noticeCropper) {
+        noticeCropper.setAspectRatio(ratio);
+    }
+}
+
+function closeCropper() {
+    document.getElementById('cropper-modal').style.display = 'none';
+    document.getElementById('notice-image-upload').value = '';
+    if (noticeCropper) noticeCropper.destroy();
+}
+
+function finishCropping() {
+    if (noticeCropper) {
+        noticeCropper.getCroppedCanvas({
+            width: 1200, // Good resolution for posters
+            imageSmoothingQuality: 'high'
+        }).toBlob((blob) => {
+            noticeCroppedBlob = blob;
+            const previewUrl = URL.createObjectURL(blob);
+            const previewContainer = document.getElementById("notice-image-preview");
+            previewContainer.innerHTML = `<img src="${previewUrl}" style="max-height: 150px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">`;
+            
+            // Show Remove button
+            document.getElementById('btn-remove-notice-image').style.display = 'block';
+            noticeImageToRemove = false;
+            
+            document.getElementById('cropper-modal').style.display = 'none';
+            noticeCropper.destroy();
+            noticeCropper = null;
+        }, 'image/jpeg', 0.85);
+    }
+}
+
+function removeNoticeImage() {
+    noticeFile = null;
+    noticeCroppedBlob = null;
+    noticeImageToRemove = true;
+    document.getElementById("notice-image-preview").innerHTML = `<span style="color: var(--text-dim); font-size: 0.85rem;">No Image Selected</span>`;
+    document.getElementById('notice-image-upload').value = '';
+    document.getElementById('btn-remove-notice-image').style.display = 'none';
 }
 
 async function togglePopupSetting(enabled) {
@@ -1932,7 +2055,9 @@ async function fetchNotices() {
                 <td>${date}</td>
                 <td style="font-weight: 700;">
                     ${notice.title}
-                    ${isPinned ? '<span style="font-size: 0.7rem; color: var(--secondary); margin-left: 8px;">📌 PINNED</span>' : ''}
+                    ${notice.show_as_popup ? '<span style="font-size: 0.7rem; color: var(--secondary); margin-left: 8px;">🏠 POPUP</span>' : ''}
+                    ${notice.image_url ? '<span style="font-size: 0.7rem; color: #22c55e; margin-left: 8px;">📸 IMG</span>' : ''}
+                    ${isPinned ? '<span style="font-size: 0.7rem; color: #3b82f6; margin-left: 8px;">📌 PIN</span>' : ''}
                 </td>
                 <td style="font-size: 0.85rem; color: var(--text-dim);">${notice.content ? notice.content.substring(0, 50) + '...' : '-'}</td>
                 <td>
@@ -1958,10 +2083,18 @@ async function fetchNotices() {
 
 function openNoticeModal(isEdit = false) {
     document.getElementById('notice-modal-title').innerText = isEdit ? 'Edit Announcement' : 'Add New Announcement';
+    noticeCroppedBlob = null;
+    noticeImageToRemove = false;
+    document.getElementById('btn-remove-notice-image').style.display = 'none';
+
     if (!isEdit) {
         document.getElementById('edit-notice-id').value = '';
         document.getElementById('notice-title').value = '';
         document.getElementById('notice-content').value = '';
+        document.getElementById('notice-image-upload').value = '';
+        document.getElementById('notice-image-preview').innerHTML = '<span style="color: var(--text-dim); font-size: 0.85rem;">No Image Selected</span>';
+        document.getElementById('notice-show-popup').checked = false;
+        noticeFile = null;
     }
     document.getElementById('notice-modal').style.display = 'flex';
 }
@@ -1982,6 +2115,16 @@ async function editNotice(id) {
         document.getElementById('edit-notice-id').value = data.id;
         document.getElementById('notice-title').value = data.title;
         document.getElementById('notice-content').value = data.content || '';
+        document.getElementById('notice-show-popup').checked = data.show_as_popup === true;
+        
+        noticeImageToRemove = false;
+        if (data.image_url) {
+            document.getElementById('notice-image-preview').innerHTML = `<img src="${data.image_url}" style="max-height: 100px; border-radius: 8px;">`;
+            document.getElementById('btn-remove-notice-image').style.display = 'block';
+        } else {
+            document.getElementById('notice-image-preview').innerHTML = '<span style="color: var(--text-dim); font-size: 0.85rem;">No Image Selected</span>';
+            document.getElementById('btn-remove-notice-image').style.display = 'none';
+        }
         openNoticeModal(true);
     }
 }
@@ -1991,7 +2134,35 @@ async function saveNotice(event) {
     const id = document.getElementById('edit-notice-id').value;
     const title = document.getElementById('notice-title').value;
     const content = document.getElementById('notice-content').value;
-    const noticeData = { title, content };
+    const show_as_popup = document.getElementById('notice-show-popup').checked;
+
+    let imageUrl = null;
+    // Use noticeCroppedBlob if existing
+    const fileToUpload = noticeCroppedBlob || noticeFile;
+
+    if (fileToUpload) {
+        const ext = fileToUpload.type ? fileToUpload.type.split('/')[1] : 'jpg';
+        const fileName = `notice_${Date.now()}.${ext}`;
+        const { error: uploadError } = await supabaseClient.storage
+            .from("player-photos")
+            .upload(fileName, fileToUpload);
+
+        if (!uploadError) {
+            const { data } = supabaseClient.storage.from("player-photos").getPublicUrl(fileName);
+            imageUrl = data.publicUrl;
+        } else {
+            console.error("Image Upload Error:", uploadError);
+        }
+    }
+
+    const noticeData = { title, content, show_as_popup };
+    
+    // Logic for updating/removing image
+    if (imageUrl) {
+        noticeData.image_url = imageUrl;
+    } else if (noticeImageToRemove) {
+        noticeData.image_url = null; // Explicitly remove
+    }
 
     let result;
     if (id) {
@@ -2009,6 +2180,9 @@ async function saveNotice(event) {
         alert(id ? "✅ Updated!" : "✅ Published!");
         closeNoticeModal();
         fetchNotices();
+        noticeFile = null;
+        noticeCroppedBlob = null;
+        noticeImageToRemove = false;
     }
 }
 
@@ -2067,7 +2241,7 @@ async function fetchFixtures() {
                     </span>
                 </td>
                 <td>
-                    <div style="display: flex; gap: 8px;">
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                         <button class="btn-secondary" onclick='editFixture(${fixtureJson})'>EDIT</button>
                         <button class="btn" style="background: var(--primary);" onclick="startLiveMatch('${f.id}')">Start LIVE 🏏</button>
                         <button class="btn-secondary" style="border-color: #ff4d8d; color: #ff4d8d;" onclick="deleteFixture('${f.id}')">DEL</button>
@@ -2658,7 +2832,7 @@ async function saveGalleryPhoto(event) {
             alert("✅ Photo added to gallery!");
         } else {
             // --- EDIT EXISTING PHOTO ---
-            let updates = { 
+            let updates = {
                 orientation: orientation,
                 name: name,
                 designation: designation
@@ -3057,7 +3231,7 @@ async function loadScoringSection() {
     }
 
     const isInning2 = data.badge?.includes('TARGET');
-    
+
     liveMatchState = {
         team_name: isInning2 ? (data.team2_name || "Team B") : (data.team1_name || "Team A"),
         team1_name: data.team1_name || "Team A",
@@ -3122,38 +3296,41 @@ async function syncFixtureToScoring(fixtureId) {
     const { data: f } = await supabaseClient.from('fixtures').select('*').eq('id', fixtureId).single();
     if (!f) return;
 
-    if (!confirm(`Start scoring for ${f.team1} vs ${f.team2}? This will update the website live feed.`)) return;
+    showConfirm(
+        "🏁 Start Live Match?",
+        `Start scoring for <strong>${f.team1}</strong> vs <strong>${f.team2}</strong>? This will update the live website feed.`,
+        async () => {
+            // Reset local state for new match
+            resetInningsNoConfirm();
+            liveMatchState.team1_name = f.team1;
+            liveMatchState.team2_name = f.team2;
+            liveMatchState.team_name = f.team1;
 
-    // Reset local state for new match
-    resetInningsNoConfirm();
-    liveMatchState.team1_name = f.team1;
-    liveMatchState.team2_name = f.team2;
-    liveMatchState.team_name = f.team1; // First innings batting Team1
+            await supabaseClient.from('hero_content').update({
+                team1_name: f.team1,
+                team2_name: f.team2,
+                team1_score: 0,
+                wickets: 0,
+                overs: 0,
+                balls: 0,
+                match_status: "Match Started",
+                badge: "LIVE MATCH"
+            }).eq('id', '00000000-0000-0000-0000-000000000001');
 
-    // Update Hero Content to reflect this match as LIVE
-    await supabaseClient.from('hero_content').update({
-        team1_name: f.team1,
-        team2_name: f.team2,
-        team1_score: 0,
-        wickets: 0,
-        overs: 0,
-        balls: 0,
-        match_status: "Match Started",
-        badge: "LIVE MATCH"
-    }).eq('id', '00000000-0000-0000-0000-000000000001');
+            updateScoringUI();
 
-    updateScoringUI();
-
-    // Refresh Winner Dropdown
-    const winnerSel = document.getElementById('score-winner-select');
-    if (winnerSel) {
-        winnerSel.innerHTML = `
-            <option value="">Select Winner Team</option>
-            <option value="${f.team1}">${f.team1}</option>
-            <option value="${f.team2}">${f.team2}</option>
-            <option value="Draw">Draw/No Result</option>
-        `;
-    }
+            const winnerSel = document.getElementById('score-winner-select');
+            if (winnerSel) {
+                winnerSel.innerHTML = `
+                    <option value="">Select Winner Team</option>
+                    <option value="${f.team1}">${f.team1}</option>
+                    <option value="${f.team2}">${f.team2}</option>
+                    <option value="Draw">Draw/No Result</option>
+                `;
+            }
+            showToast(`✅ Live: ${f.team1} vs ${f.team2} Started!`, "success");
+        }
+    );
 }
 
 function resetInningsNoConfirm() {
@@ -3222,7 +3399,7 @@ async function fetchPlayerForScore(type) {
     if (!regNo) return;
 
     const { data } = await supabaseClient.from('player_registrations').select('player_name').eq('registration_no', regNo).single();
-    if (!data) return alert("Not Found");
+    if (!data) { showToast("❌ Player not found. Check Registration No.", "error"); return; }
 
     if (type === 1) { liveMatchState.batsman1.name = data.player_name; liveMatchState.batsman1.reg = regNo; }
     else if (type === 2) { liveMatchState.batsman2.name = data.player_name; liveMatchState.batsman2.reg = regNo; }
@@ -3373,15 +3550,15 @@ function handleScoreAction(val) {
             isWide ? 'WD' : isNoBall ? 'NB' : '',
             strikerObj, {}, liveMatchState.bowler);
     }
-    
+
     if (runs % 2 !== 0 && !isWide && !isNoBall) switchStrike();
-    
+
     updateScoringUI();
-    
+
     // 🚀 AUTO-SYNC ON EVERY BALL (Feature 41 Fix)
     // We call saveLiveScore without the "Success" popup to keep it seamless
     saveLiveScoreSilent();
-    
+
     // After update, check for Win condition
     if (liveMatchState.inning === 2 && liveMatchState.target > 0) {
         if (liveMatchState.runs >= liveMatchState.target) {
@@ -3456,10 +3633,8 @@ async function saveLiveScore() {
         const fixtureSync = {
             t1_score: is2ndInning ? (liveMatchState.t1_score || (liveMatchState.target - 1)) : liveMatchState.runs,
             t1_wickets: is2ndInning ? (liveMatchState.t1_wickets || 10) : liveMatchState.wkts,
-            t1_overs: is2ndInning ? (liveMatchState.t1_overs || 6.0) : currentOvers,
             t2_score: is2ndInning ? liveMatchState.runs : 0,
             t2_wickets: is2ndInning ? liveMatchState.wkts : 0,
-            t2_overs: is2ndInning ? currentOvers : 0.0,
             status: 'live' // Force status to live if sync is happening
         };
 
@@ -3468,6 +3643,49 @@ async function saveLiveScore() {
 
     if (error) alert(error.message);
     else showSuccessPopup("Live Scorecard Updated Successfully! 🚀");
+}
+
+async function resetLiveFeed() {
+    showConfirm(
+        "⚠️ RESET LIVE SCORECARD?",
+        "This will clear the live scoreboard on the homepage. The match historical results will NOT be affected.",
+        async () => {
+            const defaults = {
+                badge: "TOURNAMENT HIGHLIGHTS",
+                title: "SATPL 2026 • SEASON 1",
+                subtitle: "Waiting for the next match to start...",
+                time: "Upcoming Match: Check Schedule",
+                team1_name: "TEAM A",
+                team2_name: "TEAM B",
+                team1_score: 0,
+                team2_score: 0,
+                wickets: 0,
+                overs: 0,
+                balls: 0,
+                team2_wickets: 0,
+                team2_overs: 0,
+                team2_balls: 0,
+                batsman1: "Striker",
+                batsman1_runs: 0,
+                batsman1_balls: 0,
+                batsman2: "Non-Striker",
+                batsman2_runs: 0,
+                batsman2_balls: 0,
+                bowler_name: "Bowler",
+                bowler_runs: 0,
+                bowler_wickets: 0,
+                target: 0,
+                recent_balls: ""
+            };
+            const { error } = await supabaseClient.from('hero_content').update(defaults).eq('id', '00000000-0000-0000-0000-000000000001');
+            if (error) {
+                showToast("Reset failed: " + error.message, "error");
+            } else {
+                showToast("✅ Live Scorecard Reset Successfully!", "success");
+                if (typeof loadHero === "function") loadHero('live-match');
+            }
+        }
+    );
 }
 
 async function saveLiveScoreSilent() {
@@ -3515,7 +3733,7 @@ async function saveLiveScoreSilent() {
     if (fixtureId) {
         const is2ndInning = liveMatchState.inning === 2;
         const currentOvers = parseFloat(`${liveMatchState.overs}.${liveMatchState.balls}`);
-        
+
         await supabaseClient.from('fixtures').update({
             t1_score: is2ndInning ? (liveMatchState.t1_score || (liveMatchState.target - 1)) : liveMatchState.runs,
             t1_wickets: is2ndInning ? (liveMatchState.t1_wickets || 10) : liveMatchState.wkts,
@@ -3529,14 +3747,20 @@ async function saveLiveScoreSilent() {
 }
 
 function resetInnings() {
-    if (!confirm("Reset?")) return;
-    scoreHistory = [];
-    liveMatchState.runs = 0; liveMatchState.wkts = 0; liveMatchState.overs = 0; liveMatchState.balls = 0;
-    liveMatchState.batsman1 = { name: "Striker", runs: 0, balls: 0, f4s: 0, s6s: 0, reg: "" };
-    liveMatchState.batsman2 = { name: "Non-Striker", runs: 0, balls: 0, f4s: 0, s6s: 0, reg: "" };
-    liveMatchState.bowler = { name: "Bowler", runs: 0, wkts: 0, overs: 0, balls: 0, reg: "" };
-    liveMatchState.timeline = [];
-    updateScoringUI();
+    showConfirm(
+        "🔄 Reset Local Inning?",
+        "This will clear all current batting/bowling stats on this panel only. The live website feed will NOT be affected until you click 'Update Live Feed'.",
+        () => {
+            scoreHistory = [];
+            liveMatchState.runs = 0; liveMatchState.wkts = 0; liveMatchState.overs = 0; liveMatchState.balls = 0;
+            liveMatchState.batsman1 = { name: "Striker", runs: 0, balls: 0, f4s: 0, s6s: 0, reg: "" };
+            liveMatchState.batsman2 = { name: "Non-Striker", runs: 0, balls: 0, f4s: 0, s6s: 0, reg: "" };
+            liveMatchState.bowler = { name: "Bowler", runs: 0, wkts: 0, overs: 0, balls: 0, reg: "" };
+            liveMatchState.timeline = [];
+            updateScoringUI();
+            showToast("✅ Local Inning Reset Done!", "success");
+        }
+    );
 }
 
 function undoLastBall() {
@@ -4954,7 +5178,7 @@ function handleSponsorLogoUpload(event) {
     }
 
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = function (e) {
         document.getElementById('sponsor-logo').value = e.target.result;
     };
     reader.readAsDataURL(file);
@@ -4977,7 +5201,7 @@ async function saveSponsor(e) {
     e.preventDefault();
     const id = document.getElementById('sponsor-id').value;
     let websiteUrl = document.getElementById('sponsor-website').value?.trim() || null;
-    
+
     // Normalize URL to be absolute
     if (websiteUrl && !/^https?:\/\//i.test(websiteUrl)) {
         websiteUrl = 'https://' + websiteUrl;
@@ -5200,19 +5424,19 @@ async function runDiagnostics() {
     const btn = document.getElementById('diag-btn');
     const seedBtn = document.getElementById('seed-btn');
     const results = document.getElementById('diag-results');
-    
+
     btn.disabled = true;
     btn.innerText = "Checking... ⏳";
     results.style.display = 'block';
     results.innerHTML = "Initializing Diagnostic Sequence...<br>";
-    
+
     let missingRows = [];
     let logs = [];
 
     async function checkRow(table, id, name) {
         logs.push(`🔍 Checking <strong>${name}</strong> [${id}]...`);
         results.innerHTML = logs.join('<br>');
-        
+
         const { data, error } = await supabaseClient.from(table).select('id').eq('id', id).single();
         if (error) {
             logs.push(`<span style="color: #ff0055;">❌ Missing or Error: ${error.message}</span>`);
@@ -5257,39 +5481,39 @@ async function runDiagnostics() {
 
 async function seedDatabaseRows() {
     if (!confirm("This will create dummy data for missing critical rows. Continue?")) return;
-    
+
     const seedBtn = document.getElementById('seed-btn');
     const results = document.getElementById('diag-results');
-    
+
     seedBtn.disabled = true;
     seedBtn.innerText = "Repairing... 🚀";
-    
+
     const heroRows = [
-        { 
-            id: '00000000-0000-0000-0000-000000000001', 
-            title: 'LIVE MATCH', 
-            subtitle: 'Sonaijuri Anchal Tennis Premier League 2026', 
+        {
+            id: '00000000-0000-0000-0000-000000000001',
+            title: 'LIVE MATCH',
+            subtitle: 'Sonaijuri Anchal Tennis Premier League 2026',
             badge: 'LIVE NOW',
-            team1_name: 'Team A', team2_name: 'Team B', team1_score: 0, team2_score: 0 
+            team1_name: 'Team A', team2_name: 'Team B', team1_score: 0, team2_score: 0
         },
-        { 
-            id: '00000000-0000-0000-0000-000000000002', 
-            title: 'UPCOMING CLASH', 
-            subtitle: 'Get ready for the next big game!', 
+        {
+            id: '00000000-0000-0000-0000-000000000002',
+            title: 'UPCOMING CLASH',
+            subtitle: 'Get ready for the next big game!',
             badge: 'COMING UP',
             team1_name: 'TBD', team2_name: 'TBD'
         },
-        { 
-            id: '00000000-0000-0000-0000-000000000003', 
-            title: 'LATEST RESULT', 
-            subtitle: 'A thrilling victory in the last game!', 
+        {
+            id: '00000000-0000-0000-0000-000000000003',
+            title: 'LATEST RESULT',
+            subtitle: 'A thrilling victory in the last game!',
             badge: 'RESULT',
             team1_name: 'TBD', team2_name: 'TBD'
         },
-        { 
-            id: '00000001-0001-0001-0001-000000000000', 
-            title: 'REGISTRATION IS OPEN', 
-            subtitle: 'Join the SATPL 2026 Season Today!', 
+        {
+            id: '00000001-0001-0001-0001-000000000000',
+            title: 'REGISTRATION IS OPEN',
+            subtitle: 'Join the SATPL 2026 Season Today!',
             badge: 'IMPORTANT'
         }
     ];
@@ -5306,16 +5530,16 @@ async function seedDatabaseRows() {
     }
 
     // Seed site_settings
-    await supabaseClient.from('site_settings').upsert([{ 
-        id: 'global-settings', 
+    await supabaseClient.from('site_settings').upsert([{
+        id: 'global-settings',
         is_popup_enabled: true,
-        reg_end_date: new Date(Date.now() + 30*24*60*60*1000).toISOString() // 30 days from now
+        reg_end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
     }]);
     results.innerHTML += `<span style="color: #00ffca;">Successfully repaired Global Site Settings</span><br>`;
 
     results.innerHTML += "<br>✅ <strong>Repair Complete!</strong> Please refresh the dashboard and homepage.";
     seedBtn.innerText = "Repair Complete ✅";
-    
+
     // Auto refresh loadHero
     if (typeof loadHero === 'function') loadHero();
 }

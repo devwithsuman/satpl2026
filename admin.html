@@ -11,6 +11,7 @@
     <link rel="preconnect" href="https://lsikcaybolgsfimwtkdv.supabase.co" crossorigin>
 
     <link rel="stylesheet" href="admin-styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700;900&display=swap" rel="stylesheet">
     <!-- Cropper.js for image editing -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
@@ -32,8 +33,10 @@
                 <button onclick="showSection('results')" id="nav-results">📊 Results Manager</button>
                 <button onclick="showSection('points')" id="nav-points">📊 Points Table</button>
                 <button onclick="showSection('registrations')" id="nav-registrations">📝 Registrations</button>
-                <button onclick="showSection('analytics-dashboard')" id="nav-analytics-dashboard">📊 Analytics Dashboard</button>
-                <button onclick="showSection('overview-dashboard')" id="nav-overview-dashboard">🏠 Overview Dashboard</button>
+                <button onclick="showSection('analytics-dashboard')" id="nav-analytics-dashboard">📊 Analytics
+                    Dashboard</button>
+                <button onclick="showSection('overview-dashboard')" id="nav-overview-dashboard">🏠 Overview
+                    Dashboard</button>
                 <button onclick="showSection('leaderboard')" id="nav-leaderboard">🏆 Leaderboard</button>
                 <button onclick="showSection('teams')" id="nav-teams">🛡️ Team Management</button>
                 <button onclick="showSection('rosters')" id="nav-rosters">🏏 Squads</button>
@@ -197,9 +200,14 @@
                                 style="width: 100%; margin-bottom: 10px; background: var(--secondary); color: var(--bg-dark); border-color: var(--secondary);">View
                                 Scorecard 📊</button>
 
+                            <button onclick="resetLiveFeed()" class="btn-scoring"
+                                style="width: 100%; margin-bottom: 10px; background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 2px solid #ef4444; font-weight: 800;">
+                                RESET LIVE SCORECARD (CLEARS WEBSITE) 🔄
+                            </button>
+
                             <button onclick="resetInnings()" class="btn-secondary"
                                 style="width: 100%; margin-bottom: 30px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: #ef4444;">Reset
-                                Innings</button>
+                                Local Innings</button>
 
                             <!-- 🏆 FINAL MATCH RESULT SECTION -->
                             <div
@@ -261,6 +269,10 @@
                         </select>
                         <button class="btn btn-red-blink" onclick="saveHero()" style="padding: 15px 30px;">Update Live
                             Feed 🚀</button>
+                        <button class="btn-scoring" onclick="resetLiveFeed()"
+                            style="padding: 15px 20px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: #ef4444; font-weight: 800; cursor: pointer; border-radius: 12px; border: 1px solid #ef4444;">
+                            RESET LIVE FEED 🔄
+                        </button>
                         <button id="finalize-match-btn" class="btn" onclick="finalizeLiveMatch()"
                             style="padding: 15px 25px; background: var(--secondary); display: none;">Finalize Result
                             🏁</button>
@@ -432,7 +444,8 @@
                         </tbody>
                     </table>
                 </div>
-            </div>
+
+            </div>  <!-- end fixtures-section -->
 
             <div id="results-section" class="admin-section animate-fade">
                 <header class="section-header">
@@ -787,6 +800,7 @@
                                 <th>Owners</th>
                                 <th>Captain Name</th>
                                 <th>Captain Photo</th>
+                                <th style="width: 80px;">Color</th>
                                 <th style="width: 120px;">Owner Pass</th>
                                 <th style="width: 80px;">Action</th>
                             </tr>
@@ -1187,6 +1201,7 @@
                                     size: 500x500px</p>
                             </div>
 
+
                             <div class="glass"
                                 style="margin-top: 30px; padding: 20px; border: 1px solid var(--secondary);">
                                 <h3 style="margin-bottom: 15px; font-size: 1rem; color: var(--secondary);">Developer
@@ -1223,7 +1238,8 @@
                 <div class="section-header">
                     <div>
                         <h2 class="gradient-text">Live News Ticker</h2>
-                        <p style="color: var(--text-dim); font-size: 0.9rem;">Manage scrolling announcements and news</p>
+                        <p style="color: var(--text-dim); font-size: 0.9rem;">Manage scrolling announcements and news
+                        </p>
                     </div>
                     <button class="btn-primary" onclick="openAddNewsModal()" style="padding: 10px 20px;">+ Add New
                         News</button>
@@ -1514,6 +1530,52 @@
                     <label>Content</label>
                     <textarea id="notice-content" class="table-input" style="height: 100px;"
                         placeholder="Full details of the announcement..."></textarea>
+                </div>
+
+                <!-- Poster Image Upload -->
+                <div class="form-group" style="margin-top: 20px;">
+                    <label>Add Poster/Image (Optional) 🖼️</label>
+                    <div id="notice-image-preview" style="margin-bottom: 10px; text-align: center; border: 1px dashed var(--glass-border); padding: 10px; border-radius: 12px; min-height: 80px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                        <span style="color: var(--text-dim); font-size: 0.85rem;">No Image Selected</span>
+                    </div>
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <input type="file" id="notice-image-upload" accept="image/*" style="display: none;" onchange="handleNoticeImageUpload(this)">
+                        <button type="button" class="btn-secondary" style="flex: 1; font-size: 0.85rem;" onclick="document.getElementById('notice-image-upload').click()">Choose Image 📸</button>
+                        <button type="button" id="btn-remove-notice-image" class="btn-secondary" style="flex: 1; font-size: 0.85rem; background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: #ef4444; display: none;" onclick="removeNoticeImage()">Remove 🗑️</button>
+                    </div>
+                </div>
+
+                <!-- Cropping Modal (Internal to News Manager) -->
+                <div id="cropper-modal" class="modal-backdrop" style="display: none; z-index: 9999;">
+                    <div class="glass modal-content" style="max-width: 600px; width: 95%; padding: 25px;">
+                        <h3 class="card-title">Adjust Your Poster</h3>
+                        <div style="max-height: 400px; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 20px;">
+                            <img id="cropper-image" src="" style="max-width: 100%; display: block;">
+                        </div>
+                        <div style="display: flex; justify-content: space-between; gap: 10px;">
+                            <div style="display: flex; gap: 8px;">
+                                <button type="button" class="btn-sm" onclick="setCropRatio(1.777)">16:9</button>
+                                <button type="button" class="btn-sm" onclick="setCropRatio(1)">1:1</button>
+                                <button type="button" class="btn-sm" onclick="setCropRatio(NaN)">Free</button>
+                            </div>
+                            <div style="display: flex; gap: 10px;">
+                                <button type="button" class="btn-secondary" onclick="closeCropper()">Cancel</button>
+                                <button type="button" class="btn" style="background: var(--secondary); color: var(--bg-dark);" onclick="finishCropping()">Apply & Save</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Popup Toggle -->
+                <div style="display: flex; align-items: center; gap: 10px; padding: 15px; background: rgba(255,186,8,0.05); border-radius: 12px; border: 1px solid rgba(255,186,8,0.2); margin-top: 20px;">
+                    <label class="switch">
+                        <input type="checkbox" id="notice-show-popup">
+                        <span class="slider round"></span>
+                    </label>
+                    <div>
+                        <span style="font-weight: 700; color: #ffba08; display: block;">Show as Homepage Popup?</span>
+                        <span style="font-size: 0.7rem; color: var(--text-dim);">If enabled, this will appear when visitors open the site.</span>
+                    </div>
                 </div>
                 <div style="margin-top: 30px; display: flex; gap: 15px;">
                     <button type="submit" class="btn" style="flex: 2;">Publish Notice 🚀</button>
@@ -1860,6 +1922,10 @@
                 <label>Username</label>
                 <input type="text" id="scorer-username" class="table-input" placeholder="e.g. scorer1">
             </div>
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label>6-Digit Password</label>
+                <input type="password" id="scorer-password" class="table-input" placeholder="e.g. 123456" maxlength="6">
+            </div>
             <div style="display: flex; gap: 15px;">
                 <button onclick="document.getElementById('add-scorer-modal').style.display='none'" class="btn-secondary"
                     style="flex: 1;">Cancel</button>
@@ -1982,16 +2048,14 @@
 
     <!-- Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+    <script src="lib/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+
     <script src="supabase-config.js"></script>
     <script src="nav-loader.js"></script>
     <script src="admin-script.js?v=40.1"></script>
 
-    <!-- Hidden File Input for Direct Uploads -->
-    <input type="file" id="direct-file-upload" style="display: none;" accept="image/*,application/pdf"
-        onchange="processDirectUpload(this)">
 </body>
 
 </html>

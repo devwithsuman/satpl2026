@@ -645,7 +645,9 @@ async function saveLiveScoreSilent() {
         updates.balls = liveMatchState.balls;
     }
 
-    await supabaseClient.from('hero_content').update(updates).eq('id', '00000000-0000-0000-0000-000000000001');
+    const { error } = await supabaseClient.from('hero_content').update(updates).eq('id', '00000000-0000-0000-0000-000000000001');
+    if (error) console.error("❌ Silent Hero Sync Error:", error);
+    else console.log("📡 Silent Hero Sync Success");
 
     // 📡 SCORECARD SYNC (fixtures)
     const fixtureId = document.getElementById('score-fixture-id').value;
@@ -660,7 +662,8 @@ async function saveLiveScoreSilent() {
             t2_overs: is2ndInning ? currentOvers : 0.0,
             status: 'live'
         };
-        await supabaseClient.from('fixtures').update(fixtureSync).eq('id', fixtureId);
+        const { error: fixErr } = await supabaseClient.from('fixtures').update(fixtureSync).eq('id', fixtureId);
+        if (fixErr) console.error("❌ Silent Fixture Sync Error:", fixErr);
     }
 }
 
@@ -709,10 +712,12 @@ async function saveLiveScore() {
         updates.balls = liveMatchState.balls;
     }
 
-    const { error } = await supabaseClient.from('hero_content').update(updates).eq('id', '00000000-0000-0000-0000-000000000001');
+    console.log("📡 Attempting to Sync Hero Content:", updates);
+    const { data: resHero, error } = await supabaseClient.from('hero_content').update(updates).eq('id', '00000000-0000-0000-0000-000000000001').select();
 
     const fixtureId = document.getElementById('score-fixture-id').value;
     if (fixtureId) {
+        console.log("📡 Attempting to Sync Fixture:", fixtureId);
         const currentOvers = parseFloat(`${liveMatchState.overs}.${liveMatchState.balls}`);
         const fixtureSync = {
             t1_score: is2ndInning ? (liveMatchState.t1_score || 0) : liveMatchState.runs,
@@ -723,17 +728,66 @@ async function saveLiveScore() {
             t2_overs: is2ndInning ? currentOvers : 0.0,
             status: 'live'
         };
-        await supabaseClient.from('fixtures').update(fixtureSync).eq('id', fixtureId);
+        const { error: fixErr } = await supabaseClient.from('fixtures').update(fixtureSync).eq('id', fixtureId);
+        if (fixErr) console.error("❌ Fixture Sync Error:", fixErr);
     }
 
-    if (error) alert(error.message);
-    else showSuccessPopup("Live Scorecard Updated Successfully! 🚀");
+    if (error) {
+        console.error("❌ Hero Sync Error:", error);
+        alert("Failed to sync hero content: " + error.message);
+    } else {
+        console.log("✅ Hero Sync Success:", resHero);
+        showSuccessPopup("Live Scorecard Updated Successfully! 🚀");
+    }
 }
 
 function resetInnings() {
     if (!confirm("Reset?")) return;
     resetInningsNoConfirm();
     updateScoringUI();
+}
+
+async function resetLiveFeed() {
+    if (!confirm("⚠️ ARE YOU SURE? This will reset the LIVE Scoreboard on the homepage/scorecard to a default state.")) return;
+    
+    const defaults = {
+        badge: "TOURNAMENT HIGHLIGHTS",
+        title: "SATPL 2026 • SEASON 1",
+        subtitle: "Waiting for the next match to start...",
+        time: "Upcoming Match: Check Schedule",
+        team1_name: "TEAM A",
+        team2_name: "TEAM B",
+        team1_score: 0,
+        team2_score: 0,
+        wickets: 0,
+        overs: 0,
+        balls: 0,
+        team2_wickets: 0,
+        team2_overs: 0,
+        team2_balls: 0,
+        batsman1: "Striker",
+        batsman1_runs: 0,
+        batsman1_balls: 0,
+        batsman2: "Non-Striker",
+        batsman2_runs: 0,
+        batsman2_balls: 0,
+        bowler_name: "Bowler",
+        bowler_runs: 0,
+        bowler_wickets: 0,
+        target: 0,
+        recent_balls: ""
+    };
+
+    const { error } = await supabaseClient.from('hero_content').update(defaults).eq('id', '00000000-0000-0000-0000-000000000001');
+
+    if (error) {
+        alert("Reset failed: " + error.message);
+    } else {
+        alert("Live Feed Reset Successfully! 🔄");
+        // Also reset local state for convenience
+        resetInningsNoConfirm();
+        updateScoringUI();
+    }
 }
 
 async function undoLastBall() {

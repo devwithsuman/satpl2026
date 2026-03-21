@@ -13,7 +13,8 @@ async function loadHomepageContent() {
         loadGallery(),
         loadSponsors(),
         startCountdown(),
-        checkLiveAuction()
+        checkLiveAuction(),
+        checkHeroMatchPopup()
     ]).catch(err => console.error("Initial Load Error:", err));
 
     // 2. Setup Real-time Sync (The "Bulletproof" Flow)
@@ -52,13 +53,92 @@ function initScrollReveal() {
     document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 }
 
+let activePopups = [];
+let currentPopupIndex = 0;
+
+function showPopup(index) {
+    if (!activePopups.length) return;
+    currentPopupIndex = index;
+    
+    const popup = document.getElementById('notice-popup');
+    const posterContainer = document.getElementById('poster-container');
+    const posterImg = document.getElementById('popup-poster-img');
+    const titleEl = document.getElementById('popup-title');
+    const contentEl = document.getElementById('popup-content');
+    const divider = document.querySelector('.popup-divider');
+    const counterEl = document.getElementById('popup-counter');
+    const prevBtn = document.getElementById('prev-popup-btn');
+    const nextBtn = document.getElementById('next-popup-btn');
+    const closeBtn = document.getElementById('close-popup-btn');
+
+    const notice = activePopups[index];
+
+    // Update Counter
+    if (counterEl) counterEl.innerText = `${index + 1} / ${activePopups.length}`;
+
+    // Show/Hide Navigation
+    if (prevBtn) prevBtn.style.display = index > 0 ? 'block' : 'none';
+    if (nextBtn) {
+        if (index < activePopups.length - 1) {
+            nextBtn.style.display = 'block';
+            if (closeBtn) closeBtn.style.display = 'none';
+        } else {
+            nextBtn.style.display = 'none';
+            if (closeBtn) closeBtn.style.display = 'block';
+        }
+    }
+
+    // Display Content
+    if (notice.image_url) {
+        if (posterContainer && posterImg) {
+            posterImg.src = notice.image_url;
+            posterContainer.style.display = 'block';
+        }
+        if (titleEl) titleEl.style.display = 'none';
+        if (contentEl) contentEl.style.display = 'none';
+        if (divider) divider.style.display = 'none';
+    } else {
+        if (posterContainer) posterContainer.style.display = 'none';
+        if (titleEl) {
+            titleEl.style.display = 'block';
+            titleEl.innerText = notice.title;
+        }
+        if (contentEl) {
+            contentEl.style.display = 'block';
+            contentEl.innerText = notice.content || '';
+        }
+        if (divider) divider.style.display = 'block';
+    }
+
+    if (popup) popup.style.display = 'flex';
+}
+
+function navigatePopup(direction) {
+    const newIndex = currentPopupIndex + direction;
+    if (newIndex >= 0 && newIndex < activePopups.length) {
+        showPopup(newIndex);
+    }
+}
+
+window.navigatePopup = navigatePopup; // Make global
+
 async function loadNotices() {
     const list = document.getElementById('notice-list');
     const popup = document.getElementById('notice-popup');
 
     try {
-        // 1. Fetch notices and site settings in parallel
-        const [noticesRes, settingsRes] = await Promise.all([
+        // 1. Fetch all active popup-enabled notices
+        // 2. Fetch latest 5 notices for the sidebar list
+        // 3. Fetch global site settings
+        const [popupsRes, noticesRes, settingsRes] = await Promise.all([
+            window.safeSupabaseCall(() =>
+                supabaseClient
+                    .from('notices')
+                    .select('*')
+                    .eq('is_active', true)
+                    .eq('show_as_popup', true)
+                    .order('created_at', { ascending: false })
+            ),
             window.safeSupabaseCall(() =>
                 supabaseClient
                     .from('notices')
@@ -70,53 +150,39 @@ async function loadNotices() {
             window.safeSupabaseCall(() =>
                 supabaseClient
                     .from('site_settings')
-                    .select('is_popup_enabled, featured_notice_id')
+                    .select('is_popup_enabled')
                     .eq('id', 'global-settings')
                     .single()
             )
         ]);
 
-        if (noticesRes.error) throw noticesRes.error;
+        const allNotices = noticesRes.data || [];
+        const isPopupEnabled = settingsRes.data ? settingsRes.data.is_popup_enabled : true;
+        activePopups = popupsRes.data || [];
 
-        const data = noticesRes.data;
-        const isPopupEnabled = settingsRes.data ? settingsRes.data.is_popup_enabled : true; // Default to true
-        const featuredNoticeId = settingsRes.data ? settingsRes.data.featured_notice_id : null;
-
-        if (!data || data.length === 0) {
-            if (list) list.innerHTML = `<div style="text-align: center; color: var(--text-dim); padding: 20px;">No new announcements at the moment.</div>`;
-            if (popup) popup.style.display = 'none';
-            return;
-        }
-
-        // 2. Select notice for popup: Featured first, then Latest
-        let popupNotice = data[0]; // Default to latest
-        if (featuredNoticeId) {
-            const featured = data.find(n => n.id === featuredNoticeId);
-            if (featured) {
-                popupNotice = featured;
+        // Update Sidebar List
+        if (list) {
+            if (allNotices.length === 0) {
+                list.innerHTML = `<div style="text-align: center; color: var(--text-dim); padding: 20px;">No new announcements at the moment.</div>`;
             } else {
-                // If featured notice not in the 5 active ones, fetch it specifically
-                const { data: specificNotice } = await window.safeSupabaseCall(() =>
-                    supabaseClient
-                        .from('notices')
-                        .select('*')
-                        .eq('id', featuredNoticeId)
-                        .single()
-                );
-                if (specificNotice && specificNotice.is_active) {
-                    popupNotice = specificNotice;
-                }
+                list.innerHTML = allNotices.map(notice => {
+                    const date = new Date(notice.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+                    return `
+                        <div class="notice-card animate-fade">
+                            <div class="notice-date">${date}</div>
+                            <h3 class="notice-title">${notice.title}</h3>
+                            <p class="notice-text">${notice.content ? (notice.content.substring(0, 100) + '...') : ''}</p>
+                        </div>
+                    `;
+                }).join('');
             }
         }
 
-        if (popup) {
-            if (isPopupEnabled) {
-                document.getElementById('popup-title').innerText = popupNotice.title;
-                document.getElementById('popup-content').innerText = popupNotice.content || '';
-                popup.style.display = 'flex';
-            } else {
-                popup.style.display = 'none';
-            }
+        // Show Popups if enabled and exist
+        if (isPopupEnabled && activePopups.length > 0 && popup) {
+            showPopup(0);
+        } else if (popup) {
+            popup.style.display = 'none';
         }
 
         list.innerHTML = data.map(notice => {
@@ -937,4 +1003,68 @@ function showLiveNotification(msg) {
     `;
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 4000);
+}
+// --- HERO MATCH POPUP LOGIC ---
+async function checkHeroMatchPopup() {
+    if (sessionStorage.getItem('hero_popup_shown')) return;
+    
+    try {
+        const { data: fixtures, error } = await window.safeSupabaseCall(() =>
+            supabaseClient.from('fixtures').select('*').neq('status', 'completed')
+        );
+        
+        if (error || !fixtures || fixtures.length === 0) return;
+
+        // Find a priority match: 1. Live, 2. Today's Upcoming
+        const now = new Date();
+        const todayStr = now.toISOString().split('T')[0];
+        
+        const match = fixtures.find(f => f.status === 'live') || 
+                      fixtures.find(f => f.status === 'upcoming' && f.match_date === todayStr);
+
+        if (match) {
+            // Fetch All Teams for branding
+            const { data: teams } = await window.safeSupabaseCall(() =>
+                supabaseClient.from('points_table').select('*')
+            );
+            
+            const t1 = teams?.find(t => t.team_name === match.team1) || {};
+            const t2 = teams?.find(t => t.team_name === match.team2) || {};
+
+            const popup = document.getElementById('hero-match-popup');
+            if (!popup) return;
+
+            // Update Sides
+            document.getElementById('popup-side-1').style.background = t1.team_color || '#ff4d8d';
+            document.getElementById('popup-side-2').style.background = t2.team_color || '#00f2ff';
+
+            // Update Names
+            document.getElementById('popup-t1-name').innerText = t1.team_name || match.team1;
+            document.getElementById('popup-t2-name').innerText = t2.team_name || match.team2;
+
+            // Update Logos
+            const cb = (url) => url ? url + (url.includes('?') ? '&' : '?') + 't=' + Date.now() : 'logo.png';
+            document.getElementById('popup-t1-logo').src = cb(t1.logo_url);
+            document.getElementById('popup-t2-logo').src = cb(t2.logo_url);
+
+            // Update Captains
+            document.getElementById('popup-p1-img').src = cb(t1.captain_photo);
+            document.getElementById('popup-p2-img').src = cb(t2.captain_photo);
+
+            // Update Match Info
+            document.getElementById('popup-match-no-badge').innerText = `MATCH ${String(match.match_no || 0).padStart(2, '0')}`;
+            document.getElementById('popup-match-type').innerText = match.status === 'live' ? 'LIVE NOW 🏏' : 'MATCH TODAY 🏟️';
+            document.getElementById('popup-match-time').innerText = `${match.match_time} • ${match.venue.toUpperCase()}`;
+
+            popup.style.display = 'flex';
+            sessionStorage.setItem('hero_popup_shown', 'true');
+        }
+    } catch (err) {
+        console.error("Hero Popup Error:", err);
+    }
+}
+
+function closeHeroPopup() {
+    const popup = document.getElementById('hero-match-popup');
+    if (popup) popup.style.display = 'none';
 }

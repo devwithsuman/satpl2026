@@ -962,3 +962,40 @@ input:checked+.slider:before {
         padding: 20px 14px !important;
     }
 }
+
+/* 🖼️ Cropper Modal Styling */
+#cropper-modal .modal-content {
+    background: #0f172a;
+    border: 1px solid var(--secondary);
+    box-shadow: 0 0 50px rgba(0, 242, 255, 0.2);
+}
+
+#cropper-modal .btn-sm {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--glass-border);
+    color: white;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+#cropper-modal .btn-sm:hover {
+    background: var(--secondary);
+    color: var(--bg-dark);
+}
+
+/* Custom styles for the Cropper.js container */
+.cropper-view-box,
+.cropper-face {
+  border-radius: 0;
+}
+
+.cropper-line, .cropper-point {
+    background-color: var(--secondary);
+}
+
+#btn-remove-notice-image:hover {
+    background: rgba(239, 68, 68, 0.2) !important;
+    transform: scale(1.02);
+}
