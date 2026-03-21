@@ -445,8 +445,15 @@ async function loadHeroAndScores() {
 
         // Use the new pulse indicator
         const badge = document.getElementById('display-live-badge');
-        badge.innerHTML = `<span class="pulse-dot"></span> ${live.badge || "LIVE MATCH"}`;
-        badge.className = "live-indicator";
+        if (live.badge === "MATCH OVER") {
+            badge.innerHTML = `MATCH COMPLETED`;
+            badge.style.background = "rgba(239, 68, 68, 0.2)";
+            badge.style.borderColor = "rgba(239, 68, 68, 0.4)";
+            badge.style.color = "#ef4444";
+        } else {
+            badge.innerHTML = `<span class="pulse-dot"></span> ${live.badge || "LIVE MATCH"}`;
+            badge.className = "live-indicator";
+        }
         badge.style.animation = "none"; // Remove blink animation in favor of pulse-dot
 
         document.getElementById('display-live-team1').className = "tv-score-team";
@@ -600,11 +607,24 @@ function handleLiveScoreUpdate(data) {
     if (container && data.team1_name && data.team2_name) {
         container.style.display = 'block';
         
-        // Update teams if they were missing
-        const t1 = document.getElementById('display-live-team1');
-        const t2 = document.getElementById('display-live-team2');
         if (t1) t1.innerText = data.team1_name;
         if (t2) t2.innerText = data.team2_name;
+    }
+
+    // 🎯 Badge & Live Indicator
+    const badge = document.getElementById('display-live-badge');
+    if (badge) {
+        if (data.badge === "MATCH OVER") {
+            badge.innerHTML = `MATCH COMPLETED`;
+            badge.style.background = "rgba(239, 68, 68, 0.2)"; // Reddish for completed
+            badge.style.borderColor = "rgba(239, 68, 68, 0.4)";
+            badge.style.color = "#ef4444";
+        } else {
+            badge.innerHTML = `<span class="pulse-dot"></span> ${data.badge || "LIVE MATCH"}`;
+            badge.style.background = "rgba(0, 242, 255, 0.1)"; // Default cyan
+            badge.style.borderColor = "rgba(0, 242, 255, 0.2)";
+            badge.style.color = "#00f2ff";
+        }
     }
 
     // 🎯 TARGET Logic

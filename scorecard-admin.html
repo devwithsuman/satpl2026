@@ -174,8 +174,10 @@
             const [showScorecardModal, setShowScorecardModal] = useState(false); 
             const [showResetConfirm, setShowResetConfirm] = useState(false);
             const [showExitConfirm, setShowExitConfirm] = useState(false); 
-            const [showResumeModal, setShowResumeModal] = useState(false); // NEW: Resume Flow
-            const [matchToResume, setMatchToResume] = useState(null); // NEW
+            const [showResumeModal, setShowResumeModal] = useState(false); 
+            const [matchToResume, setMatchToResume] = useState(null); 
+            const [showManualModal, setShowManualModal] = useState(false);
+            const [manualState, setManualState] = useState({ runs: 0, wkts: 0, overs: 0, balls: 0 });
 
             useEffect(() => {
                 fetchFixtures();
@@ -517,6 +519,25 @@
                         return prev;
                     }
                 });
+            };
+
+            function handleManualUpdate() {
+                setMatchState(prev => {
+                    const newHistory = [...(prev.history || []), JSON.parse(JSON.stringify(prev))];
+                    const next = { 
+                        ...prev, 
+                        history: newHistory,
+                        runs: parseInt(manualState.runs) || 0,
+                        wkts: parseInt(manualState.wkts) || 0,
+                        overs: parseInt(manualState.overs) || 0,
+                        balls: parseInt(manualState.balls) || 0
+                    };
+                    syncToDB(next);
+                    checkMatchResult(next);
+                    return next;
+                });
+                setShowManualModal(false);
+                debugLog("Manual Update Applied ✍️", "#00f2ff");
             };
 
             function handleInningsBreak(state) {
@@ -921,6 +942,10 @@
                                     </div>
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                         <button onClick={() => handleScore('W')} className="h-14 rounded-2xl bg-red-600 text-white flex items-center justify-center text-sm font-bold tracking-widest hover:bg-red-700 transition-all shadow-lg shadow-red-600/20 active:scale-95">☝️ OUT</button>
+                                        <button onClick={() => {
+                                            setManualState({ runs: matchState.runs, wkts: matchState.wkts, overs: matchState.overs, balls: matchState.balls });
+                                            setShowManualModal(true);
+                                        }} className="h-14 rounded-2xl bg-white/5 border border-white/10 text-primary flex items-center justify-center text-[10px] font-bold tracking-widest hover:bg-primary/10 active:scale-95">✍️ MANUAL OVERRIDE</button>
                                         <button onClick={undo} className="h-14 rounded-2xl bg-white/5 border border-white/10 text-gray-400 flex items-center justify-center text-sm font-bold tracking-widest hover:bg-white/10 active:scale-95">↩ UNDO</button>
                                         {matchState.inning === 1 ? (
                                             <button onClick={() => {
@@ -1191,6 +1216,51 @@
                                         className="w-full h-14 rounded-2xl font-bold text-gray-500 hover:text-white transition-all uppercase text-xs tracking-widest"
                                     >
                                         STAY HERE
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* MANUAL OVERRIDE MODAL */}
+                    {showManualModal && (
+                        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md">
+                            <div className="glass w-full max-w-sm rounded-[32px] p-10 text-center border-primary/20 shadow-2xl shadow-primary/10">
+                                <div className="h-20 w-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl">
+                                    ✍️
+                                </div>
+                                <h3 className="text-2xl font-black mb-2 text-white uppercase tracking-tighter">MANUAL OVERRIDE</h3>
+                                <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-8 text-secondary">Warning: This bypasses ball-by-ball logic</p>
+                                
+                                <div className="space-y-4 text-left">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-[10px] uppercase font-bold text-gray-500 tracking-widest mb-1 block">Total Runs</label>
+                                            <input type="number" value={manualState.runs} onChange={e => setManualState({...manualState, runs: e.target.value})} className="w-full bg-white/5 border border-white/10 p-3 rounded-xl focus:border-primary text-sm font-bold" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] uppercase font-bold text-gray-500 tracking-widest mb-1 block">Wickets</label>
+                                            <input type="number" value={manualState.wkts} onChange={e => setManualState({...manualState, wkts: e.target.value})} className="w-full bg-white/5 border border-white/10 p-3 rounded-xl focus:border-primary text-sm font-bold" />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-[10px] uppercase font-bold text-gray-500 tracking-widest mb-1 block">Overs</label>
+                                            <input type="number" value={manualState.overs} onChange={e => setManualState({...manualState, overs: e.target.value})} className="w-full bg-white/5 border border-white/10 p-3 rounded-xl focus:border-primary text-sm font-bold" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] uppercase font-bold text-gray-500 tracking-widest mb-1 block">Balls</label>
+                                            <input type="number" value={manualState.balls} onChange={e => setManualState({...manualState, balls: e.target.value})} className="w-full bg-white/5 border border-white/10 p-3 rounded-xl focus:border-primary text-sm font-bold" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col gap-3 mt-8">
+                                    <Button onClick={handleManualUpdate} variant="primary" className="w-full h-14 rounded-2xl shadow-lg shadow-primary/20">
+                                        APPLY MANUAL UPDATE
+                                    </Button>
+                                    <button onClick={() => setShowManualModal(false)} className="w-full h-12 rounded-2xl font-bold text-gray-500 hover:text-white transition-all uppercase text-[10px] tracking-widest">
+                                        CANCEL
                                     </button>
                                 </div>
                             </div>
