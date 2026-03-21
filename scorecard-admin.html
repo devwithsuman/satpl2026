@@ -84,6 +84,12 @@
             animation: fadeIn 0.4s ease-out forwards;
         }
 
+        /* Custom Scrollbar for Modals */
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0, 242, 255, 0.3); border-radius: 10px; }
+        .custom-scrollbar { scrollbar-width: thin; scrollbar-color: rgba(0, 242, 255, 0.3) transparent; }
+
         /* Mobile Overrides */
         @media (max-width: 640px) {
             .glass { padding: 1.25rem !important; }
@@ -177,7 +183,12 @@
             const [showResumeModal, setShowResumeModal] = useState(false); 
             const [matchToResume, setMatchToResume] = useState(null); 
             const [showManualModal, setShowManualModal] = useState(false);
-            const [manualState, setManualState] = useState({ runs: 0, wkts: 0, overs: 0, balls: 0 });
+            const [manualState, setManualState] = useState({ 
+                runs: 0, wkts: 0, overs: 0, balls: 0,
+                b1Runs: 0, b1Balls: 0, b1_4s: 0, b1_6s: 0,
+                b2Runs: 0, b2Balls: 0, b2_4s: 0, b2_6s: 0,
+                bowlRuns: 0, bowlWkts: 0, bowlOvers: 0, bowlBalls: 0
+            });
 
             useEffect(() => {
                 fetchFixtures();
@@ -530,8 +541,23 @@
                         runs: parseInt(manualState.runs) || 0,
                         wkts: parseInt(manualState.wkts) || 0,
                         overs: parseInt(manualState.overs) || 0,
-                        balls: parseInt(manualState.balls) || 0
+                        balls: parseInt(manualState.balls) || 0,
+                        batsman1: { ...prev.batsman1, runs: parseInt(manualState.b1Runs) || 0, balls: parseInt(manualState.b1Balls) || 0, f4s: parseInt(manualState.b1_4s) || 0, s6s: parseInt(manualState.b1_6s) || 0 },
+                        batsman2: { ...prev.batsman2, runs: parseInt(manualState.b2Runs) || 0, balls: parseInt(manualState.b2Balls) || 0, f4s: parseInt(manualState.b2_4s) || 0, s6s: parseInt(manualState.b2_6s) || 0 },
+                        bowler: { ...prev.bowler, runs: parseInt(manualState.bowlRuns) || 0, wkts: parseInt(manualState.bowlWkts) || 0, overs: parseInt(manualState.bowlOvers) || 0, balls: parseInt(manualState.bowlBalls) || 0 }
                     };
+
+                    // Sync stats dictionaries
+                    if (next.batsman1.reg) {
+                        next.battingStats[next.batsman1.reg] = { ...next.battingStats[next.batsman1.reg], runs: next.batsman1.runs, balls: next.batsman1.balls, f4s: next.batsman1.f4s, s6s: next.batsman1.s6s };
+                    }
+                    if (next.batsman2.reg) {
+                        next.battingStats[next.batsman2.reg] = { ...next.battingStats[next.batsman2.reg], runs: next.batsman2.runs, balls: next.batsman2.balls, f4s: next.batsman2.f4s, s6s: next.batsman2.s6s };
+                    }
+                    if (next.bowler.reg) {
+                        next.bowlingStats[next.bowler.reg] = { ...next.bowlingStats[next.bowler.reg], runs: next.bowler.runs, wickets: next.bowler.wkts, overs: next.bowler.overs, balls: next.bowler.balls };
+                    }
+
                     syncToDB(next);
                     checkMatchResult(next);
                     return next;
@@ -943,7 +969,12 @@
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                         <button onClick={() => handleScore('W')} className="h-14 rounded-2xl bg-red-600 text-white flex items-center justify-center text-sm font-bold tracking-widest hover:bg-red-700 transition-all shadow-lg shadow-red-600/20 active:scale-95">☝️ OUT</button>
                                         <button onClick={() => {
-                                            setManualState({ runs: matchState.runs, wkts: matchState.wkts, overs: matchState.overs, balls: matchState.balls });
+                                            setManualState({ 
+                                                runs: matchState.runs, wkts: matchState.wkts, overs: matchState.overs, balls: matchState.balls,
+                                                b1Runs: matchState.batsman1.runs, b1Balls: matchState.batsman1.balls, b1_4s: matchState.batsman1.f4s || 0, b1_6s: matchState.batsman1.s6s || 0,
+                                                b2Runs: matchState.batsman2.runs, b2Balls: matchState.batsman2.balls, b2_4s: matchState.batsman2.f4s || 0, b2_6s: matchState.batsman2.s6s || 0,
+                                                bowlRuns: matchState.bowler.runs, bowlWkts: matchState.bowler.wkts, bowlOvers: matchState.bowler.overs, bowlBalls: matchState.bowler.balls
+                                            });
                                             setShowManualModal(true);
                                         }} className="h-14 rounded-2xl bg-white/5 border border-white/10 text-primary flex items-center justify-center text-[10px] font-bold tracking-widest hover:bg-primary/10 active:scale-95">✍️ MANUAL OVERRIDE</button>
                                         <button onClick={undo} className="h-14 rounded-2xl bg-white/5 border border-white/10 text-gray-400 flex items-center justify-center text-sm font-bold tracking-widest hover:bg-white/10 active:scale-95">↩ UNDO</button>
@@ -1232,25 +1263,101 @@
                                 <h3 className="text-2xl font-black mb-2 text-white uppercase tracking-tighter">MANUAL OVERRIDE</h3>
                                 <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-8 text-secondary">Warning: This bypasses ball-by-ball logic</p>
                                 
-                                <div className="space-y-4 text-left">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="text-[10px] uppercase font-bold text-gray-500 tracking-widest mb-1 block">Total Runs</label>
-                                            <input type="number" value={manualState.runs} onChange={e => setManualState({...manualState, runs: e.target.value})} className="w-full bg-white/5 border border-white/10 p-3 rounded-xl focus:border-primary text-sm font-bold" />
+                                <div className="space-y-6 text-left max-h-[50vh] overflow-y-auto pr-2 custom-scrollbar">
+                                    {/* Team Stats */}
+                                    <div className="border-b border-white/5 pb-4">
+                                        <div className="text-[10px] uppercase font-black text-primary tracking-widest mb-3">Team Score</div>
+                                        <div className="grid grid-cols-2 gap-4 mb-4">
+                                            <div>
+                                                <label className="text-[9px] uppercase font-bold text-gray-500 tracking-widest mb-1 block">Total Runs</label>
+                                                <input type="number" value={manualState.runs} onChange={e => setManualState({...manualState, runs: e.target.value})} className="w-full bg-white/5 border border-white/10 p-2.5 rounded-xl focus:border-primary text-sm font-bold" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[9px] uppercase font-bold text-gray-500 tracking-widest mb-1 block">Wickets</label>
+                                                <input type="number" value={manualState.wkts} onChange={e => setManualState({...manualState, wkts: e.target.value})} className="w-full bg-white/5 border border-white/10 p-2.5 rounded-xl focus:border-primary text-sm font-bold" />
+                                            </div>
                                         </div>
-                                        <div>
-                                            <label className="text-[10px] uppercase font-bold text-gray-500 tracking-widest mb-1 block">Wickets</label>
-                                            <input type="number" value={manualState.wkts} onChange={e => setManualState({...manualState, wkts: e.target.value})} className="w-full bg-white/5 border border-white/10 p-3 rounded-xl focus:border-primary text-sm font-bold" />
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="text-[9px] uppercase font-bold text-gray-500 tracking-widest mb-1 block">Overs</label>
+                                                <input type="number" value={manualState.overs} onChange={e => setManualState({...manualState, overs: e.target.value})} className="w-full bg-white/5 border border-white/10 p-2.5 rounded-xl focus:border-primary text-sm font-bold" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[9px] uppercase font-bold text-gray-500 tracking-widest mb-1 block">Balls</label>
+                                                <input type="number" value={manualState.balls} onChange={e => setManualState({...manualState, balls: e.target.value})} className="w-full bg-white/5 border border-white/10 p-2.5 rounded-xl focus:border-primary text-sm font-bold" />
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="text-[10px] uppercase font-bold text-gray-500 tracking-widest mb-1 block">Overs</label>
-                                            <input type="number" value={manualState.overs} onChange={e => setManualState({...manualState, overs: e.target.value})} className="w-full bg-white/5 border border-white/10 p-3 rounded-xl focus:border-primary text-sm font-bold" />
+
+                                    {/* Batsman 1 (Striker) */}
+                                    <div className="border-b border-white/5 pb-4">
+                                        <div className="text-[10px] uppercase font-black text-primary tracking-widest mb-1">Striker</div>
+                                        <div className="text-[10px] text-gray-500 font-bold mb-3 italic">{matchState.batsman1.name}</div>
+                                        <div className="grid grid-cols-4 gap-2">
+                                            <div>
+                                                <label className="text-[8px] uppercase font-black text-gray-600 block mb-1">Runs</label>
+                                                <input type="number" value={manualState.b1Runs} onChange={e => setManualState({...manualState, b1Runs: e.target.value})} className="w-full bg-white/5 border border-white/10 p-2 rounded-lg text-xs font-bold focus:border-primary" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[8px] uppercase font-black text-gray-600 block mb-1">Balls</label>
+                                                <input type="number" value={manualState.b1Balls} onChange={e => setManualState({...manualState, b1Balls: e.target.value})} className="w-full bg-white/5 border border-white/10 p-2 rounded-lg text-xs font-bold focus:border-primary" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[8px] uppercase font-black text-gray-600 block mb-1">4s</label>
+                                                <input type="number" value={manualState.b1_4s} onChange={e => setManualState({...manualState, b1_4s: e.target.value})} className="w-full bg-white/5 border border-white/10 p-2 rounded-lg text-xs font-bold focus:border-primary" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[8px] uppercase font-black text-gray-600 block mb-1">6s</label>
+                                                <input type="number" value={manualState.b1_6s} onChange={e => setManualState({...manualState, b1_6s: e.target.value})} className="w-full bg-white/5 border border-white/10 p-2 rounded-lg text-xs font-bold focus:border-primary" />
+                                            </div>
                                         </div>
-                                        <div>
-                                            <label className="text-[10px] uppercase font-bold text-gray-500 tracking-widest mb-1 block">Balls</label>
-                                            <input type="number" value={manualState.balls} onChange={e => setManualState({...manualState, balls: e.target.value})} className="w-full bg-white/5 border border-white/10 p-3 rounded-xl focus:border-primary text-sm font-bold" />
+                                    </div>
+
+                                    {/* Batsman 2 (Non-Striker) */}
+                                    <div className="border-b border-white/5 pb-4">
+                                        <div className="text-[10px] uppercase font-black text-primary tracking-widest mb-1">Non-Striker</div>
+                                        <div className="text-[10px] text-gray-500 font-bold mb-3 italic">{matchState.batsman2.name}</div>
+                                        <div className="grid grid-cols-4 gap-2">
+                                            <div>
+                                                <label className="text-[8px] uppercase font-black text-gray-600 block mb-1">Runs</label>
+                                                <input type="number" value={manualState.b2Runs} onChange={e => setManualState({...manualState, b2Runs: e.target.value})} className="w-full bg-white/5 border border-white/10 p-2 rounded-lg text-xs font-bold focus:border-primary" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[8px] uppercase font-black text-gray-600 block mb-1">Balls</label>
+                                                <input type="number" value={manualState.b2Balls} onChange={e => setManualState({...manualState, b2Balls: e.target.value})} className="w-full bg-white/5 border border-white/10 p-2 rounded-lg text-xs font-bold focus:border-primary" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[8px] uppercase font-black text-gray-600 block mb-1">4s</label>
+                                                <input type="number" value={manualState.b2_4s} onChange={e => setManualState({...manualState, b2_4s: e.target.value})} className="w-full bg-white/5 border border-white/10 p-2 rounded-lg text-xs font-bold focus:border-primary" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[8px] uppercase font-black text-gray-600 block mb-1">6s</label>
+                                                <input type="number" value={manualState.b2_6s} onChange={e => setManualState({...manualState, b2_6s: e.target.value})} className="w-full bg-white/5 border border-white/10 p-2 rounded-lg text-xs font-bold focus:border-primary" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Bowler */}
+                                    <div>
+                                        <div className="text-[10px] uppercase font-black text-primary tracking-widest mb-1">Current Bowler</div>
+                                        <div className="text-[10px] text-gray-500 font-bold mb-3 italic">{matchState.bowler.name}</div>
+                                        <div className="grid grid-cols-4 gap-2">
+                                            <div>
+                                                <label className="text-[8px] uppercase font-black text-gray-600 block mb-1">Runs</label>
+                                                <input type="number" value={manualState.bowlRuns} onChange={e => setManualState({...manualState, bowlRuns: e.target.value})} className="w-full bg-white/5 border border-white/10 p-2 rounded-lg text-xs font-bold focus:border-primary" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[8px] uppercase font-black text-gray-600 block mb-1">Wkts</label>
+                                                <input type="number" value={manualState.bowlWkts} onChange={e => setManualState({...manualState, bowlWkts: e.target.value})} className="w-full bg-white/5 border border-white/10 p-2 rounded-lg text-xs font-bold focus:border-primary" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[8px] uppercase font-black text-gray-600 block mb-1">Overs</label>
+                                                <input type="number" value={manualState.bowlOvers} onChange={e => setManualState({...manualState, bowlOvers: e.target.value})} className="w-full bg-white/5 border border-white/10 p-2 rounded-lg text-xs font-bold focus:border-primary" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[8px] uppercase font-black text-gray-600 block mb-1">Balls</label>
+                                                <input type="number" value={manualState.bowlBalls} onChange={e => setManualState({...manualState, bowlBalls: e.target.value})} className="w-full bg-white/5 border border-white/10 p-2 rounded-lg text-xs font-bold focus:border-primary" />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
