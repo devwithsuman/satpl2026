@@ -1051,21 +1051,25 @@ async function saveTeamDetails() {
             // Filter out empty owners
             const activeOwners = owners.filter(o => o.name);
 
+            const teamNameInput = row.querySelector(".team-name-input");
+            const groupInput = row.querySelector(".group-input");
+            if (!row.dataset.id || !teamNameInput || !groupInput) return null;
+
             return {
-                id: parseInt(row.dataset.id),
-                group_name: row.querySelector(".group-input").value.trim().toUpperCase(),
-                team_name: row.querySelector(".team-name-input").value,
+                id: row.dataset.id,
+                group_name: groupInput.value.trim().toUpperCase(),
+                team_name: teamNameInput.value,
                 logo_url: logoUrl,
                 owners: activeOwners,
                 // Legacy support (optional, keep for safety)
                 owner_name: activeOwners[0]?.name || '',
                 owner_photo: activeOwners[0]?.photo || '',
-                captain_name: row.querySelector(".captain-name-input").value,
+                captain_name: row.querySelector(".captain-name-input")?.value || '',
                 captain_photo: captainPhotoUrl,
-                owner_password: row.querySelector(".pass-input").value,
-                team_color: row.querySelector(".color-input").value
+                owner_password: row.querySelector(".pass-input")?.value || '123456',
+                team_color: row.querySelector(".color-input")?.value || '#00f2ff'
             };
-        }));
+        })).then(results => results.filter(u => u !== null));
 
         const { error } = await supabaseClient.from("points_table").upsert(updates);
         if (error) throw error;
@@ -1130,7 +1134,10 @@ async function fetchAdminPoints() {
     list.innerHTML = data.map(team => `
         <tr data-id="${team.id}">
             <td><input type="text" value="${team.group_name || 'A'}" class="table-input group-input" style="width: 50px; text-align: center; font-weight: 800;"></td>
-            <td style="font-weight: 700; color: #fff;">${team.team_name || ''}</td>
+            <td style="font-weight: 700; color: #fff;">
+                ${team.team_name || ''}
+                <input type="hidden" value="${team.team_name || ''}" class="team-name-hidden">
+            </td>
             <td><input type="number" value="${team.played}" class="table-input played-input" oninput="calculateStats(this)"></td>
             <td><input type="number" value="${team.won}" class="table-input won-input" oninput="calculateStats(this)"></td>
             <td><input type="number" value="${team.lost}" class="table-input lost-input" oninput="calculateStats(this)"></td>
@@ -1310,20 +1317,27 @@ async function savePointsTable() {
     saveBtn.disabled = true;
 
     try {
-        const updates = Array.from(rows).map(row => ({
-            id: parseInt(row.dataset.id),
-            group_name: row.querySelector(".group-input").value.trim().toUpperCase(),
-            played: parseInt(row.querySelector(".played-input").value) || 0,
-            won: parseInt(row.querySelector(".won-input").value) || 0,
-            lost: parseInt(row.querySelector(".lost-input").value) || 0,
-            runs_scored: parseInt(row.querySelector(".rs-input").value) || 0,
-            overs_faced: parseFloat(row.querySelector(".of-input").value) || 0,
-            runs_conceded: parseInt(row.querySelector(".rc-input").value) || 0,
-            overs_bowled: parseFloat(row.querySelector(".ob-input").value) || 0,
-            nrr: parseFloat(row.querySelector(".nrr-input").value) || 0,
-            points: parseInt(row.querySelector(".points-input").value) || 0,
-            budget: parseInt(row.querySelector(".budget-input").value) || 0
-        }));
+        const updates = Array.from(rows).map(row => {
+            const teamId = row.dataset.id;
+            const teamNameInput = row.querySelector(".team-name-hidden");
+            if (!teamId || !teamNameInput) return null;
+
+            return {
+                id: teamId,
+                team_name: teamNameInput.value,
+                group_name: row.querySelector(".group-input").value.trim().toUpperCase(),
+                played: parseInt(row.querySelector(".played-input").value) || 0,
+                won: parseInt(row.querySelector(".won-input").value) || 0,
+                lost: parseInt(row.querySelector(".lost-input").value) || 0,
+                runs_scored: parseInt(row.querySelector(".rs-input").value) || 0,
+                overs_faced: parseFloat(row.querySelector(".of-input").value) || 0,
+                runs_conceded: parseInt(row.querySelector(".rc-input").value) || 0,
+                overs_bowled: parseFloat(row.querySelector(".ob-input").value) || 0,
+                nrr: parseFloat(row.querySelector(".nrr-input").value) || 0,
+                points: parseInt(row.querySelector(".points-input").value) || 0,
+                budget: parseInt(row.querySelector(".budget-input").value) || 0
+            };
+        }).filter(u => u !== null);
 
         const { error } = await supabaseClient.from("points_table").upsert(updates);
 
